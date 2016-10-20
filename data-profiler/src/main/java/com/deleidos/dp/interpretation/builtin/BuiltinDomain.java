@@ -5,6 +5,14 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+/**
+ * A built in domain
+ * 
+ * Primarily used for testing 8/25/16
+ * 
+ * @author leegc
+ *
+ */
 public class BuiltinDomain {
 	public static final String name = "Default";
 	private static Logger logger = Logger.getLogger(BuiltinDomain.class);

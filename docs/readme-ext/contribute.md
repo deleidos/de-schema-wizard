@@ -27,7 +27,7 @@ On each platform, you must install third party dependencies before you can compi
 
 	mvn clean install
 
-Then, execute the platform appropriate script (Windows - **install_link.cmd**, Linux - **install_link.sh**) **as an administrator.**  This is a one time install as long as you do not delete your local Maven repository or change any .ddl or .so files.  Now that that's over, let's get to the fun part.
+**The following step will install the jnetpcap.dll or .so file(s) in either System32 or /usr/lib/.**  If you are ok with that, execute the platform appropriate script (Windows - **install_link.cmd**, Linux - **install_link.sh**) **as an administrator.**  This is a one time install as long as you do not delete your local Maven repository or change any .ddl or .so files.  You can alternatively add the paths to these files to the Java classpath at runtime.  Now that that's over, let's get to the fun part.
 
 ## Project Structure
 Schema Wizard is composed of eight projects: three Java, one Java/JavaScript, and four Python projects. 
@@ -36,7 +36,7 @@ Schema Wizard is composed of eight projects: three Java, one Java/JavaScript, an
 **h2-database**: Configures and starts up the H2 database.
 
 
-**data-profiler**: The "brains" of the operation. It is composed of data accumulators and profilers and also is the sole interactor of the H2 database.
+**data-profiler**: Gather metrics and profile data. Handleds all interaction with the H2 database and interfaces with the Intepretation Engine.
 
 
 **data-model-factory**: Composed of the service layer, data analyzers, detectors, parsers, and splitters.  This project handles automated file detection/parsing.  There are two API entrypoints that are meant to offer plugability to detection and parsing.  **com.deleidos.dmf.framework.AbstractMarkSupportAnalyticsDetector** is the entrypoint for any detectors, and **com.deleidos.dmf.framework.AbstractAnalyticsParser** is the entrypoint for additional parser.  If Apache Tika can detect the file type, you need only implement a parser.  Otherwise, you must subclass both of these abstract classes.  Once you write the classes, add the fully resolved class names to the appropriate **data-model-factory/src/main/resources/META-INF/services/** service files.  For the time being, the javadocs in these classes are the reference material to help a developer add to Schema Wizard.
@@ -67,7 +67,7 @@ Schema Wizard uses Apache Maven for build and dependency management. To build th
 This will execute the build and also unit testing of the project based on the Reactor POM of Schema Wizard.
 
 ## Testing
-Tests are broken into two categories, unit tests and integration tests.
+Tests are broken into two categories, unit tests and integration tests.  A majority of tests are not included in the public version of Schema Wizard.  However, use the following commands to test and build the software when making changes.
 
 Unit tests are run by default when executing:
 

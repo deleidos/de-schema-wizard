@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  *
  */
 @JsonTypeInfo(use=JsonTypeInfo.Id.CLASS, include=JsonTypeInfo.As.PROPERTY, property="@class")
-public abstract class AbstractBucket implements Bucket, Comparable<AbstractBucket> {
+public abstract class AbstractBucket implements Comparable<AbstractBucket> {
 	public static final String EMPTY_STRING_INDICATOR = DefaultProfilerRecord.EMPTY_FIELD_VALUE_INDICATOR;
 	protected BigInteger count;
 	
@@ -28,8 +28,22 @@ public abstract class AbstractBucket implements Bucket, Comparable<AbstractBucke
 		return count;
 	}
 	
-	@Override
 	public void incrementCount() {
 		count = count.add(BigInteger.ONE);
 	}
+
+	/**
+	 * Determine where the object belongs.
+	 * @param object The provided object
+	 * @return -1 if the object should go before the bucket.
+	 * 1 if the object should go after the bucket.
+	 * 0 if the object belongs in the bucket.
+	 */
+	public abstract int belongs(Object object);
+	
+	/**
+	 * Get the label that defines the column of the histogram.
+	 * @return A string representation of the label.
+	 */
+	public abstract String getLabel();
 }

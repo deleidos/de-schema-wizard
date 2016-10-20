@@ -4,9 +4,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.deleidos.dmf.analyzer.workflows.AbstractAnalyzerTestWorkflow;
+import com.deleidos.dmf.analyzer.workflows.CLIWorkflow;
 import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.exception.AnalyticsInitializationRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsInvalidSchemaException;
@@ -32,8 +33,9 @@ import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser.ProgressUpdatingBehavior;
 import com.deleidos.dmf.framework.AnalyticsDefaultDetector;
 import com.deleidos.dmf.framework.AnalyticsDefaultParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
-import com.deleidos.dmf.framework.TikaProfilerParameters.MostCommonFieldWithWalking;
+import com.deleidos.dmf.framework.AnalyticsEmbeddedDocumentExtractor;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters.MostCommonFieldWithWalking;
 import com.deleidos.dmf.framework.TikaSampleAnalyzerParameters;
 import com.deleidos.dmf.framework.TikaSchemaAnalyzerParameters;
 import com.deleidos.dmf.handler.AnalyticsProgressTrackingContentHandler;
@@ -42,8 +44,8 @@ import com.deleidos.dmf.progressbar.ProgressState;
 import com.deleidos.dmf.progressbar.ProgressState.STAGE;
 import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
-import com.deleidos.dp.beans.Attributes;
 import com.deleidos.dmf.web.TimeEstimateProgressUpdater;
+import com.deleidos.dp.beans.Attributes;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Schema;
@@ -51,6 +53,7 @@ import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.h2.H2DataAccessObject;
+import com.deleidos.dp.interpretation.IEConfig;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 import com.deleidos.dp.profiler.SampleProfiler;
 import com.deleidos.dp.profiler.SampleSecondPassProfiler;
@@ -58,17 +61,24 @@ import com.deleidos.dp.profiler.SchemaProfiler;
 import com.deleidos.dp.profiler.api.Profiler;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 import com.deleidos.hd.h2.H2Database;
+import com.deleidos.hd.h2.H2TestDatabase;
 
+/**
+ * Use Apache Tika to analyze sample files.
+ * @author leegc
+ *
+ */
 public class TikaAnalyzer implements FileAnalyzer {
 	private static final Logger logger = Logger.getLogger(TikaAnalyzer.class);
-	
+	private static final String EXTRACTED_CONTENT_DIRECTORY_SUFFIX = "-embedded";
+
 	public static TikaSampleAnalyzerParameters generateSampleParameters(String uploadFileDir, String sampleFileName, String domainName, String tolerance,
 			String sessionId, int sampleNumber, int totalNumberSamples) throws IOException {
 		return generateSampleParameters(uploadFileDir, sampleFileName, domainName, tolerance, sessionId, sampleNumber, totalNumberSamples, null);
 	}
 
 	public static TikaSampleAnalyzerParameters generateSampleParameters(String uploadFileDir, String sampleFileName, String domainName, String tolerance,
-			String sessionId, int sampleNumber, int totalNumberSamples, ProgressBarManager existingProgressBar) throws IOException {
+			String sessionId, int sampleNumber, int totalNumberSamples, ProgressBarManager progressBarManager) throws IOException {
 		String guid = Analyzer.generateUUID();
 
 		sampleFileName = new File(sampleFileName).getName();
@@ -90,19 +100,22 @@ public class TikaAnalyzer implements FileAnalyzer {
 				namePlaceholders.add("");
 			}
 		}
-		ProgressBarManager sampleProgressBar = null;
-		if(existingProgressBar == null) {
-			sampleProgressBar = ProgressBarManager.sampleProgressBar(namePlaceholders, sampleNumber);
-		} else {
-			sampleProgressBar = existingProgressBar;
-		}
-		if(!sampleProgressBar.isDuring(STAGE.DETECT)) {
-			sampleProgressBar.jumpToNthIndexStage(sampleNumber, STAGE.DETECT);
+
+		File extractedContentDirectory = AnalyticsEmbeddedDocumentExtractor.getOrCreateExtractedContentDirectory(
+				uploadFileDir, uploadFile.getName(), EXTRACTED_CONTENT_DIRECTORY_SUFFIX);
+
+		progressBarManager = (progressBarManager == null) 
+				? ProgressBarManager.sampleProgressBar(namePlaceholders, sampleNumber) 
+						: progressBarManager;
+
+		if(!progressBarManager.isDuring(STAGE.DETECT)) {
+			progressBarManager.jumpToNthIndexStage(sampleNumber, STAGE.DETECT);
 		}
 		SimpleProgressUpdater progressUpdater = 
-				new SimpleProgressUpdater(sessionId, sampleProgressBar, uploadFile.length());
-		TikaSampleAnalyzerParameters tikaProfilerParams = new TikaSampleAnalyzerParameters(sampleProfiler, sampleProgressBar,
-				uploadFileDir, guid, is, new AnalyticsProgressTrackingContentHandler(), new Metadata());
+				new SimpleProgressUpdater(sessionId, progressBarManager, uploadFile.length());
+		TikaSampleAnalyzerParameters tikaProfilerParams = new TikaSampleAnalyzerParameters(sampleProfiler, 
+				progressBarManager, uploadFileDir, guid, is, new AnalyticsProgressTrackingContentHandler(), 
+				new Metadata());
 		tikaProfilerParams.setUploadFileDir(uploadFileDir);
 		tikaProfilerParams.setDomainName(domainName);
 		tikaProfilerParams.setNumSamplesUploading(totalNumberSamples);
@@ -114,6 +127,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 		tikaProfilerParams.setStreamLength(uploadFile.length());
 		tikaProfilerParams.set(File.class, uploadFile);
 		tikaProfilerParams.set(ProfilingProgressUpdateHandler.class, progressUpdater);
+		tikaProfilerParams.setExtractedContentDir(extractedContentDirectory.getAbsolutePath());
 		return tikaProfilerParams;
 	}
 
@@ -135,11 +149,11 @@ public class TikaAnalyzer implements FileAnalyzer {
 				DataSample sample = SerializationUtility.deserialize(edittedSourceAnalysis.get(i).toString(), DataSample.class);
 				sampleList.add(sample);
 				sampleNames.add(sample.getDsName());
-				MostCommonFieldWithWalking commonField = TikaProfilerParameters.determineProgressRepresentativeField(sample.getDsProfile());
+				MostCommonFieldWithWalking commonField = TikaAnalyzerParameters.determineProgressRepresentativeField(sample.getDsProfile());
 				mostCommonFieldWithWalkingCount.put(sample.getDsGuid(), commonField);
 			} catch (JSONException e) {
 				logger.error(e);
-				throw new AnalyticsInitializationRuntimeException("Error deserializing into DataSample bean.");
+				throw new AnalyticsInvalidSchemaException("Error deserializing into DataSample bean.");
 			}
 		}
 
@@ -166,27 +180,27 @@ public class TikaAnalyzer implements FileAnalyzer {
 		detector.enableProgressUpdates(params.getSessionId(), params.getProgressBar());
 		AnalyticsDefaultParser parser = new AnalyticsDefaultParser(detector, params);
 
-		Profiler profiler = params.get(Profiler.class);
+		Profiler<?> profiler = params.getProfiler();
 		SampleProfiler sampleProfiler = null;
 		if (profiler instanceof SampleProfiler) {
 			sampleProfiler = (SampleProfiler) profiler;
 		} else {
 			throw new AnalyticsInitializationRuntimeException(
-					"Expected a sample profiler, got a " + params.get(Profiler.class).getClass() + ".");
+					"Expected a sample profiler, got a " + params.getProfiler().getClass() + ".");
 		}
 
 		params.getMetadata().set(Metadata.CONTENT_LENGTH, String.valueOf(params.getStreamLength()));
 		SchemaWizardSessionUtility.getInstance().updateProgress(params.getProgressBar(), params.getSessionId());
-		
+
 		parser.runSampleAnalysis(params);
-		
+
 		params.getProgressBar().goToNextStateIfCurrentIs(ProgressState.STAGE.FIRST_PASS);
 		SchemaWizardSessionUtility.getInstance().updateProgress(params.getProgressBar(), params.getSessionId());
-		DataSample dataSampleBean = sampleProfiler.asBean();
+		DataSample dataSampleBean = sampleProfiler.finish();
 		if(dataSampleBean.getDsProfile().isEmpty()) {
 			throw new AnalyticsUnsupportedParserException("Parsing finished without an exception, but no keys were extracted.");
 		}
-		
+
 		int numFields = dataSampleBean.getDsProfile().size();
 		TimeEstimateProgressUpdater timeEstimate = 
 				new TimeEstimateProgressUpdater(params.getSessionId(), params.getProgressBar(), numFields * 50);
@@ -197,14 +211,14 @@ public class TikaAnalyzer implements FileAnalyzer {
 		new Thread(timeEstimate).start(); 
 		InterpretationEngineFacade.interpretInline(dataSampleBean, params.getDomainName(), null);
 		timeEstimate.setDone();
-		
+
 		params.setRecordsInSample(sampleProfiler.getRecordsParsed());
 		logger.debug("Setting content as extracted.");
-		
+
 		params.getProgressBar().goToNextStateIfCurrentIs(ProgressState.STAGE.INTERPRET);
 		SchemaWizardSessionUtility.getInstance().updateProgress(params.getProgressBar(), params.getSessionId());
 
-		
+
 		dataSampleBean.setDsFileType(params.getMetadata().get(Metadata.CONTENT_TYPE));
 		int records = sampleProfiler.getRecordsParsed();
 		params.setRecordsInSample(records);
@@ -216,7 +230,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 			SampleSecondPassProfiler sampleGeocoder = new SampleSecondPassProfiler(dataSampleBean);
 			SimpleProgressUpdater secondPassProgressUpdater = null;
 			ProgressUpdatingBehavior progressUpdatingBehavior = ProgressUpdatingBehavior.BY_CHARACTERS_READ;
-			MostCommonFieldWithWalking commonField = TikaProfilerParameters.determineProgressRepresentativeField(dataSampleBean.getDsProfile());
+			MostCommonFieldWithWalking commonField = TikaAnalyzerParameters.determineProgressRepresentativeField(dataSampleBean.getDsProfile());
 			if(commonField != null && sampleGeocoder.getAccumulatorMapping().containsKey(commonField.getFieldName())) {
 				progressUpdatingBehavior = ProgressUpdatingBehavior.BY_COMMON_FIELD_OCCURANCES;
 				// progress callbacks must come from accumulator
@@ -225,11 +239,11 @@ public class TikaAnalyzer implements FileAnalyzer {
 				sampleGeocoder.getAccumulatorMapping().get(commonField.getFieldName()).setCallback(secondPassProgressUpdater, true);
 			} else {
 				secondPassProgressUpdater = new SimpleProgressUpdater(params.getSessionId(), 
-							params.getProgressBar(), dataSampleBean.getRecordsParsedCount());
+						params.getProgressBar(), dataSampleBean.getRecordsParsedCount());
 				progressUpdatingBehavior = ProgressUpdatingBehavior.BY_RECORD_COUNT;
 			}
+			params.setProfiler(sampleGeocoder);
 			params.setProgressUpdatingBehavior(progressUpdatingBehavior);
-			params.set(Profiler.class, sampleGeocoder);
 			params.set(ProfilingProgressUpdateHandler.class, secondPassProgressUpdater);
 			params.setStream(secondPassStream);
 			params.setHandler(new AnalyticsProgressTrackingContentHandler());
@@ -252,41 +266,37 @@ public class TikaAnalyzer implements FileAnalyzer {
 			if (interpretation != null && !(Interpretation.isUnknown(interpretation))) {
 				logger.info("Field \"" + key + "\" interpretted to be " + interpretation.getInterpretation() + ".");
 			}
-			
+
 			Attributes attribute = dataSampleBean.getDsProfile().get(key).getAttributes();
 			if (attribute != null && !attribute.isUnknown(attribute)) {
 				dataSampleBean.getDsProfile().get(key).setAttributes(attribute);
 			} 
-//			TODO this is for testing. The above code block largely should remain
-//			unchanged - the object sent back from the Interpretation Engine should be
-//			used for the setting of the attributes
-//			else {
-//				Attributes at = new Attributes();
-//				at.setCategorical("test");
-//				at.setIdentifier("test");
-//				at.setOrdinal("test");
-//				at.setQuantitative("test");
-//				at.setRelational("test");
-//				dataSampleBean.getDsProfile().get(key).setAttributes(at);
-//			}
+			//			TODO this is for testing. The above code block largely should remain
+			//			unchanged - the object sent back from the Interpretation Engine should be
+			//			used for the setting of the attributes
+			//			else {
+			//				Attributes at = new Attributes();
+			//				at.setCategorical("test");
+			//				at.setIdentifier("test");
+			//				at.setOrdinal("test");
+			//				at.setQuantitative("test");
+			//				at.setRelational("test");
+			//				dataSampleBean.getDsProfile().get(key).setAttributes(at);
+			//			}
 		}
 
 		if (params.isPersistInH2()) {
 			String guid = H2DataAccessObject.getInstance().addSample(params.getProfilerBean());
-
 			if (guid == null) {
-				if (params.isPersistInH2()) {
-					logger.error(
-							params.getSampleFilePath() + " profile not successfully persisted in backend database.");
-				}
+				logger.error(params.getSampleFilePath() + " profile not successfully persisted in backend database.");
 			}
 		} else {
 			logger.info("Profile set by parameters to not be persisted.");
 		}
-		
+
 		params.getProgressBar().goToNextStateIfCurrentIs(STAGE.SECOND_PASS);
 		SchemaWizardSessionUtility.getInstance().updateProgress(params.getProgressBar(), params.getSessionId());
-		
+
 		return params;
 	}
 
@@ -294,37 +304,37 @@ public class TikaAnalyzer implements FileAnalyzer {
 	public TikaSchemaAnalyzerParameters runSchemaAnalysis(TikaSchemaAnalyzerParameters params)
 			throws IOException, AnalyzerException, DataAccessException {
 
-		AnalyticsDefaultDetector detector = new AnalyticsDefaultDetector();
-		AnalyticsDefaultParser parser = new AnalyticsDefaultParser(detector, params);
-
 		List<DataSample> userModifiedSampleList = params.getUserModifiedSampleList();
 		String uploadFileDir = params.getUploadFileDir();
 
-		if(uploadFileDir == null) {
-			throw new AnalyticsInitializationRuntimeException("Upload directory is null!");
-		}
-
-		Profiler profiler = params.get(Profiler.class);
+		Profiler<?> profiler = params.getProfiler();
 		SchemaProfiler schemaProfiler = null;
 		if (profiler instanceof SchemaProfiler) {
 			schemaProfiler = (SchemaProfiler) profiler;
 		} else {
 			throw new AnalyticsInitializationRuntimeException(
-					"Expected a schema profiler, got a " + params.get(Profiler.class).getClass() + ".");
+					"Expected a schema profiler, got a " + params.getProfiler().getClass() + ".");
 		}
 
 		for (DataSample sample : userModifiedSampleList) {
 			Metadata metadata = new Metadata();
 			metadata.set(Metadata.CONTENT_TYPE, sample.getDsFileType());
+
 			File file = new File(uploadFileDir, sample.getDsFileName());
+
+			File extractedContentDirectory = AnalyticsEmbeddedDocumentExtractor.getOrCreateExtractedContentDirectory(
+					uploadFileDir, file.getName(), EXTRACTED_CONTENT_DIRECTORY_SUFFIX);
+
+			params.setExtractedContentDir(extractedContentDirectory.getAbsolutePath());
+
 			FileInputStream fis = new FileInputStream(file);
-			
+
 			schemaProfiler.setCurrentDataSampleGuid(sample.getDsGuid());
 			schemaProfiler.getFieldMapping().forEach((k,v)->v.removeCallback());
 
 			SimpleProgressUpdater progressUpdater = null;
 			ProgressUpdatingBehavior progressUpdatingBehavior = ProgressUpdatingBehavior.BY_CHARACTERS_READ;
-			
+
 			MostCommonFieldWithWalking mostCommon = params.getMostCommonFieldWithWalkingCount().get(sample.getDsGuid());
 			if(mostCommon != null && schemaProfiler.getFieldMapping().containsKey(mostCommon.getFieldName())) {
 				progressUpdatingBehavior = ProgressUpdatingBehavior.BY_COMMON_FIELD_OCCURANCES;
@@ -334,7 +344,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 				schemaProfiler.getFieldMapping().get(mostCommon.getFieldName()).setCallback(progressUpdater, true);
 			} else {
 				progressUpdater = new SimpleProgressUpdater(params.getSessionId(), 
-							params.getProgressBar(), sample.getRecordsParsedCount());
+						params.getProgressBar(), sample.getRecordsParsedCount());
 				progressUpdatingBehavior = ProgressUpdatingBehavior.BY_RECORD_COUNT;
 			}
 			params.setProgressUpdatingBehavior(progressUpdatingBehavior);
@@ -360,10 +370,17 @@ public class TikaAnalyzer implements FileAnalyzer {
 				throw new AnalyticsTikaProfilingException(e);
 			}
 
-			parser.runSchemaAnalysis(params);
-			
-			params.getProgressBar().goToNextStateIfCurrentIs(STAGE.SCHEMA_PASS);
-			logger.info("Schema analysis successfully completed for " + sample.getDsFileName() + ".");
+			try {
+				AnalyticsDefaultDetector detector = new AnalyticsDefaultDetector();
+				AnalyticsDefaultParser parser = new AnalyticsDefaultParser(detector, params);
+
+				parser.runSchemaAnalysis(params);
+
+				params.getProgressBar().goToNextStateIfCurrentIs(STAGE.SCHEMA_PASS);
+				logger.info("Schema analysis successfully completed for " + sample.getDsFileName() + ".");
+			} finally {
+				params.getStream().close();
+			}
 		}
 
 		params.getProgressBar().goToNextStateIfCurrentIs(ProgressState.STAGE.SCHEMA_PASS);
@@ -376,8 +393,13 @@ public class TikaAnalyzer implements FileAnalyzer {
 			String sessionId, int sampleNumber, int totalNumberSamples, ProgressBarManager progressBar) 
 					throws AnalyticsCancelledWorkflowException {
 		try {
- 			TikaSampleAnalyzerParameters params = generateSampleParameters(uploadFileDir, sampleFilePath, domainName, 
+			TikaSampleAnalyzerParameters params = generateSampleParameters(uploadFileDir, sampleFilePath, domainName, 
 					tolerance, sessionId, sampleNumber, totalNumberSamples, progressBar);
+			/*File extractedContentDirectory = 
+					AnalyticsEmbeddedDocumentExtractor.
+					getOrCreateExtractedContentDirectory(params.getUploadFileDir(), 
+							params.get(File.class).getName(), extractedContentDirSuffix);
+			params.setExtractedContentDir(extractedContentDirectory.getAbsolutePath());*/
 			try {
 				return runSampleAnalysis(params).getProfilerBean().getDsGuid();
 			} catch (AnalyticsCancelledWorkflowException e) {
@@ -415,6 +437,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 			throws AnalyticsCancelledWorkflowException {
 		try {
 			TikaSchemaAnalyzerParameters params = generateSchemaParameters(uploadFileDir, schemaAnalysisData, domainName, sessionId);
+
 			try {
 				Schema schemaBean = runSchemaAnalysis(params).getProfilerBean();
 				String currentVersion = schemaBean.getsVersion();
@@ -430,9 +453,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 			} catch (AnalyticsCancelledWorkflowException e) {
 				logger.error("Schema workflow cancelled - session " + sessionId +".");
 				throw e;
-			} finally {
-				params.getStream().close();
-			}
+			} 
 		} catch(IOException e) {
 			logger.error("IOException during schema pass.", e);
 			return new JSONObject();
@@ -442,7 +463,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 		} catch (Exception e) {
 			if(SchemaWizardSessionUtility.getInstance().isCancelled(sessionId)) {
 				logger.info("An "+e.getClass()+" exception was caught after workflow was cancelled.");
-				logger.debug("Exception caught from cancelled workflow", e);
+				logger.debug("Exception caught from cancelled workflow.", e);
 			} else {
 				logger.error("Unexpected exception while processing schema.", e);
 			}
@@ -451,7 +472,11 @@ public class TikaAnalyzer implements FileAnalyzer {
 	}
 
 	public static void main(String[] args)
-			throws IOException, AnalyzerException, DataAccessException {
+			throws IOException, AnalyzerException, DataAccessException, ClassNotFoundException, SQLException, InterruptedException {
+		H2TestDatabase h2Test = new H2TestDatabase();
+		h2Test.startTestServer(h2Test.getConfig());
+		H2DataAccessObject.setInstance(h2Test);
+		InterpretationEngineFacade.setInstance(IEConfig.BUILTIN_CONFIG);
 		Scanner scanner = new Scanner(System.in);
 		List<String> argList = new ArrayList<String>(args.length);
 		List<String> files = new ArrayList<String>();
@@ -488,117 +513,18 @@ public class TikaAnalyzer implements FileAnalyzer {
 			return;
 		}
 
+		argList.forEach(x->System.out.println(x));
+		files.addAll(argList);
+		if (files.size() < 1) {
+			System.out.println("No files provided.");
+			System.exit(1);
+		}
+		
 		do {
-			AbstractAnalyzerTestWorkflow mainWorkflow = new AbstractAnalyzerTestWorkflow() {
-
-				@Override
-				public void addNecessaryTestFiles() {
-					for (String file : files) {
-						addLocalTestFile(file);
-					}
-				}
-
-				@Override
-				public String[] performMockVerificationStep(String[] generatedSampleGuids) {
-					List<String> guids = new ArrayList<String>(Arrays.asList(generatedSampleGuids));
-					boolean cont;
-					do {
-						for (int i = 0; i < generatedSampleGuids.length; i++) {
-							System.out.println("Sample with guid: " + generatedSampleGuids[i] + " at index: " + i);
-						}
-						System.out.print(
-								"Enter the index of the sample you would like to drop or \"Enter\" to continue: ");
-						String s = scanner.nextLine();
-						try {
-							if (s.isEmpty()) {
-								cont = false;
-							} else {
-								int sampleIndex = Integer.valueOf(s);
-								cont = true;
-								if (sampleIndex > guids.size()) {
-									System.out.println("Index out of bounds.");
-									continue;
-								}
-								guids.remove(sampleIndex);
-							}
-						} catch (NumberFormatException e) {
-							cont = false;
-						}
-					} while (cont);
-					String[] modifiedSampleGuids = new String[guids.size()];
-					for (int i = 0; i < guids.size(); i++) {
-						modifiedSampleGuids[i] = guids.get(i);
-						System.out.println(modifiedSampleGuids[i]);
-					}
-					return modifiedSampleGuids;
-				}
-
-				@Override
-				public JSONArray performMockMergeSamplesStep(Schema existingSchema,
-						JSONArray retrieveSourceAnalysisResult) {
-					System.out.println(retrieveSourceAnalysisResult);
-					boolean cont;
-					do {
-						for (int i = 0; i < retrieveSourceAnalysisResult.length(); i++) {
-							System.out.println(
-									"Fields of " + retrieveSourceAnalysisResult.getJSONObject(i).getString("dsName")
-									+ " at index " + i);
-							JSONObject dsProfile = retrieveSourceAnalysisResult.getJSONObject(i)
-									.getJSONObject("dsProfile");
-							for (String key : dsProfile.keySet()) {
-								System.out.print(key + "\t");
-							}
-							System.out.println();
-						}
-						System.out.print(
-								"Enter the index of the sample in which you would like to perform merges, or press \"Enter\" to continue: ");
-						String s = scanner.nextLine();
-						try {
-							if (s.isEmpty()) {
-								cont = false;
-							} else {
-								int sampleIndex = Integer.valueOf(s);
-								cont = true;
-								if (sampleIndex > retrieveSourceAnalysisResult.length()) {
-									System.out.println("Index out of bounds.");
-									continue;
-								}
-
-								JSONObject dataSample = retrieveSourceAnalysisResult.getJSONObject(sampleIndex);
-								String nonMergedKey;
-								boolean exists;
-								String mergedFieldKey;
-								do {
-									System.out.print("Enter the name of the unmerged field: ");
-									nonMergedKey = scanner.nextLine();
-									exists = (dataSample.getJSONObject("dsProfile").keySet().contains(nonMergedKey))
-											? true : false;
-								} while (!exists);
-
-								System.out.print("Enter the merged name of field \"" + nonMergedKey + "\": ");
-								mergedFieldKey = scanner.nextLine();
-
-								simulateMerge(dataSample, nonMergedKey, mergedFieldKey);
-								retrieveSourceAnalysisResult.put(sampleIndex, dataSample);
-
-							}
-						} catch (NumberFormatException e) {
-							cont = false;
-						}
-					} while (cont);
-					return retrieveSourceAnalysisResult;
-				}
-
-				@Override
-				public JSONObject performMockSchemaInlineEdittingStep(JSONObject schemaAnalysis) {
-					return schemaAnalysis;
-				}
-			};
-			mainWorkflow.setOutput(true);
-			mainWorkflow.setTolerance(tolerance);
-			mainWorkflow.setDomainName(domainName);
-			mainWorkflow.runAnalysis();
-			logger.info(mainWorkflow.getSchemaAnalysis());
+			String uploadDir = Files.createTempDirectory("temp").toString();
+			CLIWorkflow mainWorkflow = new CLIWorkflow(uploadDir, domainName, tolerance, files, scanner);
+			String schemaGuid = mainWorkflow.runAnalysis();
+			System.out.println("Added schema with guid " + schemaGuid + ".");
 			System.out.println("Would you like to run another analysis? (y/n)");
 			if (scanner.nextLine().equals("y")) {
 				List<String> f = new ArrayList<String>();
@@ -608,7 +534,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 					System.out.println("Another? (y/n) ");
 				} while (scanner.nextLine().equals("y"));
 				for (int i = 0; i < f.size(); i++) {
-					files.set(i, f.get(i));
+					files = f;
 				}
 			} else {
 				break;

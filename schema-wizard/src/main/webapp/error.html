@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!--
+   Author: David R. Elstner, Aaron Parsley
+
+   Reference Materials:
+      UI Bootstrap Directives          http://angular-ui.github.io/bootstrap/
+-->
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Schema Wizard</title>
+    <link rel="shortcut icon" href="assets/img/favicon.ico" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 100%;
+            overflow: hidden;
+            background-image: url(assets/img/linen.png);
+        }
+
+        .banner {
+            width: 100%;
+            height: 37px;
+            color: white;
+            padding-left: 10px;
+            padding-top: 6px;
+            background: rgb(135,39,136) url(assets/img/banner-background-leidos.png) no-repeat;
+            text-shadow: 1px 0px 3px rgb(0, 0, 64);
+        }
+
+        .titleStyle, .titleStyle:hover, .titleStyle:visited, .titleStyle:active, .titleStyle:link {
+            font: bold small-caps 14pt sans-serif;
+            font-family: 'Cambria', Cambria, sans-serif;
+            color: white;
+            text-decoration: none;
+        }
+
+        .footer {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            bottom: 0px;
+            margin-bottom: 0px;
+            padding: 0px;
+            padding-top: 2px;
+            color: white;
+            background-color:  rgb(97, 34, 115);
+            font-size: 10px;
+            font-family: 'MS Reference Sans Serif', sans-serif;
+            text-align: center;
+        }
+    </style>
+
+    <script src="bower_components/angular/angular.js"></script>
+
+</head>
+<body ng-app="" style="width: 100%; min-width: 1260px;">
+    <div id="banner" class="banner titleStyle">Schema Wizard</div>
+    <div style="width: 100%; margin-top: 160px;">
+        <div style="display: inline-block; width: 30%;">
+            <img style="float: right;" src="assets/img/offline.png"/>
+        </div>
+        <div style="display: inline-block; width: 41%; margin: 0 auto; text-align: center; color: mediumvioletred;">
+            <h1>Unable to reach one or more Schema Wizard services.<br><br>
+                Inform the system administrator to check H2, MongoDB or the
+                Interpretation Engine.</h1>
+        </div>
+        <div style="display: inline-block; width: 24%;">&nbsp;</div>
+    </div>
+    <div class="footer">Copyright &copy; Leidos. Apache 2.0 License.</div>
+</body>
+</html>
+

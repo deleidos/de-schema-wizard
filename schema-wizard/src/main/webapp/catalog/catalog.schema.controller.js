@@ -3,14 +3,14 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('schemaDetailsCtrl',
-        function($rootScope, $scope, $resource, $location, $route, $routeParams, $log, schemaData,$confirm, statusCodesFactory) {
+        function($rootScope, $scope, $resource, $location, $route, $routeParams, schemaData,$confirm, statusCodesFactory) {
 
             schemaData.$promise.then(function () {
                     $rootScope.$broadcast("setCurrentSchema", {
                         schema: schemaData
                     })
                 }, function (error) {
-                    $log.debug(error);
+                    console.log(error);
                     statusCodesFactory.get().$promise.then(function (response) {
                         $confirm(
                             {

@@ -2,6 +2,7 @@ package com.deleidos.dp.beans;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -50,9 +51,10 @@ public class NumberDetail extends Detail {
 	public void setStdDev(double stdDev) {
 		this.stdDev = stdDev;
 	}
-
+	
+	@Override
 	@JsonProperty("freq-histogram")
-	public Histogram getFreqHistogram() {
+	public Histogram getHistogram() {
 		return freqHistogram;
 	}
 

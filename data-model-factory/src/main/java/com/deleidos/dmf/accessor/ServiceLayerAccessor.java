@@ -1,5 +1,6 @@
 package com.deleidos.dmf.accessor;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -21,6 +22,8 @@ import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.SchemaMetaData;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException;
 import com.deleidos.dp.h2.H2DataAccessObject;
 import com.deleidos.dp.interpretation.InterpretationEngine;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
@@ -59,23 +62,23 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			List<DataSampleMetaData> sampleList = h2Dao.getAllSampleMetaData();
 			JSONArray domainJson = interpretationEngine.getAvailableDomains();
 
-				json.put("schemaCatalog", new JSONArray(SerializationUtility.serialize(schemaList)));
-				json.put("dataSamplesCatalog", new JSONArray(SerializationUtility.serialize(sampleList)));
-				json.put("domainsCatalog", new JSONArray(domainJson.toString()));
-				return Response.ok(json.toString(), MediaType.APPLICATION_JSON).build();
+			json.put("schemaCatalog", new JSONArray(SerializationUtility.serialize(schemaList)));
+			json.put("dataSamplesCatalog", new JSONArray(SerializationUtility.serialize(sampleList)));
+			json.put("domainsCatalog", new JSONArray(domainJson.toString()));
+			return Response.ok(json.toString(), MediaType.APPLICATION_JSON).build();
 		} catch (JSONException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
-		}  catch (ProcessingException e) {
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -88,17 +91,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response getDomainInterpretations(String domainGuid) {
 		try {
 			JSONObject jObject = interpretationEngine.getInterpretationListByDomainGuid(domainGuid);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
-		} catch (DataAccessException e) {
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
+		} catch (IEDataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -111,17 +114,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response createDomain(JSONObject domainJson) {
 		try {
 			JSONObject jObject = interpretationEngine.createDomain(domainJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -134,17 +137,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response createInterpretation(JSONObject interpretationJson) {
 		try {
 			JSONObject jObject = interpretationEngine.createInterpretation(interpretationJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		}  catch (ProcessingException e) {
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -157,17 +160,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response updateDomain(JSONObject domainJson) {
 		try {
 			JSONObject jObject = interpretationEngine.updateDomain(domainJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		}  catch (ProcessingException e) {
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
-		}  catch (DataAccessException e) {
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
+		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -180,17 +183,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response updateInterpretation(JSONObject interpretationJson) {
 		try {
 			JSONObject jObject = interpretationEngine.updateInterpretation(interpretationJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -203,17 +206,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response deleteDomain(JSONObject domainJson) {
 		try {
 			JSONObject jObject = interpretationEngine.deleteDomain(domainJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -226,17 +229,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response deleteInterpretation(JSONObject interpretationJson) {
 		try {
 			JSONObject jObject = interpretationEngine.deleteInterpretation(interpretationJson);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -251,17 +254,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 		try {
 			JSONObject iIdJson = new JSONObject();
 			JSONObject jObject = interpretationEngine.validatePythonScript(iIdJson.put("iId", iId));
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
 			JSONObject json = new JSONObject();
 			json.put("type", "error");
 			json.put("row", "0");
 			json.put("text", bundle.getString("ie.unexpected.error"));
-			return generatedResponse(Status.SERVICE_UNAVAILABLE, json.toString());
+			return generateResponse(Status.SERVICE_UNAVAILABLE, json.toString());
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
@@ -269,7 +272,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			json.put("type", "error");
 			json.put("row", "0");
 			json.put("text", bundle.getString("ie.unexpected.error"));
-			return generatedResponse(Status.INTERNAL_SERVER_ERROR, json.toString());
+			return generateResponse(Status.INTERNAL_SERVER_ERROR, json.toString());
 		}
 	}
 
@@ -283,17 +286,17 @@ public class ServiceLayerAccessor implements ServiceLayer {
 		try {
 			JSONObject iIdJson = new JSONObject();
 			JSONObject jObject = interpretationEngine.testPythonScript(iIdJson.put("iId", iId));
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (ProcessingException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.GATEWAY_TIMEOUT);
+			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (DataAccessException e) {
 			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateEmptyResponse(Status.SERVICE_UNAVAILABLE);
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("ie.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -306,14 +309,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 		try {
 			JSONObject jObject = new JSONObject();
 			jObject.put("schemaGuid", h2Dao.addSchema(schema));
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -329,14 +332,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Schema schema = h2Dao.getSchemaByGuid(guid, true);
 			String jsonString = SerializationUtility.serialize(schema);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -352,14 +355,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Schema schema = h2Dao.getSchemaByGuid(guid, false);
 			String jsonString = SerializationUtility.serialize(schema);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -374,14 +377,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			SchemaMetaData schemaMetaData = h2Dao.getSchemaMetaDataByGuid(guid);
 			String jsonString = SerializationUtility.serialize(schemaMetaData);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -396,14 +399,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			DataSample sample = h2Dao.getSampleByGuid(guid);
 			String jsonString = SerializationUtility.serialize(sample);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -418,14 +421,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			DataSampleMetaData sampleMetaData = h2Dao.getSampleMetaDataByGuid(guid);
 			String jsonString = SerializationUtility.serialize(sampleMetaData);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -440,14 +443,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Map<String, Profile> map = h2Dao.getSchemaFieldByGuid(guid, true);
 			String jsonString = SerializationUtility.serialize(map);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -462,14 +465,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Map<String, Profile> map = h2Dao.getSchemaFieldByGuid(guid, false);
 			String jsonString = SerializationUtility.serialize(map);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -484,14 +487,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Map<String, Profile> map = h2Dao.getSampleFieldByGuid(guid, true);
 			String jsonString = SerializationUtility.serialize(map);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -506,14 +509,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			Map<String, Profile> map = h2Dao.getSampleFieldByGuid(guid, false);
 			String jsonString = SerializationUtility.serialize(map);
 			JSONObject jObject = new JSONObject(jsonString);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -529,14 +532,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			h2Dao.deleteSchemaByGuid(guid);
 			JSONObject jObject = new JSONObject();
 			jObject.put("deleted", guid);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -552,14 +555,14 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			h2Dao.deleteSampleByGuid(guid);
 			JSONObject jObject = new JSONObject();
 			jObject.put("deleted", guid);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -575,23 +578,82 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			h2Dao.deleteByGuid(guid);
 			JSONObject jObject = new JSONObject();
 			jObject.put("deleted", guid);
-			return generatedResponse(Status.ACCEPTED, jObject.toString());
-		} catch (DataAccessException e) {
-			logger.error(e.toString());
-			return generatedEmptyJsonErrorResponse(Status.SERVICE_UNAVAILABLE);
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Unable to reach the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
 			logger.error(bundle.getString("h2.unexpected.error"));
-			return generatedEmptyJsonErrorResponse(Status.INTERNAL_SERVER_ERROR);
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
+	}
+	
+	public boolean testH2Connection() throws H2DataAccessException {
+		try {
+			h2Dao.testDefaultConnection();
+			return true;
+		} catch (SQLException e) {
+			throw new H2DataAccessException("Unable to reach the H2 database.");
+		}
+	}
+	
+	public boolean testIEConnection() throws IEDataAccessException {
+		try {
+			interpretationEngine.testMongoConnection();
+			return true;
+		} catch (IEDataAccessException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IEDataAccessException("An unexpected error occured.");
+		}
+	}
+	
+	public String healthCheck() {
+		JSONObject topLevelObject = new JSONObject();
+		JSONObject serverStatuses = new JSONObject();
+		
+		long startTime = System.currentTimeMillis();
+		
+		 try {
+			 testH2Connection();
+			 serverStatuses.put("H2", "Up");
+		 } catch (H2DataAccessException e) {
+			 serverStatuses.put("H2", "Down");
+		 } catch (ProcessingException e) {
+			 logger.error("Server timed out trying to reach H2.");
+		 }
+		
+		 try {
+			 testIEConnection();
+			 serverStatuses.put("Interpretation Engine", "Up");
+			 serverStatuses.put("MongoDB", "Up");
+		 } catch (IEDataAccessException e) {
+			 if (e instanceof IEDataAccessException.DeadMongo) {
+				 serverStatuses.put("Interpretation Engine", "Up");
+				 serverStatuses.put("MongoDB", "Down");
+			 } else {
+				 serverStatuses.put("Interpretation Engine", "Down");
+				 serverStatuses.put("MongoDB", "Unknown");
+			 }
+		 } catch (ProcessingException e) {
+			 logger.error("Server timed out trying to reach the Interpretation Engine.");
+		 }
+		 
+		 long endTime = System.currentTimeMillis();
+		 
+		 topLevelObject.put("Server Statuses", serverStatuses);
+		 topLevelObject.put("Fetch time", endTime - startTime + "ms");
+		 
+		return topLevelObject.toString();
 	}
 
 	// Private methods
-	private Response generatedResponse(Response.Status status, String message) {
+	private Response generateResponse(Response.Status status, String message) {
 		return Response.status(status).entity(message).build();
 	}
-	
-	private Response generatedEmptyJsonErrorResponse(Response.Status status) {
+
+	private Response generateEmptyResponse(Response.Status status) {
 		JSONObject emptyJson = new JSONObject();
 		return Response.status(status).entity(emptyJson.toString()).build();
 	}

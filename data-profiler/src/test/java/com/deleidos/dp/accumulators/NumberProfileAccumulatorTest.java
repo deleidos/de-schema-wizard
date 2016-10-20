@@ -101,7 +101,7 @@ public class NumberProfileAccumulatorTest {
 	public void testNonEmptyBucket() throws SQLException, MainTypeException {
 		NumberDetail n = Profile.getNumberDetail(BundleProfileAccumulator
 				.generateProfile("test-field", Arrays.asList(2,4,4,4,5,5,7,9)));
-		int size = n.getFreqHistogram().getLabels().size();
+		int size = n.getHistogram().getLabels().size();
 		logger.debug("Bucket size: " + size);
 		assertTrue(size > 0);
 	}
@@ -110,10 +110,10 @@ public class NumberProfileAccumulatorTest {
 	public void testNonNullBucketEntries() throws SQLException, MainTypeException {
 		NumberDetail n = Profile.getNumberDetail(BundleProfileAccumulator
 				.generateProfile("test-field", Arrays.asList(2,4,4,4,5,5,7,9)));
-		int size = n.getFreqHistogram().getLabels().size();
+		int size = n.getHistogram().getLabels().size();
 		logger.debug("Bucket size: " + size);
 		assertTrue(size > 0);
-		assertTrue(noNullValuesInHistogram(n.getFreqHistogram()));
+		assertTrue(noNullValuesInHistogram(n.getHistogram()));
 	}
 
 	public boolean noNullValuesInHistogram(Histogram histogram) {

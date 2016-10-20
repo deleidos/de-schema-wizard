@@ -92,14 +92,14 @@
             "message": "Once you have completed your analysis on the data sample clicking 'Next' will move you to the next data sample."
         }
     },
-    "inspectDataSourceTour": {
+    "matchFieldsTour": {
         "step1": {
             "title": "Matching Fields Step",
             "message": "This step in Schema Wizard is crucial for seeing how all of your data sources matched to each other and all of the analytics that came out of the matching.\n\nIn this section you need to uses all of the analysis provided as well as visual tools to make sure the matching went as expected."
         },
         "step2": {
             "title": "Data Source Profile",
-            "message": "Based upon all of the matching done in the previous step, you know have all of your data samples here, as well as the matched fields that have been identified."
+            "message": "Data samples are in columns here and matching fields have been identified."
         },
         "step3": {
             "title": "Expand Data Sources",
@@ -107,7 +107,7 @@
         },
         "step4": {
             "title": "Remove Data Sample",
-            "message": "If you find a data sample is now unusable in this step, simply remove it."
+            "message": "If you find a data sample is now unusable in this step, simply remove it by clicking 'X'"
         },
         "step5": {
             "title": "Remove Schema Field",

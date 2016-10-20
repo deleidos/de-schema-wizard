@@ -3,11 +3,11 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('catalogCtrl', [ '$rootScope', '$scope', '$resource',
-        '$location', '$route', '$routeParams', '$timeout', '$log', '$confirm', '$cookies', '$sce',
+        '$location', '$route', '$routeParams', '$timeout', '$confirm', '$cookies', '$sce',
         'LogoPage', 'DomainInformation', 'UploadParameters', 'Server', 'domainResource', 'version',
         'session', 'catalogData', 'tabHistoryFactory', 'statusCodesFactory', 'myModals', 'uiTourService',
         'schemaResource','sampleDataResource',
-        function ($rootScope, $scope, $resource, $location, $route, $routeParams, $timeout, $log,
+        function ($rootScope, $scope, $resource, $location, $route, $routeParams, $timeout,
                   $confirm, $cookies, $sce, LogoPage, DomainInformation, UploadParameters, Server,
                   domainResource, version, session, catalogData, tabHistoryFactory, statusCodesFactory,
                   myModals, TourService, schemaResource, sampleDataResource) {
@@ -22,8 +22,8 @@
             $scope.logoPageOpacity = 1.0;
             $scope.fadeLogoPage = function () {
                 $rootScope.$broadcast("transformTable", {});
-                //$log.debug("fadeLogoPage");
-                //$log.debug("$scope.logoPageOpacity: " + $scope.logoPageOpacity);
+                //console.log("fadeLogoPage");
+                //console.log("$scope.logoPageOpacity: " + $scope.logoPageOpacity);
                 $scope.logoPageOpacity -= 0.1;
                 if ($scope.logoPageOpacity < 0) {
                     document.getElementById('logoPage').style.display = "none";
@@ -38,7 +38,7 @@
             } // fadeLogoPage
 
             $scope.hideLogoPage = function () {
-                //$log.debug("hideLogoPage");
+                //console.log("hideLogoPage");
                 document.getElementById('catalogPage').style.opacity = 0.0;
                 document.getElementById('catalogPage').style.display = "block";
                 $timeout($scope.fadeLogoPage, 200);
@@ -51,9 +51,9 @@
                 document.getElementById('catalogPage').style.opacity = 1.0;
                 document.getElementById('catalogPage').style.display = "block";
             }
-            $log.debug("catalogCtrl");
-            $log.debug("catalogData");
-            $log.debug(catalogData);
+            console.log("catalogCtrl");
+            console.log("catalogData");
+            console.log(catalogData);
             $scope.version = version;
             $scope.catalog = {};
             $scope.catalog.schemaCatalog = catalogData.schemaCatalog;
@@ -61,16 +61,13 @@
             $scope.catalog.domainsCatalog = catalogData.domainsCatalog;
             DomainInformation.setCount($scope.catalog.domainsCatalog.length);
 
-            //$log.debug("session");
-            //$log.debug(session);
             session.$promise.then(function (response) {
                 Server.setSessionId(session.sessionId);
                 // having resolved this $promise is the closest point
                 // for timing the launch of the catalog tour
                 // start the catalog tour if it hasn't been seen before
                 if ($cookies.get('schwiz.tours.catalog') !== "visited") {
-                    //$log.debug("TourService.getTourByName('catalog')");
-                    //$log.debug(TourService.getTourByName('catalog'));
+                    //console.log(TourService.getTourByName('catalog'));
                     $timeout(function () { TourService.getTourByName('catalog').startAt(0); }, 2500);
                 }
             }, function (error) {
@@ -96,14 +93,14 @@
                         cancel: 'Cancel'
                     }
                 ).then(function () {
-                    $log.debug("deleting schema "+schema.sName+" Id:"+ schema.sId);
+                    console.log("deleting schema "+schema.sName+" Id:"+ schema.sId);
                     schemaResource.remove(
                         {
                             schemaId:  schema.sId
                         }
                     ).$promise.then(function (response) {
-                            $log.debug("removeSchema response");
-                            $log.debug(response);
+                            console.log("removeSchema response");
+                            console.log(response);
                             for (var i = 0; i < $scope.catalog.schemaCatalog.length; i++) {
                                 if ($scope.catalog.schemaCatalog[i].sId === schema.sId) {
                                     $scope.catalog.schemaCatalog.splice(i, 1);
@@ -111,7 +108,7 @@
                                 }
                             }
                         }, function (error) {
-                            $log.debug("error.status: " + error.status);
+                            console.log("error.status: " + error.status);
                             statusCodesFactory.get()
                                 .$promise.then(function (response) {
                                 $confirm(
@@ -136,14 +133,14 @@
                         cancel: 'Cancel'
                     }
                 ).then(function () {
-                    $log.debug("deleting data sample "+sample.dsName+" Id:"+ sample.dsId);
+                    console.log("deleting data sample "+sample.dsName+" Id:"+ sample.dsId);
                     sampleDataResource.remove(
                         {
                             sampleId:  sample.dsId
                         }
                     ).$promise.then(function (response) {
-                            $log.debug("removeDataSample response");
-                            $log.debug(response);
+                            console.log("removeDataSample response");
+                            console.log(response);
                             for (var i = 0; i < $scope.catalog.dataSamplesCatalog.length; i++) {
                                 if ($scope.catalog.dataSamplesCatalog[i].dsId === sample.dsId) {
                                     $scope.catalog.dataSamplesCatalog.splice(i, 1);
@@ -151,7 +148,7 @@
                                 }
                             }
                         }, function (error) {
-                            $log.debug("error.status: " + error.status);
+                            console.log("error.status: " + error.status);
                             statusCodesFactory.get()
                                 .$promise.then(function (response) {
                                 $confirm(
@@ -168,7 +165,7 @@
             };// remove data sample
 
             $scope.createNewDomain = function () {
-                $log.debug("create new domain");
+                console.log("create new domain");
                 $scope.newDomain =
                 {
                     "dId": null,
@@ -186,23 +183,23 @@
             }; // focusIname
 
             $scope.saveNewDomain = function () {
-                $log.debug("save new domain");
+                console.log("save new domain");
                 domainResource.save({
                     domainId: null,
                     data: $scope.newDomain
                 }).$promise.then(function (response) {
-                        $log.debug("saveNewDomain response");
-                        $log.debug(response);
+                        console.log("saveNewDomain response");
+                        console.log(response);
                         // the returnValue has quotes around it, strip them off
-                        $log.debug(response.returnValue);
+                        console.log(response.returnValue);
                         $scope.newDomain.dId = response.returnValue;
-                        $log.debug("$scope.newDomain");
-                        $log.debug($scope.newDomain);
+                        console.log("$scope.newDomain");
+                        console.log($scope.newDomain);
                         $scope.catalog.domainsCatalog.push(angular.copy($scope.newDomain));
                         DomainInformation.setCount($scope.catalog.domainsCatalog.length);
                         $scope.newDomain = null;
                     }, function (error) {
-                        $log.debug("error.status: " + error.status);
+                        console.log("error.status: " + error.status);
                         statusCodesFactory.get()
                             .$promise.then(function (response) {
                             $confirm(
@@ -241,7 +238,7 @@
                         cancel: 'Cancel'
                     }
                 ).then(function () {
-                    $log.debug("deleting domain: " + domain.dName + "(" + domain.dId + ")");
+                    console.log("deleting domain: " + domain.dName + "(" + domain.dId + ")");
                     var domainIdJson = {};
                     domainIdJson.dId = domain.dId;
                     domainResource.remove(
@@ -249,8 +246,8 @@
                             data: domainIdJson
                         }
                     ).$promise.then(function (response) {
-                            $log.debug("removeDomain response");
-                            $log.debug(response);
+                            console.log("removeDomain response");
+                            console.log(response);
                             for (var i = 0; i < $scope.catalog.domainsCatalog.length; i++) {
                                 if ($scope.catalog.domainsCatalog[i].dId === domain.dId) {
                                     $scope.catalog.domainsCatalog.splice(i, 1);
@@ -260,7 +257,7 @@
                             DomainInformation.setCount($scope.catalog.domainsCatalog.length);
 
                         }, function (error) {
-                            $log.debug("error.status: " + error.status);
+                            console.log("error.status: " + error.status);
                             statusCodesFactory.get()
                                 .$promise.then(function (response) {
                                 $confirm(
@@ -278,26 +275,12 @@
         }]); // catalogCtrl
 
     schemaWizardApp.controller('tabCtrl',
-        function ($rootScope, $scope, $location, $log, tabHistoryFactory, DomainInformation, myModals, $sce) {
+        function ($rootScope, $scope, $location, tabHistoryFactory) {
             // set the default tab for the application
             this.tab = tabHistoryFactory.getPrevTab();
 
             this.selectTab = function (setTab) {
                 this.tab = setTab;
-                //Used to pragmatically add popup
-                //if (setTab == 3) {
-                //    if (DomainInformation.isEmpty()) {
-                //        $scope.emptyDomainTitle = 'Create New Domain';
-                //        var baseUrl = 'assets/help/Content/Products/';
-                //        $scope.emptyDomainUrl = $sce.trustAsResourceUrl(baseUrl + 'Domains/Create Domain.htm');
-                //        var modal = myModals.alert('generic', $scope.emptyDomainTitle, 'small', $scope.emptyDomainUrl);
-                //        modal.result.then(function (data) {
-                //
-                //        }, function (data) {
-                //
-                //        })
-                //    }
-                //}
                 tabHistoryFactory.setPrevTab(setTab);
                 $rootScope.$broadcast("transformTable", {});
             };
@@ -308,7 +291,7 @@
             $scope.that = this;
 
             $scope.$on("selectTab", function (event, args) {
-                $log.debug("onSelectTab tabnumber: " + args.tabNumber);
+                console.log("onSelectTab tabnumber: " + args.tabNumber);
                 $scope.that.selectTab(args.tabNumber);
             }); // onSelectTab
         }); // tabCtrl

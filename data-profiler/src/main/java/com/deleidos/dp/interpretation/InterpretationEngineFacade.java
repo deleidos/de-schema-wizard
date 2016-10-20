@@ -12,6 +12,11 @@ import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.interpretation.builtin.BuiltinInterpretationEngine;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 
+/**
+ * Facade to handle calls to the interpretation engine that should not depend on IE type.
+ * @author leegc
+ *
+ */
 public class InterpretationEngineFacade {
 	private static final String IE_ADDR_KEY = "SW_IE_PORT";
 	private static final String DEFAULT_IE_ADDR = "http://localhost:5000";

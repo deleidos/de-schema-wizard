@@ -55,7 +55,11 @@
                 }
             } else {
                 scope.nodeLabel1 = "&nbsp;";
-            }
+            };
+
+            scope.cbMethod = function ($event, callback, parms) {
+                scope.callbackMethod()($event, callback, parms);
+            };
         };
         return {
             restrict: "E",

@@ -10,6 +10,11 @@ import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 
+/**
+ * Profiler record for binary types.  Handled slightly differently than string/number.
+ * @author leegc
+ *
+ */
 public class BinaryProfilerRecord implements ProfilerRecord {
 	private String binaryName;
 	private ByteBuffer byteBuffer;

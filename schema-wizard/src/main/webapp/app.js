@@ -26,7 +26,25 @@
                 'shagstrom.angular-split-pane'
             ])
             .constant("baseUrl", "/schwiz/")
-            .constant("version", "3.0.0-beta2")
+            .constant("version", "3.0.0-beta3")
+
+            .service('authInterceptor', function($location, $window, $q) {
+                var service = this;
+                service.responseError = function(response) {
+/*                    if (response.status == 401 || response.status == 403){*/
+                    if (response.status == 403){
+                        console.log("############### Not Logged On or Session Timed Out ###############");
+                        $location.path("/logon");
+                        $window.location.reload();
+                    } else {
+                        return $q.reject(response);
+                    }
+                };
+            })
+
+            .config(['$httpProvider', function($httpProvider) {
+                $httpProvider.interceptors.push('authInterceptor');
+            }])
 
             .factory("LogoPage", function () {
                 var alreadyUsed = false;
@@ -143,7 +161,7 @@
                     },
                     {update: {method: "PUT"}}
                 )
-            })
+           })
 
             .factory("interpretationResource", function ($resource, baseUrl) {
                 return $resource(baseUrl + "rest/:domainId/interpretation/:interpretationId",
@@ -210,89 +228,90 @@
                         console.log('Started Tour');
                     });
 
-                    $routeProvider.when("/catalog", {
-                            templateUrl: "catalog/catalog.lists.html",
-                            controller: "catalogCtrl",
-                            resolve: {
-                                session: function ($route, schwizResource) {
-                                    return schwizResource.getSessionId();
-                                },
-                                catalogData: function ($route, catalogResource) {
-                                    return catalogResource.getCatalog().$promise;
-                                }
+                    $routeProvider.when("/login",{
+                            templateUrl: "login/login.html",
+                            controller: "loginCtrl"
+                    })
+
+                    .when("/catalog", {
+                        templateUrl: "catalog/catalog.lists.html",
+                        controller: "catalogCtrl",
+                        resolve: {
+                            session: function ($route, schwizResource) {
+                                return schwizResource.getSessionId();
+                            },
+                            catalogData: function ($route, catalogResource) {
+                                return catalogResource.getCatalog().$promise;
                             }
-                        })
+                        }
+                    })
 
-                        .when("/schema/:schemaId", {
-                            templateUrl: "catalog/catalog.schema.details.html",
-                            controller: "schemaDetailsCtrl",
-                            resolve: {
-                                schemaData: function ($route, schemaResource) {
-                                    return schemaResource.getSchema(
-                                        {schemaId: $route.current.params.schemaId.slice(1)});
-                                }
+                    .when("/schema/:schemaId", {
+                        templateUrl: "catalog/catalog.schema.details.html",
+                        controller: "schemaDetailsCtrl",
+                        resolve: {
+                            schemaData: function ($route, schemaResource) {
+                                return schemaResource.getSchema(
+                                    {schemaId: $route.current.params.schemaId.slice(1)});
                             }
-                        })
+                        }
+                    })
 
-                        .when("/sampleData/:sampleId", {
-/*TODO: deleteme and associated files*/
-/*                            templateUrl: "catalog/catalog.sample.details.html",*/
-                            templateUrl: "catalog/catalog.sample.details-tree-table-grid.html",
-                            controller: "sampleDetailsCtrl",
-                            resolve: {
-                                sampleData: function ($route, sampleDataResource) {
-                                    return sampleDataResource.getSampleData(
-                                        {sampleId: $route.current.params.sampleId.slice(1)});
-                                }
+                    .when("/sampleData/:sampleId", {
+                        templateUrl: "catalog/catalog.sample.details.html",
+                        controller: "sampleDetailsCtrl",
+                        resolve: {
+                            sampleData: function ($route, sampleDataResource) {
+                                return sampleDataResource.getSampleData(
+                                    {sampleId: $route.current.params.sampleId.slice(1)});
                             }
-                        })
+                        }
+                    })
 
-                        .when("/:domainName/:domainId/interpretations", {
-                            templateUrl: "catalog/catalog.domains.interpretations.html",
-                            controller: "interpretationController",
-                            resolve: {
-                                interpretationData: function ($route, interpretationResource) {
-                                    return interpretationResource.get(
-                                        {domainId: $route.current.params.domainId.slice(1)});
-                                },
-                                domainName: function ($route) {
-                                    return $route.current.params.domainName.slice(1);
-                                },
-                                domainId: function ($route) {
-                                    return $route.current.params.domainId.slice(1);
-                                }
+                    .when("/:domainName/:domainId/interpretations", {
+                        templateUrl: "catalog/catalog.domains.interpretations.html",
+                        controller: "interpretationController",
+                        resolve: {
+                            interpretationData: function ($route, interpretationResource) {
+                                return interpretationResource.get(
+                                    {domainId: $route.current.params.domainId.slice(1)});
+                            },
+                            domainName: function ($route) {
+                                return $route.current.params.domainName.slice(1);
+                            },
+                            domainId: function ($route) {
+                                return $route.current.params.domainId.slice(1);
                             }
-                        })
+                        }
+                    })
 
-                        .when("/wizardUploadSamples", {
-                            templateUrl: "wizard/wizard.upload.samples.html"
-                        })
+                    .when("/wizardUploadSamples", {
+                        templateUrl: "wizard/wizard.upload.samples.html"
+                    })
 
-                        .when("/wizardInspectSamples", {
-/*TODO: deleteme and associated files*/
-/*                            templateUrl: "wizard/wizard.inspect.samples.html",*/
-                            templateUrl: "wizard/wizard.inspect.samples-tree-table-grid.html",
-                        })
+                    .when("/wizardInspectSamples", {
+                        templateUrl: "wizard/wizard.inspect.samples.html",
+                    })
 
-                        .when("/wizardMatchFields", {
-                            templateUrl: "wizard/wizard.match.fields.html"
-                        })
+                    .when("/wizardMatchFields", {
+                        templateUrl: "wizard/wizard.match.fields.html"
+                    })
 
-                        .when("/wizardFinalizeSchema", {
-                            templateUrl: "wizard/wizard.finalize.schema.html"
-                        })
+                    .when("/wizardFinalizeSchema", {
+                        templateUrl: "wizard/wizard.finalize.schema.html"
+                    })
 
-                        .when("/wizardSave", {
-                            templateUrl: "wizard/wizard.save.html"
-                        })
+                    .when("/wizardSave", {
+                        templateUrl: "wizard/wizard.save.html"
+                    })
 
-                        .when("/blank", {
-                            templateUrl: "schema-wizard/schema-wizard.blank.html"
-                        })
+                    .when("/blank", {
+                        templateUrl: "schema-wizard/schema-wizard.blank.html"
+                    })
 
-                        .otherwise({
-                            redirectTo: "/catalog"
-                        })
+                    .otherwise({
+                        redirectTo: "/login"
+                    })
                 }])
             //TODO: this came from angular-ui-tour demo; not sure what it is?
             .run(['uiTourService', function (TourService) {
@@ -300,3 +319,4 @@
                 //TourService.createDetachedTour('interpretationsTour');
             }])
 })();
+

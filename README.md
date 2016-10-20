@@ -7,7 +7,7 @@
 [Known Issues And Security](docs/readme-ext/known-issues.md)
 ## Version
 
-3.0.0-beta2
+3.0.0-beta3
 
 ## About
 Schema Wizard is an automation driven, human verified data modeling tool.

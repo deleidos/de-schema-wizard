@@ -5,13 +5,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.beans.Profile;
+import com.deleidos.dp.beans.RegionData;
 
+/**
+ * Convenience class to determine display names of fields.  Finds the smallest unique name that can be used to 
+ * represent a nested field.
+ * @author leegc
+ *
+ */
 public class DisplayNameHelper {
 	private static final Logger logger = Logger.getLogger(DisplayNameHelper.class);
 	private static final String splitter = DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER;
@@ -167,6 +173,27 @@ public class DisplayNameHelper {
 			profile.get(key).setDisplayName(displayNames.get(key));
 		}
 		return profile;
+	}
+	
+	public static Map<String, Profile> replaceKeysWithDisplayNames(Map<String, Profile> profile) {
+		Map<String, Profile> replacedMap = new HashMap<String, Profile>();
+		profile.forEach((k, v)-> {
+			replacedMap.put(v.getDisplayName(), v);
+			if (v.getPresence() > 0 && v.getDetail().getHistogramOptional().isPresent()) {
+				RegionData regionData = v.getDetail().getHistogramOptional().get().getRegionData();
+				if (regionData != null) {
+					if (profile.containsKey(regionData.getLatitudeKey()) 
+							&& profile.containsKey(regionData.getLongitudeKey())) {
+						regionData.setLatitudeKey(profile.get(regionData.getLatitudeKey()).getDisplayName());
+						regionData.setLongitudeKey(profile.get(regionData.getLongitudeKey()).getDisplayName());
+					} else {
+						logger.error("Could not correctly identify coordinate pair " +regionData.getLatitudeKey()
+								+ ", " +regionData.getLongitudeKey()+ ".");
+					}
+				}
+			}
+		});
+		return replacedMap;
 	}
 
 	/*public static Map<String, Profile> determineDisplayNames1(Map<String, Profile> profileMapping) {

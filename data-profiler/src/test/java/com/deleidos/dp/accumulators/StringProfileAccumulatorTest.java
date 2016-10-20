@@ -32,10 +32,10 @@ public class StringProfileAccumulatorTest {
 		assertTrue(Integer.valueOf(s.getNumDistinctValues()) == 3);
 		assertTrue((s.getStdDevLength() - 2.59) < .01);
 		logger.info("Average, min, max, number of distinct, and standard deviation successfully accumulated.");
-		logger.debug(s.getTermFreqHistogram());
+		logger.debug(s.getHistogram());
 
 		logger.debug(SerializationUtility.serialize(s));
-		assertTrue(noNullValuesInHistogram(s.getTermFreqHistogram()));
+		assertTrue(noNullValuesInHistogram(s.getHistogram()));
 
 	}
 
@@ -67,9 +67,9 @@ public class StringProfileAccumulatorTest {
 		assertTrue(Integer.valueOf(s.getNumDistinctValues()) == 3);
 		assertTrue((s.getStdDevLength() - 2.59) < .01);		
 		logger.info("Average, min, max, number of distinct, and standard deviation successfully accumulated.");
-		logger.debug(s.getTermFreqHistogram());
+		logger.debug(s.getHistogram());
 
-		int size = s.getTermFreqHistogram().getLabels().size();
+		int size = s.getHistogram().getLabels().size();
 		logger.info("Size: " + size);
 		assertTrue(size > 0);
 

@@ -2,13 +2,15 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.controller('treeTableController', ['$scope', '$route', '$window', '$timeout', '$log', 'Globals', 'Utilities',
-		function($scope, $route, $window, $timeout, $log, Globals, Utilities) {
+    schemaWizardApp.controller('treeTableController', ['$scope', '$route', '$window', '$timeout', 'Globals', 'Utilities',
+		function($scope, $route, $window, $timeout, Globals, Utilities) {
 
             $scope.treeTable = {};
             $scope.firstLeafNodeId = null;
 
             $scope.showBrowseMask = function () {
+                $scope.browseMaskOpacity = 0.8;
+                document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
                 document.getElementById("sampleMask").style.display = "block";
             }; // showBrowseMask
 
@@ -16,7 +18,6 @@
                 document.getElementById("sampleMask").style.display = "none";
             }; // hideBrowseMask
 
-            $scope.browseMaskOpacity = 0.8;
             $scope.fadeBrowseMask = function () {
                 $scope.browseMaskOpacity -= 0.1;
                 if ($scope.browseMaskOpacity < 0) {
@@ -26,36 +27,40 @@
                         $scope.browseMaskOpacity;
                     $timeout($scope.fadeBrowseMask, 50);
                 }
-            } // fadeBrowseMask
+            }; // fadeBrowseMask
 
             $scope.showBrowseMask();
 
             $scope.$on("setCurrentSample", function(event, args) {
-                $log.debug("tree-table-grid-controller::onSetCurrentSample");
+                console.log("tree-table-grid-controller::onSetCurrentSample");
                 $scope.currentSample = args.sample;
                 $scope.treeTable.data = args.sample.dsStructuredProfile;
-                $log.debug("$scope.treeTable.data");
-                $log.debug($scope.treeTable.data);
+                console.log("$scope.treeTable.data");
+                console.log($scope.treeTable.data);
                 $scope.dataSize = angular.toJson($scope.treeTable.data).length;
-                $log.debug($scope.dataSize);
+                console.log($scope.dataSize);
 
                 // NOTE: Directives must be named with all lowercase characters and no punctuation.
                 //       This limitation arises because AngularJS requires hyphenated names as attributes
                 //       and camel case for the directive name. This workaround eliminates this problem.
                 // NOTE: If a property is an array element use a dotted notation such as a.0.b not a[0].b
-                if ($scope.currentSample.dsContainsStructuredData) {
+                // TODO: when changing between single and double property columns, the nested directives are not
+                //       reinitializing property1 and property2 (label1 and label2 in nested directives)
+                //       need to figure out how to get them to update so always use double property columns for now
+                //       hence "true || " which is faster anyway
+                if (true || $scope.currentSample.dsContainsStructuredData) {
                     $scope.columns = [
-                        { 'property1': 'field', 'name': 'Field', 'tree': { 'method1': 'showInDetails' } },
+                        { 'property1': 'field', 'name': 'Field', 'callback': 'doCallBack', 'complexCell': 'true' },
                         { 'property1': 'mainType',             'property2': 'detailType',   'name': 'Main / Detail Type' },
                         { 'property1': 'detailMin',            'property2': 'detailMax',    'name': 'Min / Max' },
                         { 'property1': 'detailAvg',            'property2': 'detailStdDev', 'name': 'Avg / Std Dev' },
                         { 'property1': 'detailNumDistinct',    'property2': 'presence',     'name': 'Distinct / Presence' },
-                        { 'property1': 'interpretation.iName',                              'name': 'Interpretation' }/**/
+                        { 'property1': 'interpretation.iName',                              'name': 'Interpretation' }
                     ];
                     $scope.columnSizingFactor = 7;
                 } else {
                     $scope.columns = [
-                        { 'property1': 'field', 'name': 'Field', 'tree': { 'method1': 'showInDetails' } },
+                        { 'property1': 'field', 'name': 'Field', 'callback': 'doCallBack', 'complexCell': 'true' },
                         { 'property1': 'mainType',             'name': 'Main Type' },
                         { 'property1': 'detailType',           'name': 'Detail Type' },
                         { 'property1': 'detailMin',            'name': 'Minimum' },
@@ -64,7 +69,7 @@
                         { 'property1': 'detailStdDev',         'name': 'Std Dev' },
                         { 'property1': 'detailNumDistinct',    'name': 'Distinct' },
                         { 'property1': 'presence',             'name': 'Presence' },
-                        { 'property1': 'interpretation.iName', 'name': 'Interpretation'}/**/
+                        { 'property1': 'interpretation.iName', 'name': 'Interpretation'}
                     ];
                     $scope.columnSizingFactor = 11;
                 }
@@ -89,7 +94,7 @@
                                 leaf = find(node.children[j]);
                                 if (leaf) return leaf;
                             }
-                        };
+                        }
                     };
                     for (var i = 0, len = data.length; i < len; i++) {
                         leaf = find(data[i]);
@@ -99,7 +104,30 @@
                 $scope.firstLeafNode = $scope.findFirstLeafNode($scope.treeTable.data);
                 $scope.firstLeafNodeId = "treecell-" + $scope.firstLeafNode.id;
 
+                $scope.showInDetails = function (parms) {
+                    console.log("showInDetails node: " + angular.toJson(parms));
+                    var node = parms.node;
+                    console.log("Show '" + node.path + "' in details pane");
+                    // if the first leaf node is still highlighted then remove the hightlight here where it's in scope;
+                    // otherwise this node would have to be passed into the other directives; a small price to pay!
+                    try {
+                        document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "transparent";
+                    } catch (e) { console.log(e.toString()); }
+                    Utilities.showInGenericDetails(
+                        Globals,
+                        $scope.currentSample.dsProfile[node.path],
+                        node.field);
+                    $scope.detailPanel = Globals.getDetailModels().detailPanels.panel1;
+                }; // showInDetails
+
                 $timeout(function () {
+                    $scope.fadeBrowseMask();
+                    try {
+                        // show first field in details after data loads
+                        $scope.showInDetails({"node": $scope.firstLeafNode});
+                        document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
+                    } catch (e) { console.log(e.toString()); }
+
                     // Chrome & IE
                     angular.element($window).bind('mousewheel', function (event) {
                         // check whether the scroll event is for the tree-table-grid
@@ -123,20 +151,12 @@
                     // wait for grid to initialize then add listener for scrolling
                     $timeout(function () { document.getElementById('colN').addEventListener('scroll', function (event) {
                             //console.log(event);
-                            $scope.scrollTreeTable(0)
+                            $scope.scrollTreeTable(0);
                             event.preventDefault();
                             event.stopImmediatePropagation();
                         })},
-                        1000);
-
-                    $scope.fadeBrowseMask();
-                        try {
-                            // show first field in details after data loads
-                            $scope.showInDetails($scope.firstLeafNode);
-                            document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
-                        } catch (e) { /* not a problem; DOM may not be ready yet */}
-                    }, Math.round($scope.dataSize / 100)
-                );
+                        1000)
+                }, Math.round($scope.dataSize / 100));
             }); // onsetCurrentSample
 
             $scope.getColumnId = function(index, last) {
@@ -165,27 +185,33 @@
                 }
             }; // scrollTreeTable
 
-            $scope.showInDetails = function (node) {
-                console.log("Show '" + node.path + "' in details pane");
-                // if the first leaf node is still highlighted then remove the hightlight here where it's in scope;
-                // otherwise this node would have to be passed into the other directives; a small price to pay!
-                try {
-                    document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "transparent";
-                } catch (e) {};
-                Utilities.showInGenericDetails(
-                    Globals,
-                    $scope.currentSample.dsProfile[node.path],
-                    node.field);
-                $scope.detailPanel = Globals.getDetailModels().detailPanels.panel1;
-            }; // showInDetails
+            $scope.externalTreeMethod = function ($event, parms) {
+                console.log("externalTreeMethod " + angular.toJson(parms));
+                console.log($event);
+            }; // externalTreeMethod
 
-            $scope.externalMethod = function (nodeLabel) {
-                console.log("externalMethod nodeLabel: " + nodeLabel);
-            }; // externalMethod
+            $scope.externalTableMethod = function ($event, parms) {
+                console.log("externalTableMethod " + angular.toJson(parms));
+                console.log($event);
+            }; // externalTableMethod
 
-            $scope.externalSelectMethod = function (selectedItem) {
-                console.log("externalSelectMethod selectedItem: " + selectedItem);
+            $scope.externalSelectMethod = function ($event, parms) {
+                console.log("externalSelectMethod selectedItem: " + angular.toJson(parms));
+                console.log($event);
             }; // externalSelectMethod
+
+            $scope.doCallBack = function ($event, callback, parms) {
+                console.log("doCallBack callback: " + callback);
+                console.log("doCallBack parms: " + angular.toJson(parms));
+                switch(callback) {
+                    case "showInDetails": $scope.showInDetails(parms); break;
+                    case "externalTreeMethod": $scope.externalTreeMethod($event, parms); break;
+                    case "externalTableMethod": $scope.externalTableMethod($event, parms); break;
+                    case "externalSelectMethod": $scope.externalSelectMethod($event, parms); break;
+                }
+            }; // doCallBack
         }
 	]); // treeTableController
 })();
+
+

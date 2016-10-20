@@ -5,6 +5,11 @@ import org.apache.log4j.Logger;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 
+/**
+ * This is a dummy progress updater that reports progress based on some time estimate.
+ * @author leegc
+ *
+ */
 public class TimeEstimateProgressUpdater extends SimpleProgressUpdater implements Runnable {
 	private static final Logger logger = Logger.getLogger(TimeEstimateProgressUpdater.class);
 	private final long startTime;
@@ -35,7 +40,6 @@ public class TimeEstimateProgressUpdater extends SimpleProgressUpdater implement
 				current = System.currentTimeMillis();
 			}
 		}
-		logger.debug("done");
 	}
 
 	public boolean isDone() {

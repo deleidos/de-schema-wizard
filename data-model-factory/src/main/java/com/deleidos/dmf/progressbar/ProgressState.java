@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * This class defines the different possible progress states of a Schema Wizard long running process.
+ * @author leegc
+ *
+ */
 public class ProgressState {
 	public enum STAGE {
 		UPLOAD, DETECT, FIRST_PASS, INTERPRET, SECOND_PASS, MATCHING, SCHEMA_PASS, SAMPLE_COMPLETE, COMPLETE, SPLIT

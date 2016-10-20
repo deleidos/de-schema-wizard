@@ -1,12 +1,11 @@
 FROM jetty:9.3.8
 
 RUN apt-get update
-RUN apt-get install -y tcpdump
+RUN apt-get install -y tcpdump software-properties-common
 
 # Copy over files
 ADD schwiz.war /var/lib/jetty/webapps
-ADD libjnetpcap.so /usr/lib/
-#ADD libjnetpcap.so /var/lib/jetty/resources/
+ADD *.so /usr/lib/
 
 # Update symbolic dynamic links
 RUN ["ldconfig"]

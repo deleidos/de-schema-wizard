@@ -93,7 +93,7 @@
          ng-show="currentSample.viz == 'example'"
          ng-click="profile['detail']['detail-type'] == 'text'">
         <ul>
-            <li ng-repeat="examples in profile.exampleValues"
+            <li ng-repeat="examples in profile.exampleValues track by $index"
                 style="background-color: floralwhite; resize: none; white-space: normal; margin-top: 0px; border: none;">
                 {{examples}}
             </li>

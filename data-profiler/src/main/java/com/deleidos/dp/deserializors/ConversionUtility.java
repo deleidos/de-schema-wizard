@@ -12,6 +12,11 @@ import com.deleidos.dp.beans.StructuredNode;
 import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 
+/**
+ * Convert unstructured profiles to structured profiles.
+ * @author leegc
+ *
+ */
 public class ConversionUtility {
 	public static final int LEAF_NODES_FIRST = 1;
 	public static final int TREE_NODES_FIRST = -1;

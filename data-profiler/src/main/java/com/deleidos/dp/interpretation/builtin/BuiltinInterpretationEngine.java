@@ -1,6 +1,7 @@
 package com.deleidos.dp.interpretation.builtin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -20,11 +21,18 @@ import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException;
 import com.deleidos.dp.interpretation.InterpretationEngine;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.reversegeocoding.MockReverseGeocoder;
 import com.deleidos.dp.reversegeocoding.ReverseGeocoder.ReverseGeocodingWorker;
 
+/**
+ * The InterpretationEngine used if a connection cannot be made over Http.  Throws exceptions if inapplicable calls 
+ * are made (e.g. createInterpretation()).
+ * @author leegc
+ *
+ */
 public class BuiltinInterpretationEngine implements InterpretationEngine {
 	private static final Logger logger = Logger.getLogger(BuiltinInterpretationEngine.class);
 	private ResourceBundle bundle = ResourceBundle.getBundle("error-messages");
@@ -61,6 +69,7 @@ public class BuiltinInterpretationEngine implements InterpretationEngine {
 			}
 			Interpretation iBean = determineInterpretation(builtinDomain, comparisonName, profileMap.get(key), .8f);
 			profileMap.get(key).setInterpretation(iBean);
+			profileMap.get(key).setInterpretations(Arrays.asList(iBean));
 		}
 		return profileMap;
 	}
@@ -173,6 +182,12 @@ public class BuiltinInterpretationEngine implements InterpretationEngine {
 
 	@Override
 	public boolean isLive() {
+		return true;
+	}
+
+	@Override
+	public boolean testMongoConnection() throws IEDataAccessException {
+		// TODO Auto-generated method stub
 		return true;
 	}
 }

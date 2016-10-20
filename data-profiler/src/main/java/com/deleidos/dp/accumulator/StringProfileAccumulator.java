@@ -15,7 +15,12 @@ import com.deleidos.dp.histogram.CharacterBucketList;
 import com.deleidos.dp.histogram.ShortStringBucketList;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 
-public class StringProfileAccumulator extends AbstractProfileAccumulator {
+/**
+ * Accumulator for string profiles.
+ * @author leegc
+ *
+ */
+public class StringProfileAccumulator extends AbstractProfileAccumulator<String> {
 	private static final Logger logger = Logger.getLogger(StringProfileAccumulator.class);
 	protected ShortStringBucketList shortStringBucketList;
 	protected CharacterBucketList charBucketList;
@@ -68,78 +73,25 @@ public class StringProfileAccumulator extends AbstractProfileAccumulator {
 
 	public void accumulateShortStringFreqHistogram(String objectString) {
 		String currentDetailType = getStringDetail().getDetailType();
-		if(!objectString.equals(DefaultProfilerRecord.EMPTY_FIELD_VALUE_INDICATOR) && (currentDetailType.equals(DetailType.TEXT.toString()))) {
-			return;
-		}
-		else {
+		if(!currentDetailType.equals(DetailType.TEXT.toString())) {
 			shortStringBucketList.putValue(objectString);
 		}
 	}
 
 	@Override
-	protected AbstractProfileAccumulator initializeForSecondPassAccumulation(Profile profile) {
-		shortStringBucketList = new ShortStringBucketList();
-		return this;
-	}
-
-	protected AbstractProfileAccumulator initializeFirstValue(Stage stage, Object value) throws MainTypeException {
-		String stringValue = value.toString();
-		getStringDetail().setMinLength(stringValue.length());
-		getStringDetail().setMaxLength(stringValue.length());
-		getStringDetail().setAverageLength(stringValue.length());
-		getStringDetail().setStdDevLength(0);
-		accumulateHashes = true;
-		return this;
-	}
-
-	@Override
-	protected AbstractProfileAccumulator initializeForSchemaAccumulation(Profile schemaProfile, int recordsInSchema, List<Profile> sampleProfiles) throws MainTypeException {
+	protected StringProfileAccumulator initializeForSecondPassAccumulation(Profile profile) {
 		shortStringBucketList = new ShortStringBucketList();
 		return this;
 	}
 
 	@Override
-	protected Profile accumulate(Stage accumulationStage, Object value) throws MainTypeException {
-		String objectString = value.toString();
-		switch(accumulationStage) {
-		case UNITIALIZED: throw new MainTypeException("Accumulator called but has not been initialized.");
-		case SAMPLE_AWAITING_FIRST_VALUE: { 
-			break;
-		}
-		case SCHEMA_AWAITING_FIRST_VALUE: {
-			break;
-		}
-		case SAMPLE_FIRST_PASS: {
-			accumulateDetailType(objectString);
-			accumulateMaxLength(objectString);
-			accumulateMinLength(objectString);
-			accumulateNumDistinctValues(objectString);
-			accumulateWalkingFields(objectString);
-			break;
-		}
-		case SAMPLE_SECOND_PASS: {
-			accumulateShortStringFreqHistogram(objectString);
-			break;
-		}
-		case SCHEMA_PASS: {
-			accumulateDetailType(objectString);
-			accumulateMaxLength(objectString);
-			accumulateMinLength(objectString);
-			accumulateNumDistinctValues(objectString);
-			accumulateWalkingFields(objectString);
-			accumulateShortStringFreqHistogram(objectString);
-			break;
-		}
-		default: throw new MainTypeException("Accumulator stuck in unknown stage.");
-		}
-		return profile;
+	protected StringProfileAccumulator initializeForSchemaAccumulation(Profile schemaProfile, int recordsInSchema, List<Profile> sampleProfiles) throws MainTypeException {
+		shortStringBucketList = new ShortStringBucketList();
+		return this;
 	}
 
 	@Override
 	protected Profile finish(Stage accumulationStage) {
-		if(this.getState().getPresence() < 0) {
-			return profile;
-		}
 
 		if(accumulationStage.equals(Stage.SAMPLE_FIRST_PASS) 
 				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
@@ -147,7 +99,6 @@ public class StringProfileAccumulator extends AbstractProfileAccumulator {
 					.divide(getStringDetail().getWalkingCount(), MetricsCalculationsFacade.DEFAULT_CONTEXT);
 
 			getStringDetail().setAverageLength(average.doubleValue());
-
 
 			BigDecimal twiceAverage = average.multiply(BigDecimal.valueOf(2), DEFAULT_CONTEXT);
 			BigDecimal summations = getStringDetail().getWalkingSquareSum()
@@ -160,23 +111,62 @@ public class StringProfileAccumulator extends AbstractProfileAccumulator {
 			double stdDev = Math.sqrt(withDivision.doubleValue());
 			getStringDetail().setStdDevLength(stdDev);
 
-			if(accumulateHashes) {
-				getStringDetail().setNumDistinctValues(String.valueOf(distinctValues.size()));
-			}
 		}
-		if(accumulationStage.equals(Stage.SAMPLE_SECOND_PASS)
+		if (accumulationStage.equals(Stage.SAMPLE_SECOND_PASS) 
 				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
-
-			if(!getStringDetail().getDetailType().equals(DetailType.PHRASE)) {
-				if(getAccumulationStage().equals(Stage.SAMPLE_SECOND_PASS) 
-						|| getAccumulationStage().equals(Stage.SCHEMA_PASS)) {
-					getStringDetail().setTermFreqHistogram(shortStringBucketList.asBean());
-				}
-			} else {
-				getStringDetail().setTermFreqHistogram(null);
-			}
+			getStringDetail().setTermFreqHistogram(shortStringBucketList.finish());
 		}
 		return profile;
+	}
+
+	@Override
+	protected StringProfileAccumulator initializeFirstValue(Stage stage, String value) throws MainTypeException {
+		getStringDetail().setMinLength(value.length());
+		getStringDetail().setMaxLength(value.length());
+		getStringDetail().setAverageLength(value.length());
+		getStringDetail().setStdDevLength(0);
+		accumulateHashes = true;
+		return this;
+	}
+
+	@Override
+	protected void accumulate(Stage accumulationStage, String value) throws MainTypeException {
+		switch(accumulationStage) {
+		case UNINITIALIZED: throw new MainTypeException("Accumulator called but has not been initialized.");
+		case SAMPLE_AWAITING_FIRST_VALUE: { 
+			break;
+		}
+		case SCHEMA_AWAITING_FIRST_VALUE: {
+			break;
+		}
+		case SAMPLE_FIRST_PASS: {
+			accumulateDetailType(value);
+			accumulateMaxLength(value);
+			accumulateMinLength(value);
+			accumulateNumDistinctValues(value);
+			accumulateWalkingFields(value);
+			break;
+		}
+		case SAMPLE_SECOND_PASS: {
+			accumulateShortStringFreqHistogram(value);
+			break;
+		}
+		case SCHEMA_PASS: {
+			accumulateDetailType(value);
+			accumulateMaxLength(value);
+			accumulateMinLength(value);
+			accumulateNumDistinctValues(value);
+			accumulateWalkingFields(value);
+			accumulateShortStringFreqHistogram(value);
+			break;
+		}
+		default: throw new MainTypeException("Accumulator stuck in unknown stage.");
+		}
+	}
+
+	@Override
+	protected String createAppropriateObject(Object object) throws MainTypeException {
+		return MainType.STRING.createString(object);
 	}
 
 }

@@ -1,5 +1,6 @@
 package com.deleidos.dmf.framework;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import org.apache.tika.mime.MediaTypeRegistry;
 import org.apache.tika.mime.MimeTypes;
 import org.apache.tika.parser.pkg.PackageParser;
 
+import com.deleidos.dmf.framework.AnalyticsEmbeddedDocumentExtractor.ExtractedContent;
 import com.deleidos.dmf.parser.JNetPcapTikaParser;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.ProgressState;
@@ -36,7 +38,6 @@ public class AnalyticsDefaultDetector extends DefaultDetector {
 	private MediaTypeRegistry registry; 
 	public static final String HAS_BODY_CONTENT = "has-body-content";
 	public static final String BODY_CONTENT_TYPE = "body-content-type";
-	//public static final String FILE_SIZE = "file-size";
 	private static final long FILE_CUTOFF_IN_BYTES = 1024 * 1024 * 1024;
 	private ProgressBarManager progressBar = null;
 	private String sessionId = null;
@@ -78,7 +79,7 @@ public class AnalyticsDefaultDetector extends DefaultDetector {
 		}
 		
 		int numDetectors = detectors.size();
-		int i = 0;
+		
 		if(progressBar != null) {
 			progressBar.goToNextStateIfCurrentIs(ProgressState.STAGE.UPLOAD);
 			SchemaWizardSessionUtility.getInstance().updateProgress(progressBar, sessionId);
@@ -95,13 +96,11 @@ public class AnalyticsDefaultDetector extends DefaultDetector {
 				progressBar.updateNumeratorInRequiredState(progressBar.getCurrentState().getStartValue(), STAGE.SPLIT);
 				SchemaWizardSessionUtility.getInstance().updateProgress(progressBar, sessionId);
 			}
-			i++;
 			
-			if(detected == null) {
+			if(detected.equals(MediaType.OCTET_STREAM)) {
 				continue;
 			}
-			// wrapper.hasPlainTextBodyContent()
-			// add metadata tag for has plain text body content
+			
 			if (registry.isSpecializationOf(detected, type)) {
 				for(AnalyticsDetectorWrapper w : confidenceList) {
 					if(Iterables.getOnlyElement(w.getDetectableTypes()).equals(type)) {
@@ -123,7 +122,7 @@ public class AnalyticsDefaultDetector extends DefaultDetector {
 		}
 		
 		if(confidenceList.size() == 0) {
-			return null;	
+			return MediaType.OCTET_STREAM;	
 		}
 		
 		Collections.sort(confidenceList);
@@ -172,6 +171,24 @@ public class AnalyticsDefaultDetector extends DefaultDetector {
 			}
 		}
 		return detectors;
+	}
+	
+	public MediaType runSpecialZipDetection(String extractedContentDirectory, 
+			Metadata metadata, List<CompositeTypeDetector> compositeTypeDetectors,
+			List<ExtractedContent> extractedContent) {
+		for(CompositeTypeDetector specialZipDetector : compositeTypeDetectors) {
+			Metadata freshMetadata = new Metadata();
+			MediaType mediaType = specialZipDetector
+					.detectSpecial(extractedContentDirectory, freshMetadata, extractedContent);
+			if(!mediaType.equals(MediaType.OCTET_STREAM) && mediaType != null) {
+				String names[] = freshMetadata.names();
+				for (int i = 0; i < names.length; i++) {
+					metadata.add(names[i], freshMetadata.get(names[i]));
+				}
+				return mediaType;
+			}
+		}
+		return MediaType.OCTET_STREAM;
 	}
 	
 }

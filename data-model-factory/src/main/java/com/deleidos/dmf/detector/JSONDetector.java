@@ -32,12 +32,8 @@ public class JSONDetector extends AbstractMarkSupportedAnalyticsDetector {
 
 	@Override
 	public MediaType analyticsDetect(InputStream inputStream, Metadata metadata) throws IOException {
-		if (inputStream.available() == 0) { return null; }
-
 		isReader = new InputStreamReader(inputStream, "UTF-8");
-
-		if (readRecord(metadata) != null) { return CONTENT_TYPE; } 
-		else 					{ return null; }
+		return readRecord(metadata) != null ? CONTENT_TYPE : MediaType.OCTET_STREAM;
 	}
 
 	@Override

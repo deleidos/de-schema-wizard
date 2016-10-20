@@ -15,6 +15,11 @@ import org.jnetpcap.packet.annotate.Header.Layer;
 import org.jnetpcap.packet.annotate.HeaderLength;
 import org.jnetpcap.packet.annotate.ProtocolSuite;
 
+/**
+ * Extension for the PCAP Parser for Wireless Radio Tap headers
+ * @author leegc
+ *
+ */
 @Header(nicname = "802.11 MAC RadioTap", dlt = {
 		PcapDLT.IEEE802_11_RADIO
 }, suite = ProtocolSuite.WIRELESS, osi = Layer.DATALINK, characteristics = Characteristic.CSMA_CD, description = "Wifi Radiotap")

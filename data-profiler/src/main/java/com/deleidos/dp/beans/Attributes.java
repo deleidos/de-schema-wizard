@@ -8,7 +8,7 @@ public class Attributes {
 	private String quantitative;
 	private String relational;
 	private String ordinal;
-	private final String UNKNOWN = "Unknown";
+	private static final String UNKNOWN = "Unknown";
 	
 	@JsonProperty("identifier")
 	public String getIdentifier() {
@@ -68,5 +68,15 @@ public class Attributes {
 		if (!attribute.getRelational().equals(UNKNOWN)) { return false; }
 		
 		return true;
+	}
+	
+	public static Attributes generateUnknownAttributes() {
+		Attributes unknownAttribute = new Attributes();
+		unknownAttribute.setIdentifier(UNKNOWN);
+		unknownAttribute.setCategorical(UNKNOWN);
+		unknownAttribute.setQuantitative(UNKNOWN);
+		unknownAttribute.setRelational(UNKNOWN);
+		unknownAttribute.setOrdinal(UNKNOWN);
+		return unknownAttribute;
 	}
 }

@@ -19,16 +19,16 @@ import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dmf.framework.TikaSampleAnalyzerParameters;
 import com.deleidos.dmf.framework.TikaSchemaAnalyzerParameters;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
-import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dmf.progressbar.ProgressState.STAGE;
+import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dmf.web.CancellableFileUploader;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
-import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.exceptions.DataAccessException;
 
 /**
  * 
- * Performs various services on files to determine their type, format and parsing functions.
+ * Interface to analyzes sample files and load them into the Schema Wizard backend.  Provides some default functionality
+ * with the analyzeSamples() method (note the plural).
  *
  */
 public interface FileAnalyzer extends Analyzer<TikaSampleAnalyzerParameters, TikaSchemaAnalyzerParameters> {

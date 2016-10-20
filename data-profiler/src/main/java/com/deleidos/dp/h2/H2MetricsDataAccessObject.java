@@ -27,7 +27,7 @@ import com.deleidos.dp.beans.RowEntry;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
-import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractBucketList;
 import com.deleidos.dp.interpretation.builtin.AbstractBuiltinInterpretation;
@@ -75,7 +75,6 @@ public class H2MetricsDataAccessObject {
 	private static final String interpretation_name_key = "i_name";
 	private static final String display_name_key = "display_name";
 	private static final String example_value_key = "example_value";
-	private static final String unknown = "Unknown";
 
 	private static final String ADD_SAMPLE_NUMBER_FIELD = "INSERT INTO data_sample_field("
 			+ "	field_name, field_order, num_distinct, count, walking_square_sum, walking_sum, presence,"
@@ -87,8 +86,12 @@ public class H2MetricsDataAccessObject {
 			+ " dsev_id, dsf_id, example_value)" 
 			+ " VALUES (NULL, ?, ?);";
 	
-	private static final String ADD_SAMPLE_ATTRIBUTE = "INSERT INTO field_attributes("
+	private static final String ADD_SAMPLE_ATTRIBUTE = "INSERT INTO sample_field_attributes("
 			+ " fa_id, dsf_id, identifier, categorical, quantitative, relational, ordinal)" 
+			+ " VALUES (NULL, ?, ?, ?, ?, ?, ?);";
+	
+	private static final String ADD_SCHEMA_ATTRIBUTE = "INSERT INTO schema_field_attributes("
+			+ " fa_id, sf_id, identifier, categorical, quantitative, relational, ordinal)" 
 			+ " VALUES (NULL, ?, ?, ?, ?, ?, ?);";
 
 	private static final String ADD_SCHEMA_NUMBER_FIELD = "INSERT INTO schema_field("
@@ -158,13 +161,11 @@ public class H2MetricsDataAccessObject {
 			+ " INNER JOIN data_sample_example_value ON (schema_alias_mapping.data_sample_field_id = data_sample_example_value.dsf_id)"
 			+ " WHERE schema_field.schema_field_id = ?;";
 	
-	private static final String QUERY_ATTRIBUTES_BY_DATA_SAMPLE_FIELD = "SELECT * FROM field_attributes"
-			+ " WHERE field_attributes.dsf_id = ?";
+	private static final String QUERY_ATTRIBUTES_BY_DATA_SAMPLE_FIELD = "SELECT * FROM sample_field_attributes"
+			+ " WHERE sample_field_attributes.dsf_id = ?";
 	
-	private static final String QUERY_ATTRIBUTES_BY_SCHEMA_FIELD = "SELECT * FROM schema_field "
-			+ " INNER JOIN schema_alias_mapping ON (schema_field.schema_field_id = schema_alias_mapping.schema_field_id) "
-			+ " INNER JOIN field_attributes ON (schema_alias_mapping.data_sample_field_id = field_attributes.dsf_id)"
-			+ " WHERE schema_field.schema_field_id = ?;";
+	private static final String QUERY_ATTRIBUTES_BY_SCHEMA_FIELD = "SELECT * FROM schema_field_attributes"
+			+ " WHERE schema_field_attributes.sf_id = ?";
 
 	private static final String QUERY_BUCKETS_BY_HISTOGRAM_ID = "SELECT * FROM bucket WHERE histogram_id = ? ORDER BY b_order ASC;";
 	private static final String ADD_HISTOGRAM = "INSERT INTO histogram VALUES (NULL, ?, ?, ?)";
@@ -197,14 +198,14 @@ public class H2MetricsDataAccessObject {
 
 		if (fieldProfile.getDetail().isNumberDetail()) {
 			ppst = dbConnection.prepareStatement(ADD_SAMPLE_NUMBER_FIELD);
-			fieldId = addNumberField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile);
+			fieldId = addNumberField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile, false);
 		} else if (fieldProfile.getDetail().isStringDetail()) {
 			ppst = dbConnection.prepareStatement(ADD_SAMPLE_STRING_FIELD);
-			fieldId = addStringField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile);
+			fieldId = addStringField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile, false);
 		} else if (fieldProfile.getDetail().isBinaryDetail()) {
 			logger.error("Detected as binary.");
 			ppst = dbConnection.prepareStatement(ADD_SAMPLE_BINARY_FIELD);
-			fieldId = addBinaryField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile);
+			fieldId = addBinaryField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile, false);
 		} else {
 			logger.error("Sample field \"" + fieldName + "\" not detected as number, string, or binary!");
 			return -1;
@@ -224,10 +225,10 @@ public class H2MetricsDataAccessObject {
 	 * @param fieldProfile
 	 *            the profile of the schema
 	 * @return the generated key of the field
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public int addSchemaField(Connection dbConnection, int schema_model_id, String fieldName, Profile fieldProfile) throws DataAccessException, SQLException {
+	public int addSchemaField(Connection dbConnection, int schema_model_id, String fieldName, Profile fieldProfile) throws H2DataAccessException, SQLException {
 		int fieldId = -1;
 		PreparedStatement ppst = null;
 
@@ -239,22 +240,22 @@ public class H2MetricsDataAccessObject {
 			ppst.setDouble(4, fieldProfile.getPresence());
 			ppst.setString(5, fieldProfile.getDisplayName());
 			ppst.execute();
-			int id = h2.getGeneratedKey(ppst);
+			int id = H2DataAccessObject.getGeneratedKey(ppst);
 			ppst.close();
 			return id;
 		} else if (fieldProfile.getDetail().isNumberDetail()) {
 			ppst = dbConnection.prepareStatement(ADD_SCHEMA_NUMBER_FIELD);
-			fieldId = addNumberField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile);
+			fieldId = addNumberField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile, true);
 		} else if (fieldProfile.getDetail().isStringDetail()) {
 			ppst = dbConnection.prepareStatement(ADD_SCHEMA_STRING_FIELD);
-			fieldId = addStringField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile);
+			fieldId = addStringField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile, true);
 		} else if (fieldProfile.getDetail().isBinaryDetail()) {
 			logger.error("Detected as binary.");
 			ppst = dbConnection.prepareStatement(ADD_SCHEMA_BINARY_FIELD);
-			fieldId = addBinaryField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile);
+			fieldId = addBinaryField(dbConnection, ppst, schema_model_id, fieldName, fieldProfile, true);
 		} else {
 			logger.error("Schema field \"" + fieldName + "\" not detected as number, string, or binary!");
-			throw new DataAccessException("Schema field \"" + fieldName + "\" not detected as number, string, or binary!");
+			throw new H2DataAccessException("Schema field \"" + fieldName + "\" not detected as number, string, or binary!");
 		}
 
 		ppst.close();
@@ -263,7 +264,7 @@ public class H2MetricsDataAccessObject {
 		return fieldId;
 	}
 
-	private void addAliasNames(Connection dbConnection, int schemaFieldId, List<AliasNameDetails> aliasNames) throws DataAccessException, SQLException {
+	private void addAliasNames(Connection dbConnection, int schemaFieldId, List<AliasNameDetails> aliasNames) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 
 		for (AliasNameDetails and : aliasNames) {
@@ -288,10 +289,10 @@ public class H2MetricsDataAccessObject {
 	 * @param sampleGuid
 	 *            the guid of the desired sample
 	 * @return a mapping of all fields associated with this sample
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public Map<String, Profile> getFieldMappingBySampleGuid(Connection dbConnection, String sampleGuid) throws DataAccessException, SQLException {
+	public Map<String, Profile> getFieldMappingBySampleGuid(Connection dbConnection, String sampleGuid) throws H2DataAccessException, SQLException {
 		Map<String, Profile> fieldMapping = new HashMap<String, Profile>();
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -318,10 +319,10 @@ public class H2MetricsDataAccessObject {
 	 * @param schemaGuid
 	 *            the guid of the desired schema
 	 * @return a mapping of all fields associated with this schema
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public Map<String, Profile> getFieldMappingBySchemaGuid(Connection dbConnection, String schemaGuid) throws DataAccessException, SQLException {
+	public Map<String, Profile> getFieldMappingBySchemaGuid(Connection dbConnection, String schemaGuid) throws H2DataAccessException, SQLException {
 		Map<String, Profile> fieldMapping = new HashMap<String, Profile>();
 		// h2.queryWithOutput("SELECT * from schema_field; ");
 		PreparedStatement ppst = null;
@@ -396,7 +397,7 @@ public class H2MetricsDataAccessObject {
 	}
 
 	private int addNumberField(Connection dbConnection, PreparedStatement ppst, int data_sample_or_schema_id, String fieldName,
-			Profile profile) throws SQLException {
+			Profile profile, boolean isSchemaField) throws SQLException {
 		NumberDetail nDetail = (NumberDetail) profile.getDetail();
 		String field_order = null, count = null, walking_square_sum = null, walking_sum = null, number_min = null,
 				number_max = null, number_average = null;
@@ -404,7 +405,6 @@ public class H2MetricsDataAccessObject {
 		float presence = -1.0f;
 		String num_distinct = "-1";
 		double number_std_dev = -1.0;
-		int generatedKey = -1;
 		String displayName = profile.getDisplayName();
 
 		// parameter fieldName
@@ -415,7 +415,7 @@ public class H2MetricsDataAccessObject {
 		walking_sum = nDetail.getWalkingSum().toString();
 		presence = profile.getPresence();
 		// parameter data_sample_id
-		number_histogram = insertHistogram(dbConnection, nDetail.getFreqHistogram());
+		number_histogram = insertHistogram(dbConnection, nDetail.getHistogram());
 		detail_type_id = DetailType.fromString(nDetail.getDetailType()).getIndex();
 		interpretation_id = addInterpretation(dbConnection, profile.getInterpretation());
 		number_min = nDetail.getMin().toString();
@@ -423,7 +423,6 @@ public class H2MetricsDataAccessObject {
 		number_average = nDetail.getAverage().toString();
 		number_std_dev = nDetail.getStdDev();
 
-		dbConnection.setAutoCommit(false);
 		ppst.setString(1, fieldName);
 		ppst.setNull(2, Types.VARCHAR);
 		ppst.setString(3, num_distinct);
@@ -442,40 +441,34 @@ public class H2MetricsDataAccessObject {
 		ppst.setString(16, displayName);
 
 		ppst.execute();
-
-		generatedKey = h2.getGeneratedKey(ppst);
+		int fieldId = H2DataAccessObject.getGeneratedKey(ppst);
+		ppst.close();
 
 		// Example values
-		int dataSampleFieldId = generatedKey;
 		List<Object> exampleValuesList = profile.getExampleValues();
 
 		if (exampleValuesList != null) {
 			for(Object exampleValue : exampleValuesList) {
-				addExampleValue(dbConnection, dataSampleFieldId, exampleValue);	
+				addExampleValue(dbConnection, fieldId, exampleValue);	
 			}
 		}
 		
 		// Attributes (VizWiz objects)
 		Attributes attributes = profile.getAttributes();
 		if (attributes != null) {
-			addAttributes(dbConnection, dataSampleFieldId, attributes);	
+			addAttributes(dbConnection, fieldId, attributes, isSchemaField);	
 		} else {
-			Attributes unknownAttributes = generateUnkownAttributes();
-			addAttributes(dbConnection, dataSampleFieldId, unknownAttributes);	
+			Attributes unknownAttributes = Attributes.generateUnknownAttributes();
+			addAttributes(dbConnection, fieldId, unknownAttributes, isSchemaField);	
 		}
 
-		dbConnection.setAutoCommit(true);
-
-		ppst.close();
-
-		return generatedKey;
+		return fieldId;
 
 	}
 
 	private int addStringField(Connection dbConnection, PreparedStatement ppst, int data_sample_or_schema_id, String fieldName,
-			Profile profile) throws SQLException {
+			Profile profile, boolean isSchemaField) throws SQLException {
 		StringDetail sDetail = (StringDetail) profile.getDetail();
-		int generatedKey = -1;
 		String displayName = profile.getDisplayName();
 
 		// parameter fieldName
@@ -487,7 +480,7 @@ public class H2MetricsDataAccessObject {
 		float presence = profile.getPresence();
 		// parameter data_sample_id
 		int string_character_histogram = EMPTY_HISTOGRAM_ID;// insertHistogram(sDetail.getCharFreqHistogram());
-		int string_term_histogram = insertHistogram(dbConnection, sDetail.getTermFreqHistogram());
+		int string_term_histogram = insertHistogram(dbConnection, sDetail.getHistogram());
 		int detail_type_id = DetailType.fromString(sDetail.getDetailType()).getIndex();
 		int interpretation_id = addInterpretation(dbConnection, profile.getInterpretation());
 		int string_min_length = sDetail.getMinLength();
@@ -495,7 +488,6 @@ public class H2MetricsDataAccessObject {
 		double string_average_length = sDetail.getAverageLength();
 		double string_std_dev_length = sDetail.getStdDevLength();
 
-		dbConnection.setAutoCommit(false);
 		ppst.setString(1, fieldName);
 		ppst.setNull(2, Types.VARCHAR);
 		ppst.setString(3, num_distinct);
@@ -515,41 +507,36 @@ public class H2MetricsDataAccessObject {
 		ppst.setString(17, displayName);
 
 		ppst.execute();
-
-		generatedKey = h2.getGeneratedKey(ppst);
+		int fieldId = H2DataAccessObject.getGeneratedKey(ppst);
+		ppst.close();
 
 		// Example values
-		int dataSampleFieldId = generatedKey;
 		List<Object> exampleValuesList = profile.getExampleValues();
 
 		if (exampleValuesList != null) {
 			for(Object exampleValue : exampleValuesList) {
-				addExampleValue(dbConnection, dataSampleFieldId, exampleValue);	
+				addExampleValue(dbConnection, fieldId, exampleValue);	
 			}
 		}
 		
 		// Attributes (VizWiz objects)
 		Attributes attributes = profile.getAttributes();
 		if (attributes != null) {
-			addAttributes(dbConnection, dataSampleFieldId, attributes);	
+			addAttributes(dbConnection, fieldId, attributes, isSchemaField);	
 		} else {
-			Attributes unknownAttributes = generateUnkownAttributes();
-			addAttributes(dbConnection, dataSampleFieldId, unknownAttributes);	
+			Attributes unknownAttributes = Attributes.generateUnknownAttributes();
+			addAttributes(dbConnection, fieldId, unknownAttributes, isSchemaField);	
 		}
 
-		dbConnection.setAutoCommit(true);
-		ppst.close();
-
-		return generatedKey;
+		return fieldId;
 	}
 
 	private int addBinaryField(Connection dbConnection, PreparedStatement ppst, int data_sample_or_schema_id, String fieldName,
-			Profile profile) throws SQLException {
+			Profile profile, boolean isSchemaField) throws SQLException {
 
 		logger.error("Received binary field.  Untested!");
 
 		BinaryDetail bDetail = (BinaryDetail) profile.getDetail();
-		int generatedKey = -1;
 
 		// parameter fieldName
 		String field_order = null;
@@ -559,7 +546,7 @@ public class H2MetricsDataAccessObject {
 		String walking_sum = null;
 		float presence = profile.getPresence();
 		// parameter data_sample_id
-		int binary_character_histogram = insertHistogram(dbConnection, bDetail.getByteHistogram());
+		int binary_character_histogram = insertHistogram(dbConnection, bDetail.getHistogram());
 		int detail_type_id = DetailType.fromString(bDetail.getDetailType()).getIndex();
 		int interpretation_id = addInterpretation(dbConnection, profile.getInterpretation());
 		String binary_mime_type = bDetail.getMimeType();
@@ -568,7 +555,6 @@ public class H2MetricsDataAccessObject {
 		double binary_entropy = bDetail.getEntropy();
 		String displayName = profile.getDisplayName();
 
-		dbConnection.setAutoCommit(false);
 		ppst.setString(1, fieldName);
 		ppst.setNull(2, Types.VARCHAR);
 		ppst.setString(3, num_distinct);
@@ -587,32 +573,28 @@ public class H2MetricsDataAccessObject {
 		ppst.setString(16, displayName);
 
 		ppst.execute();
-
-		generatedKey = h2.getGeneratedKey(ppst);
+		int fieldId = H2DataAccessObject.getGeneratedKey(ppst);
+		ppst.close();
 
 		// Example values
-		int dataSampleFieldId = generatedKey;
 		List<Object> exampleValuesList = profile.getExampleValues();
 
 		if (exampleValuesList != null) {
 			for(Object exampleValue : exampleValuesList) {
-				addExampleValue(dbConnection, dataSampleFieldId, exampleValue);	
+				addExampleValue(dbConnection, fieldId, exampleValue);	
 			}		
 		}
 		
 		// Attributes (VizWiz objects)
 		Attributes attributes = profile.getAttributes();
 		if (attributes != null) {
-			addAttributes(dbConnection, dataSampleFieldId, attributes);	
+			addAttributes(dbConnection, fieldId, attributes, isSchemaField);	
 		} else {
-			Attributes unknownAttributes = generateUnkownAttributes();
-			addAttributes(dbConnection, dataSampleFieldId, unknownAttributes);	
+			Attributes unknownAttributes = Attributes.generateUnknownAttributes();
+			addAttributes(dbConnection, fieldId, unknownAttributes, isSchemaField);	
 		}
 
-		dbConnection.setAutoCommit(true);
-		ppst.close();
-
-		return generatedKey;
+		return fieldId;
 	}
 
 	private void putResultSetProfileInFieldMapping(Connection dbConnection, Map<String, Profile> fieldMapping, ResultSet rs, String tableName,
@@ -653,19 +635,19 @@ public class H2MetricsDataAccessObject {
 		}
 		}
 
-		List<Object> exampleValues = null;
-		Attributes attributes = null;
+		List<Object> exampleValues = new ArrayList<Object>();
+		Attributes attributes = Attributes.generateUnknownAttributes();
 		
 		if (tableName.equals(schema_field)) {
 			List<AliasNameDetails> aliasList = new ArrayList<AliasNameDetails>();
 			
-			int schemaFieldId = rs.getInt("schema_field.schema_field_id");
+			int sfId = rs.getInt("schema_field.schema_field_id");
 
 			int dataSampleFieldId = rs.getInt("schema_alias_mapping.data_sample_field_id");
 			if (dataSampleFieldId > 0) {
 				do {
 					int specificRowSchemaFieldId = rs.getInt("schema_field.schema_field_id");
-					if (specificRowSchemaFieldId != schemaFieldId) {
+					if (specificRowSchemaFieldId != sfId) {
 						rs.previous();
 						break;
 					}
@@ -677,13 +659,13 @@ public class H2MetricsDataAccessObject {
 					aliasList.add(aliasNameDetails);
 
 					// Example Values and Attributes
-					int sfId = rs.getInt("schema_field.schema_field_id");
 					exampleValues = queryExampleValues(dbConnection, QUERY_EXAMPLE_FIELDS_BY_SCHEMA_FIELD, sfId);
-					attributes = queryAttributes(dbConnection, QUERY_ATTRIBUTES_BY_SCHEMA_FIELD, sfId);
+					
 				} while (rs.next());
 				profile.setAliasNames(aliasList);
 			}
 
+			attributes = queryAttributes(dbConnection, QUERY_ATTRIBUTES_BY_SCHEMA_FIELD, sfId);
 		} else if (tableName.equals(data_sample_field)) {
 			// Example Values and Attributes
 			int dsfId = rs.getInt("data_sample_field.data_sample_field_id");
@@ -765,7 +747,7 @@ public class H2MetricsDataAccessObject {
 		ppst = dbConnection.prepareStatement(ADD_INTERPRETATION, PreparedStatement.RETURN_GENERATED_KEYS);
 		ppst.setString(1, interpretation.getiName());
 		ppst.execute();
-		interpretationId = h2.getGeneratedKey(ppst);
+		interpretationId = H2DataAccessObject.getGeneratedKey(ppst);
 		ppst.close();
 
 		return interpretationId;
@@ -841,7 +823,7 @@ public class H2MetricsDataAccessObject {
 		ppst.setNull(2, Types.VARCHAR);
 		ppst.setNull(3, Types.VARCHAR);
 		ppst.execute();
-		histogramId = h2.getGeneratedKey(ppst);
+		histogramId = H2DataAccessObject.getGeneratedKey(ppst);
 		createBuckets(dbConnection, histogram, histogramId);
 		createRegionHistogram(dbConnection, histogram.getRegionData(), histogramId);
 		ppst.close();
@@ -853,13 +835,13 @@ public class H2MetricsDataAccessObject {
 		PreparedStatement ppst = null;
 		PreparedStatement ppst2 = null;
 
-		if (regionData != null) {
+		if (regionData != null && regionData.getRows().size() > 0) {
 			ppst = dbConnection.prepareStatement(ADD_HISTOGRAM, PreparedStatement.RETURN_GENERATED_KEYS);
 			ppst.setInt(1, histogramId);
 			ppst.setString(2, regionData.getLatitudeKey());
 			ppst.setString(3, regionData.getLongitudeKey());
 			ppst.execute();
-			int regionDataId = h2.getGeneratedKey(ppst);
+			int regionDataId = H2DataAccessObject.getGeneratedKey(ppst);
 			ppst.close();
 			String createRegionBuckets = insertBucketsString(regionData.getRows().size(), regionDataId);
 			ppst2 = dbConnection.prepareStatement(createRegionBuckets);
@@ -979,8 +961,7 @@ public class H2MetricsDataAccessObject {
 	}
 
 	private void addExampleValue(Connection dbConnection, int dsfId, Object exampleValue) throws SQLException {
-		PreparedStatement addExampleValues = dbConnection.prepareStatement(ADD_SAMPLE_EXAMPLE_VALUE)
-				;
+		PreparedStatement addExampleValues = dbConnection.prepareStatement(ADD_SAMPLE_EXAMPLE_VALUE);
 		addExampleValues.setInt(1, dsfId);
 		addExampleValues.setString(2, delimitStr(exampleValue.toString(), 1024));
 		
@@ -988,10 +969,11 @@ public class H2MetricsDataAccessObject {
 		addExampleValues.close();
 	}
 	
-	private void addAttributes(Connection dbConnection, int dsfId, Attributes attribute) throws SQLException {
-		PreparedStatement addAttributes = dbConnection.prepareStatement(ADD_SAMPLE_ATTRIBUTE);
-
-		addAttributes.setInt(1, dsfId);		
+	private void addAttributes(Connection dbConnection, int sample_field_or_schema_field_id,
+			Attributes attribute, boolean isSchemaField) throws SQLException {
+		PreparedStatement addAttributes = isSchemaField ? dbConnection.prepareStatement(ADD_SCHEMA_ATTRIBUTE) : dbConnection.prepareStatement(ADD_SAMPLE_ATTRIBUTE);
+		
+		addAttributes.setInt(1, sample_field_or_schema_field_id);		
 		addAttributes.setString(2, delimitStr(attribute.getIdentifier(), 24));
 		addAttributes.setString(3, delimitStr(attribute.getCategorical(), 24));
 		addAttributes.setString(4, delimitStr(attribute.getQuantitative(), 24));
@@ -1006,13 +988,4 @@ public class H2MetricsDataAccessObject {
 		return (str.length() >= delimiter) ? str.substring(0, delimiter) : str;
 	}
 	
-	private Attributes generateUnkownAttributes() {
-		Attributes unknownAttribute = new Attributes();
-		unknownAttribute.setIdentifier(unknown);
-		unknownAttribute.setCategorical(unknown);
-		unknownAttribute.setQuantitative(unknown);
-		unknownAttribute.setRelational(unknown);
-		unknownAttribute.setOrdinal(unknown);
-		return unknownAttribute;
-	}
 }

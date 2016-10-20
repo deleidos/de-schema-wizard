@@ -22,6 +22,11 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
+/**
+ * Convenience class that encapsulates serialization functionality.  Also holds a static instance of an ObjectMapper.
+ * @author leegc
+ *
+ */
 public class SerializationUtility {
 	private static final Logger logger = Logger.getLogger(SerializationUtility.class);
 	private static ObjectMapper objectMapper;

@@ -1,14 +1,13 @@
 package com.deleidos.sw;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Properties;
+import java.io.InputStreamReader;
 import java.util.ResourceBundle;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -17,16 +16,17 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.container.AsyncResponse;
-import javax.ws.rs.container.ConnectionCallback;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.log4j.Logger;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.session.Session;
+import org.apache.shiro.session.UnknownSessionException;
+import org.apache.shiro.subject.Subject;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,9 +34,10 @@ import com.deleidos.dmf.accessor.ServiceLayerAccessor;
 import com.deleidos.dmf.analyzer.TikaAnalyzer;
 import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.dp.exceptions.H2DataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException;
 
 @Path("/")
-@SuppressWarnings("unchecked")
 public class SchemaWizardController implements ISchemaWizardController {
 
 	private static Logger logger = Logger.getLogger(SchemaWizardController.class);
@@ -54,27 +55,14 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 *
 	 * @param service
 	 */
-	public SchemaWizardController(TikaAnalyzer analyzerService, ServiceLayerAccessor dataService) {
+	public SchemaWizardController(TikaAnalyzer analyzerService, ServiceLayerAccessor dataService,
+			String uploadDirectory) {
 		super();
 		this.analyzerService = analyzerService;
 		this.dataService = dataService;
-		InputStream inputStream = null;
+		this.uploadDirectory = uploadDirectory;
+
 		SchemaWizardSessionUtility.register();
-		try {
-			Properties prop = new Properties();
-			inputStream = getClass().getClassLoader().getResourceAsStream("config.properties");
-			if (inputStream != null) {
-				prop.load(inputStream);
-				uploadDirectory = prop.getProperty("uploadDirectory");
-				logger.info("Using upload directory " + uploadDirectory + ".");
-				inputStream.close();
-			} else {
-				throw new FileNotFoundException("property file 'config.properties' not found in the classpath");
-			}
-		} catch (IOException e) {
-			logger.error("Exception: " + e);
-			throw new RuntimeException(e);
-		}
 	} // constructor
 
 	/**
@@ -495,6 +483,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	/**
 	 * Upload one or more user modified data samples. Return a JSON Array of the
 	 * proposed schema.
+	 * 
 	 * @param request
 	 */
 	@POST
@@ -520,7 +509,8 @@ public class SchemaWizardController implements ISchemaWizardController {
 				try {
 					String sessionUploadDirectory = uploadDirectory + File.separator + sessionId;
 
-					jObject = analyzerService.analyzeSchema(sessionUploadDirectory, schemaAnalysisDataJson, domain, sessionId);
+					jObject = analyzerService.analyzeSchema(sessionUploadDirectory, schemaAnalysisDataJson, domain,
+							sessionId);
 					logger.debug("");
 					asyncResponse.resume(Response.status(Response.Status.ACCEPTED).entity(jObject.toString()).build());
 				} catch (AnalyticsCancelledWorkflowException e) {
@@ -528,7 +518,8 @@ public class SchemaWizardController implements ISchemaWizardController {
 					asyncResponse.cancel();
 					return;
 				}
-				asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(bundle.getString("analyzer.error")).build());
+				asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE)
+						.entity(bundle.getString("analyzer.error")).build());
 			}
 		}).start();
 	} // uploadModifiedSamples
@@ -541,8 +532,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/upload")
-	public void uploadSamples(@Suspended final AsyncResponse asyncResponse,
-			@Context final HttpServletRequest request) {
+	public void uploadSamples(@Suspended final AsyncResponse asyncResponse, @Context final HttpServletRequest request) {
 		new Thread(new Runnable() {
 			public void run() {
 				logger.debug("Received upload request");
@@ -560,22 +550,23 @@ public class SchemaWizardController implements ISchemaWizardController {
 				logger.debug("numberOfFiles: " + numberOfFiles);
 				logger.debug("filesTotalSize: " + totalFilesSize);
 				logger.debug("");
-				String fileFormatType = null;
-				JSONObject jObject = new JSONObject();
+				// String fileFormatType = null;
+				// JSONObject jObject = new JSONObject();
 				JSONArray jArray = new JSONArray();
 
 				if (ServletFileUpload.isMultipartContent(request)) {
 					try {
 						/*
-						 * Create a directory for the session specific files that will be uploaded.  Initialize the TikaAnalyzer to
+						 * Create a directory for the session specific files
+						 * that will be uploaded. Initialize the TikaAnalyzer to
 						 * analyze the files in this directory.
 						 */
 						File sessionDir = new File(uploadDirectory + File.separator + sessionId);
 						if (!sessionDir.exists() && !sessionDir.mkdirs()) {
 							throw new IOException("Session directory could not be created.");
 						}
-						jArray = analyzerService.analyzeSamples(schemaGuid, sessionDir.getAbsolutePath(),
-								domain, tolerance, sessionId, request, numberOfFiles, totalFilesSize);
+						jArray = analyzerService.analyzeSamples(schemaGuid, sessionDir.getAbsolutePath(), domain,
+								tolerance, sessionId, request, numberOfFiles, totalFilesSize);
 						logger.debug("");
 						logger.debug("jArray.length(): " + jArray.length());
 						logger.debug("");
@@ -588,18 +579,21 @@ public class SchemaWizardController implements ISchemaWizardController {
 						return;
 					} catch (ProcessingException e) {
 						logger.error(e.getMessage());
-						asyncResponse.resume(Response.status(Response.Status.GATEWAY_TIMEOUT).entity(bundle.getString("ie.server.timeout")).build());
+						asyncResponse.resume(Response.status(Response.Status.GATEWAY_TIMEOUT)
+								.entity(bundle.getString("ie.server.timeout")).build());
 					} catch (Exception ex) {
 						logger.debug("File Upload Failed due to " + ex);
 						logger.error(ex);
-						asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(bundle.getString("upload.failed")).build());
+						asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE)
+								.entity(bundle.getString("upload.failed")).build());
 					}
 				} else {
 					request.setAttribute("message", "This Servlet only handles file upload requests");
-					asyncResponse.resume(Response.status(Response.Status.METHOD_NOT_ALLOWED).entity(bundle.getString("upload.failed")).build());
+					asyncResponse.resume(Response.status(Response.Status.METHOD_NOT_ALLOWED)
+							.entity(bundle.getString("upload.failed")).build());
 				}
-				logger.info("Sample analysis completed for session "+sessionId+".");
-				if(!asyncResponse.isCancelled()) {
+				logger.info("Sample analysis completed for session " + sessionId + ".");
+				if (!asyncResponse.isCancelled()) {
 					asyncResponse.resume(Response.status(Response.Status.ACCEPTED).entity(jArray.toString()).build());
 				}
 			}
@@ -806,18 +800,18 @@ public class SchemaWizardController implements ISchemaWizardController {
 		response = dataService.validatePythonScript(interpretationId);
 		logger.debug("");
 		logger.debug("Status code: " + response.getStatus());
-		//		 logger.debug(response.toString());
-		//		 logger.debug("entity");
-		//		 logger.debug(response.getEntity().toString());
+		// logger.debug(response.toString());
+		// logger.debug("entity");
+		// logger.debug(response.getEntity().toString());
 		JSONObject entity = new JSONObject(response.getEntity().toString());
-		//		 logger.debug("entity");
-		//		 logger.debug(entity);
+		// logger.debug("entity");
+		// logger.debug(entity);
 		JSONArray annotations = new JSONArray(entity.get("returnValue").toString());
-		//		 logger.debug("annotations");
-		//		 logger.debug(annotations);
+		// logger.debug("annotations");
+		// logger.debug(annotations);
 		JSONObject jObject = new JSONObject();
 		jObject.put("annotations", annotations);
-		//		 logger.debug("");
+		// logger.debug("");
 		logger.debug("annotations: " + jObject.toString());
 		response = Response.status(response.getStatus()).entity(jObject.toString()).build();
 		return response;
@@ -878,7 +872,35 @@ public class SchemaWizardController implements ISchemaWizardController {
 		logger.debug(jObject.toString());
 		logger.debug("");
 		jObject.put("SchemaWizard", "Up");
+		jObject.put("Secure", false);
 		return jObject.toString();
 	} // test
 
+	@GET
+	@Path("/health")
+	public String health() {
+		return dataService.healthCheck();
+	} // test
+
+	/**
+	 * Upload a Schema Wizard Export and print the contents to the console
+	 *
+	 * @param request
+	 */
+	@POST
+	@Path("/uploadExport")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public Response uploadExport(@Context final HttpServletRequest request) {
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
+			String sCurrentLine;
+			while ((sCurrentLine = br.readLine()) != null) {
+				logger.info(sCurrentLine);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
 } // SchemaWizardController

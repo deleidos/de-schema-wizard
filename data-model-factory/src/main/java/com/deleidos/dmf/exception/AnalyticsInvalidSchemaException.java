@@ -1,5 +1,10 @@
 package com.deleidos.dmf.exception;
 
+/**
+ * Exception denoting a programming error processing a schema.
+ * @author leegc
+ *
+ */
 public class AnalyticsInvalidSchemaException extends Exception {
 
 	public AnalyticsInvalidSchemaException() {

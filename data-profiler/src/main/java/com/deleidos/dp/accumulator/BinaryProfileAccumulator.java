@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.apache.log4j.Logger;
 
@@ -16,7 +17,12 @@ import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractBucket;
 import com.deleidos.dp.histogram.ByteBucketList;
 
-public class BinaryProfileAccumulator extends AbstractProfileAccumulator {
+/**
+ * Accumulator for binary profiles.
+ * @author leegc
+ *
+ */
+public class BinaryProfileAccumulator extends AbstractProfileAccumulator<ByteBuffer> {
 	private static final Logger logger = Logger.getLogger(BinaryProfileAccumulator.class);
 	private MessageDigest messageDigest;
 	protected ByteBucketList byteHistogram;
@@ -75,17 +81,46 @@ public class BinaryProfileAccumulator extends AbstractProfileAccumulator {
 	}
 
 	@Override
-	protected AbstractProfileAccumulator initializeForSecondPassAccumulation(Profile profile) {
+	protected BinaryProfileAccumulator initializeForSecondPassAccumulation(Profile profile) {
 		this.setBinaryDetail(Profile.getBinaryDetail(profile));
 		byteHistogram = new ByteBucketList();
 		return this;
 	}
 
+	@Override
+	protected BinaryProfileAccumulator initializeForSchemaAccumulation(Profile schemaProfile, int recordsInSchema, List<Profile> sampleProfiles) throws MainTypeException {
+		byteHistogram = new ByteBucketList();
+		return this;
+	}
 
-	protected AbstractProfileAccumulator initializeFirstValue(Stage stage, Object value) throws MainTypeException {
-		if(!(value instanceof ByteBuffer)) {
-			throw new MainTypeException("Incorrect binary data type.");
+	@Override
+	protected Profile finish(Stage accumulationStage) {
+
+		if(accumulationStage.equals(Stage.SAMPLE_FIRST_PASS) 
+				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
+			getBinaryDetail().setHash(String.valueOf(messageDigest.digest()));
+		} 
+		if(accumulationStage.equals(Stage.SAMPLE_SECOND_PASS) 
+				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
+			double entropy = 0;
+			List<AbstractBucket> buckets = byteHistogram.getOrderedBuckets();
+			for(AbstractBucket bucket : buckets) {
+				// all bucket widths are 1, so no need to divide by width
+				double p = bucket.getCount().doubleValue()/getBinaryDetail().getLength().doubleValue();
+				if(Double.doubleToRawLongBits(p) > 0) {
+					entropy += -p*(Math.log(p)/Math.log(2));
+				}
+			}			
+			profile.getDetail().setNumDistinctValues(String.valueOf(byteHistogram.getBucketList().size()));
+			getBinaryDetail().setByteHistogram(byteHistogram.finish());
+			getBinaryDetail().setEntropy(entropy);
 		}
+		return profile;
+	}
+
+	@Override
+	protected BinaryProfileAccumulator initializeFirstValue(Stage stage, ByteBuffer value)
+			throws MainTypeException {
 		if(stage.equals(Stage.SCHEMA_AWAITING_FIRST_VALUE)) {
 			byteHistogram.putValue(value);
 		}
@@ -93,15 +128,9 @@ public class BinaryProfileAccumulator extends AbstractProfileAccumulator {
 	}
 
 	@Override
-	protected AbstractProfileAccumulator initializeForSchemaAccumulation(Profile schemaProfile, int recordsInSchema, List<Profile> sampleProfiles) throws MainTypeException {
-		byteHistogram = new ByteBucketList();
-		return this;
-	}
-
-	@Override
-	protected Profile accumulate(Stage accumulationStage, Object value) throws MainTypeException {
+	protected void accumulate(Stage accumulationStage, ByteBuffer value) throws MainTypeException {
 		switch(accumulationStage) {
-		case UNITIALIZED: throw new MainTypeException("Accumulator called but has not been initialized.");
+		case UNINITIALIZED: throw new MainTypeException("Accumulator called but has not been initialized.");
 		case SAMPLE_AWAITING_FIRST_VALUE: { 
 			break;
 		}
@@ -128,35 +157,11 @@ public class BinaryProfileAccumulator extends AbstractProfileAccumulator {
 		}
 		default: throw new MainTypeException("Accumulator stuck in unknown stage.");
 		}
-		return profile;
 	}
 
 	@Override
-	protected Profile finish(Stage accumulationStage) {
-		if(this.getState().getPresence() < 0) {
-			return profile;
-		}
-
-		if(accumulationStage.equals(Stage.SAMPLE_FIRST_PASS) 
-				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
-			getBinaryDetail().setHash(String.valueOf(messageDigest.digest()));
-		} 
-		if(accumulationStage.equals(Stage.SAMPLE_SECOND_PASS) 
-				|| accumulationStage.equals(Stage.SCHEMA_PASS)) {
-			double entropy = 0;
-			List<AbstractBucket> buckets = byteHistogram.getOrderedBuckets();
-			for(AbstractBucket bucket : buckets) {
-				// all bucket widths are 1, so no need to divide by width
-				double p = bucket.getCount().doubleValue()/getBinaryDetail().getLength().doubleValue();
-				if(Double.doubleToRawLongBits(p) > 0) {
-					entropy += -p*(Math.log(p)/Math.log(2));
-				}
-			}			
-			profile.getDetail().setNumDistinctValues(String.valueOf(byteHistogram.getBucketList().size()));
-			getBinaryDetail().setByteHistogram(byteHistogram.asBean());
-			getBinaryDetail().setEntropy(entropy);
-		}
-		return profile;
+	protected ByteBuffer createAppropriateObject(Object object) throws MainTypeException {
+		return MainType.BINARY.createBinary(object);
 	}
 
 }

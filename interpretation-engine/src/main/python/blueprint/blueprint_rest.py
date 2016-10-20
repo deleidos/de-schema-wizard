@@ -41,16 +41,39 @@ def test():
     current_app.logger.debug(output)
     return output
 
+@bp.route('/testMongo', methods=['GET'])
+def testMongo():
+    """Tests to see if the MongoDB is alive
+    
+    returns a boolean
+    """
+    try:
+        # If all of the connections are busy, an exception may be incorrectly thrown here
+        # TODO catch waitqueue exception and set kwarg to waitQueueTimeoutMS=20000
+        health_test_client = MongoClient(TCP_ADDR, TCP_PORT, socketTimeoutMS=1000, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
+        health_test_client.server_info()
+        health_test_client.close()
+        return ("Health check passed. MongoDB and IE are functional."), status.HTTP_200_OK
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
+
 @bp.route('/', methods=['GET'])
 def display_info():
     """Return all domains in the domain collection
     
     Default action for the root URL
     """
-    current_app.logger.info("Test get_domain call received.")    
-    output = bpc.display_info(_get_domain_collection())
-    current_app.logger.debug(output)
-    return output
+    try:
+        current_app.logger.info("Test get_domain call received.")    
+        output = bpc.display_info(_get_domain_collection())
+        current_app.logger.debug(output)
+        return output
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/create/domain', methods=['POST'])
 def create_domain():
@@ -59,19 +82,24 @@ def create_domain():
     
     Creates a domain object in the domain collection
     """
-    current_app.logger.info("Received create domain request.")
-    if request.headers['Content-Type'] == 'application/json':
-        current_app.logger.debug("Content type is application/json")
-        domain_object = request.json
-        current_app.logger.debug("domain_object: " , domain_object)
-        output = bpc.create_domain(_get_domain_collection(), domain_object)
-        current_app.logger.debug(output)
-        
-        
-        if output == "-1":
-            return output, status.HTTP_403_FORBIDDEN  
-        else:
-            return output, status.HTTP_201_CREATED
+    try: 
+        current_app.logger.info("Received create domain request.")
+        if request.headers['Content-Type'] == 'application/json':
+            current_app.logger.debug("Content type is application/json")
+            domain_object = request.json
+            current_app.logger.debug("domain_object: " , domain_object)
+            output = bpc.create_domain(_get_domain_collection(), domain_object)
+            current_app.logger.debug(output)
+            
+            
+            if output == "-1":
+                return output, status.HTTP_403_FORBIDDEN  
+            else:
+                return output, status.HTTP_201_CREATED
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
     
 @bp.route('/create/interpretation', methods=['POST'])
 def create_interpretation():
@@ -80,18 +108,23 @@ def create_interpretation():
     
     Creates an interpretation object in the interpretation collection
     """
-    current_app.logger.info("Retrieving create interpretation request.")
-    if request.headers['Content-Type'] == 'application/json':
-        current_app.logger.debug("Content type is application/json")
-        interpretation_object = request.json
-        current_app.logger.debug("interpretation_object: " , interpretation_object)
-        output = bpc.create_interpretation(_get_interpretation_collection(), interpretation_object)
-        current_app.logger.debug(output)
-        
-        if output == "-1":
-            return output, status.HTTP_403_FORBIDDEN
-        else:
-            return output, status.HTTP_201_CREATED
+    try:
+        current_app.logger.info("Retrieving create interpretation request.")
+        if request.headers['Content-Type'] == 'application/json':
+            current_app.logger.debug("Content type is application/json")
+            interpretation_object = request.json
+            current_app.logger.debug("interpretation_object: " , interpretation_object)
+            output = bpc.create_interpretation(_get_interpretation_collection(), interpretation_object)
+            current_app.logger.debug(output)
+            
+            if output == "-1":
+                return output, status.HTTP_403_FORBIDDEN
+            else:
+                return output, status.HTTP_201_CREATED
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
         
 @bp.route('/domains', methods=['GET'])
 def get_domains_catalog():
@@ -99,11 +132,16 @@ def get_domains_catalog():
     
     Gets all of the domains
     """
-    current_app.logger.info("Retrieving domain catalog.")
-    output = bpc.get_domain_catalog(_get_domain_collection())
-    current_app.logger.debug(output)
-    
-    return Response(output, status=200, mimetype='application/json')
+    try:
+        current_app.logger.info("Retrieving domain catalog.")
+        output = bpc.get_domain_catalog(_get_domain_collection())
+        current_app.logger.debug(output)
+        
+        return Response(output, status=200, mimetype='application/json')
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/interpretations', methods=['GET'])
 def get_interpretations_catalog():
@@ -111,11 +149,16 @@ def get_interpretations_catalog():
     
     Gets all of the interpretations
     """
-    current_app.logger.info("Retrieving interpretation catalog.")
-    output = bpc.get_interpretation_catalog(_get_interpretation_collection())
-    current_app.logger.debug(output)
-   
-    return Response(output, status=200, mimetype='application/json')
+    try:
+        current_app.logger.info("Retrieving interpretation catalog.")
+        output = bpc.get_interpretation_catalog(_get_interpretation_collection())
+        current_app.logger.debug(output)
+       
+        return Response(output, status=200, mimetype='application/json')
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/domain/<domain_guid>', methods=['GET'])
 def get_domain_interpretations(domain_guid):
@@ -123,12 +166,17 @@ def get_domain_interpretations(domain_guid):
     
     Gets all interpretations associated with a given domain_guid
     """
-    current_app.logger.info("Retrieving interpretations for domain.")
-    current_app.logger.debug("domain_guid: " + domain_guid)
-    output = bpc.get_interpretations_by_domain(_get_interpretation_collection(), domain_guid)
-    current_app.logger.debug(output)
-    
-    return Response(output, status=200, mimetype='application/json')
+    try:
+        current_app.logger.info("Retrieving interpretations for domain.")
+        current_app.logger.debug("domain_guid: " + domain_guid)
+        output = bpc.get_interpretations_by_domain(_get_interpretation_collection(), domain_guid)
+        current_app.logger.debug(output)
+        
+        return Response(output, status=200, mimetype='application/json')
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/interpretation/<interpretation_guid>', methods=['GET'])
 def get_interpretation(interpretation_guid):
@@ -136,12 +184,17 @@ def get_interpretation(interpretation_guid):
     
     Gets a lone interpretation from the interpretation collection
     """
-    current_app.logger.info("Retrieving read interpretation request.")
-    current_app.logger.debug("interpretation_guid: " + interpretation_guid)
-    output = bpc.get_interpretation_by_guid(_get_interpretation_collection(), interpretation_guid)
-    current_app.logger.debug(output)
-   
-    return Response(output, status=200, mimetype='application/json')
+    try:
+        current_app.logger.info("Retrieving read interpretation request.")
+        current_app.logger.debug("interpretation_guid: " + interpretation_guid)
+        output = bpc.get_interpretation_by_guid(_get_interpretation_collection(), interpretation_guid)
+        current_app.logger.debug(output)
+       
+        return Response(output, status=200, mimetype='application/json')
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/update/domain', methods=['POST'])
 def update_domain():
@@ -149,13 +202,62 @@ def update_domain():
     
     Updates a domain object from the domain collection
     """
-    current_app.logger.info("Received update domain request.")
-    current_app.logger.debug("Retrieving update domain request.")
-    if request.headers['Content-Type'] == 'application/json':
-        current_app.logger.debug("Content type is application/json")
-        domain_object = request.json
-        current_app.logger.debug("domain_object: " , domain_object)
-        output = bpc.update_domain(_get_domain_collection(), domain_object)
+    try:
+        current_app.logger.info("Received update domain request.")
+        current_app.logger.debug("Retrieving update domain request.")
+        if request.headers['Content-Type'] == 'application/json':
+            current_app.logger.debug("Content type is application/json")
+            domain_object = request.json
+            current_app.logger.debug("domain_object: " , domain_object)
+            output = bpc.update_domain(_get_domain_collection(), domain_object)
+            current_app.logger.debug(output)
+            
+            if output == 1:
+                return str(output), status.HTTP_202_ACCEPTED
+            elif output > 1:
+                return str(output), status.HTTP_409_CONFLICT
+            else:
+                return str(output), status.HTTP_404_NOT_FOUND
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
+    
+@bp.route('/update/interpretation', methods=['POST'])
+def update_interpretation():
+    """Return the modified count of objects
+    
+    Updates an interpretation from the interpretation collection
+    """
+    try:
+        current_app.logger.info("Received update interpretation request.")
+        if request.headers['Content-Type'] == 'application/json':
+            current_app.logger.debug("Content type is application/json")
+            interpretation_object = request.json
+            current_app.logger.debug("interpretation_object: " , interpretation_object)
+            output = bpc.update_interpretation(_get_interpretation_collection(), interpretation_object)
+            current_app.logger.debug(output)
+            
+        if output == 1:
+            return str(output), status.HTTP_202_ACCEPTED
+        elif output > 1:
+            return str(output), status.HTTP_409_CONFLICT
+        else:
+            return str(output), status.HTTP_404_NOT_FOUND
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
+
+@bp.route('/delete/domain/<domain_guid>', methods=['DELETE'])
+def delete_domain(domain_guid):
+    """Return the deleted count
+
+    Deletes a domain from the domain collection
+    """
+    try:
+        current_app.logger.info("Retrieving delete domain request.")
+        output = bpc.delete_domain(_get_domain_collection(), _get_interpretation_collection(), domain_guid)
         current_app.logger.debug(output)
         
         if output == 1:
@@ -164,44 +266,10 @@ def update_domain():
             return str(output), status.HTTP_409_CONFLICT
         else:
             return str(output), status.HTTP_404_NOT_FOUND
-    
-@bp.route('/update/interpretation', methods=['POST'])
-def update_interpretation():
-    """Return the modified count of objects
-    
-    Updates an interpretation from the interpretation collection
-    """
-    current_app.logger.info("Received update interpretation request.")
-    if request.headers['Content-Type'] == 'application/json':
-        current_app.logger.debug("Content type is application/json")
-        interpretation_object = request.json
-        current_app.logger.debug("interpretation_object: " , interpretation_object)
-        output = bpc.update_interpretation(_get_interpretation_collection(), interpretation_object)
-        current_app.logger.debug(output)
-        
-    if output == 1:
-        return str(output), status.HTTP_202_ACCEPTED
-    elif output > 1:
-        return str(output), status.HTTP_409_CONFLICT
-    else:
-        return str(output), status.HTTP_404_NOT_FOUND
-
-@bp.route('/delete/domain/<domain_guid>', methods=['DELETE'])
-def delete_domain(domain_guid):
-    """Return the deleted count
-
-    Deletes a domain from the domain collection
-    """
-    current_app.logger.info("Retrieving delete domain request.")
-    output = bpc.delete_domain(_get_domain_collection(), _get_interpretation_collection(), domain_guid)
-    current_app.logger.debug(output)
-    
-    if output == 1:
-        return str(output), status.HTTP_202_ACCEPTED
-    elif output > 1:
-        return str(output), status.HTTP_409_CONFLICT
-    else:
-        return str(output), status.HTTP_404_NOT_FOUND
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
     
 @bp.route('/delete/interpretation/<interpretation_guid>', methods=['DELETE'])
 def delete_interpretation(interpretation_guid):
@@ -209,16 +277,21 @@ def delete_interpretation(interpretation_guid):
     
     Deletes an interpretation from the interpretation collection
     """
-    current_app.logger.info("Retrieving delete interpretation request.")
-    output = bpc.delete_interpretation(_get_interpretation_collection(), interpretation_guid)
-    current_app.logger.debug(output)
-    
-    if output == 1:
-        return str(output), status.HTTP_202_ACCEPTED
-    elif output > 1:
-        return str(output), status.HTTP_409_CONFLICT
-    else:
-        return str(output), status.HTTP_404_NOT_FOUND
+    try:
+        current_app.logger.info("Retrieving delete interpretation request.")
+        output = bpc.delete_interpretation(_get_interpretation_collection(), interpretation_guid)
+        current_app.logger.debug(output)
+        
+        if output == 1:
+            return str(output), status.HTTP_202_ACCEPTED
+        elif output > 1:
+            return str(output), status.HTTP_409_CONFLICT
+        else:
+            return str(output), status.HTTP_404_NOT_FOUND
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
 
 @bp.route('/interpret', methods = ['POST'])
 def run_interpretation_engine():
@@ -249,8 +322,9 @@ def run_interpretation_engine():
             current_app.logger.error("Error: Content-Type json not received.")
             return None
     except Exception as exc:
-        current_app.logger.exception(exc)
-        return None
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
     
 @bp.route('/reversegeo', methods = ['POST'])
 def run_reverse_geo_batch():
@@ -258,17 +332,22 @@ def run_reverse_geo_batch():
     
     Runs the reverse geo service on a series of coordinates
     """
-    if request.headers['Content-Type'] == 'application/json':
-        if 'coordinates' not in request.json:
-            current_app.logger.error("Error: Undefined content received (no \'coordinates\' key).")
-            return None
-        num_Coordinates = len(request.json['coordinates'])
-        current_app.logger.debug("Received " + str(num_Coordinates) + " reverse geocoding requests.")
-        geo_data = bpc.reverse_geo_batch(_get_reverse_geo_collection(), request.json['coordinates'])
-        return Response(geo_data, status=200, mimetype='application/json')
-    else:
-        current_app.logger.error("Error: Content-Type json not received.")
-        return Response("Bad Request", status=403, mimetype='text/html')
+    try:
+        if request.headers['Content-Type'] == 'application/json':
+            if 'coordinates' not in request.json:
+                current_app.logger.error("Error: Undefined content received (no \'coordinates\' key).")
+                return None
+            num_Coordinates = len(request.json['coordinates'])
+            current_app.logger.debug("Received " + str(num_Coordinates) + " reverse geocoding requests.")
+            geo_data = bpc.reverse_geo_batch(_get_reverse_geo_collection(), request.json['coordinates'])
+            return Response(geo_data, status=200, mimetype='application/json')
+        else:
+            current_app.logger.error("Error: Content-Type json not received.")
+            return Response("Bad Request", status=403, mimetype='text/html')
+    except Exception as exc:
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
     
 @bp.route('/validatePythonScript', methods = ['POST'])
 def validate_script():
@@ -301,8 +380,9 @@ def validate_script():
         else:
             return "Request header must be application/json.", status.HTTP_400_BAD_REQUEST
     except Exception as exc:
-        current_app.logger.exception(exc)
-        return None
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
    
 @bp.route('/testPythonScript', methods = ['POST'])
 def test_script():
@@ -342,9 +422,10 @@ def test_script():
         else:
             return "Request header must be application/json.", status.HTTP_400_BAD_REQUEST, {'Content-Type': 'text/plain; charset=utf-8'}
     except Exception as exc:
-        current_app.logger.exception(exc)
-        return None
-
+        current_app.logger.error("Unable to reach MongoDB.")
+        current_app.logger.error(exc)
+        return ("Unable to reach MongoDB"), status.HTTP_503_SERVICE_UNAVAILABLE
+    
 def _get_domain_collection():
     """Essentially a connection to the domains collection"""
     return client[domain_db_name]['domains']

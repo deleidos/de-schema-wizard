@@ -8,11 +8,20 @@
 	</welcome-file-list>
 
 	<servlet>
-		<!-- the main page, 'index.html' is served via the default servlet it loads
-			the static resources (css, js, images) we do not want any of the static resources
+		<!-- the main page, 'index.html' is served via the default servlet it loads 
+			the static resources (css, js, images) we do not want any of the static resources 
 			to be cached -->
-		<servlet-name>Jetty Default Servlet</servlet-name>
-		<servlet-class>org.eclipse.jetty.servlet.DefaultServlet</servlet-class>
+
+		<!-- <servlet-name>Jetty Default Servlet</servlet-name> -->
+		<!-- <servlet-class>org.eclipse.jetty.servlet.DefaultServlet</servlet-class> -->
+		<!-- <init-param> -->
+		<!-- <param-name>cacheControl</param-name> -->
+		<!-- <param-value>no-store,no-cache,must-revalidate</param-value> -->
+		<!-- </init-param> -->
+		<!-- <load-on-startup>1</load-on-startup> -->
+
+		<servlet-name>Schema Wizard Servlet</servlet-name>
+		<servlet-class>com.deleidos.sw.servlet.SchemaWizardServlet</servlet-class>
 		<init-param>
 			<param-name>cacheControl</param-name>
 			<param-value>no-store,no-cache,must-revalidate</param-value>
@@ -26,44 +35,63 @@
 			<param-name>javax.ws.rs.Application</param-name>
 			<param-value>com.deleidos.sw.SchemaWizardApplication</param-value>
 		</init-param>
-        <init-param>
-            <param-name>cacheControl</param-name>
-            <param-value>no-store,no-cache,must-revalidate</param-value>
-        </init-param>
-        <async-supported>true</async-supported>
+		<init-param>
+			<param-name>cacheControl</param-name>
+			<param-value>no-store,no-cache,must-revalidate</param-value>
+		</init-param>
+		<async-supported>true</async-supported>
 		<load-on-startup>2</load-on-startup>
 	</servlet>
-    <servlet>
-        <servlet-name>WebSocketServlet</servlet-name>
-        <servlet-class>com.deleidos.analytics.websocket.WebSocketServlet</servlet-class>
-        <load-on-startup>3</load-on-startup>
-    </servlet>
-    <servlet>
-        <servlet-name>HelpRedirect</servlet-name>
-        <servlet-class>com.deleidos.sw.HelpRedirect</servlet-class>
-        <load-on-startup>4</load-on-startup>
-    </servlet>
+	<servlet>
+		<servlet-name>WebSocketServlet</servlet-name>
+		<servlet-class>com.deleidos.analytics.websocket.WebSocketServlet</servlet-class>
+		<load-on-startup>3</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>HelpRedirect</servlet-name>
+		<servlet-class>com.deleidos.sw.HelpRedirect</servlet-class>
+		<load-on-startup>4</load-on-startup>
+	</servlet>
 
-    <servlet-mapping>
-        <servlet-name>Jetty Default Servlet</servlet-name>
-        <url-pattern>/index.html</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>Jersey Web Application</servlet-name>
-        <url-pattern>/rest/*</url-pattern>
-    </servlet-mapping>
+	<servlet-mapping>
+		<!-- <servlet-name>Jetty Default Servlet</servlet-name> -->
+		<servlet-name>Schema Wizard Servlet</servlet-name>
+		<url-pattern>/index.html</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Jersey Web Application</servlet-name>
+		<url-pattern>/rest/*</url-pattern>
+	</servlet-mapping>
 	<servlet-mapping>
 		<servlet-name>Jersey Web Application</servlet-name>
 		<url-pattern>/services/*</url-pattern>
 	</servlet-mapping>
 	<servlet-mapping>
 		<servlet-name>WebSocketServlet</servlet-name>
-        <url-pattern>/analytics/*</url-pattern>
+		<url-pattern>/analytics/*</url-pattern>
 	</servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>HelpRedirect</servlet-name>
-        <url-pattern>/help</url-pattern>
-    </servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>HelpRedirect</servlet-name>
+		<url-pattern>/help</url-pattern>
+	</servlet-mapping>
+
+	<listener>
+		<listener-class>org.apache.shiro.web.env.EnvironmentLoaderListener</listener-class>
+	</listener>
+	<filter>
+		<filter-name>ShiroFilter</filter-name>
+		<filter-class>org.apache.shiro.web.servlet.ShiroFilter</filter-class>
+		<async-supported>true</async-supported>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>ShiroFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+		<dispatcher>REQUEST</dispatcher>
+		<dispatcher>FORWARD</dispatcher>
+		<dispatcher>INCLUDE</dispatcher>
+		<dispatcher>ERROR</dispatcher>
+	</filter-mapping>
 
 	<filter>
 		<filter-name>cross-origin</filter-name>
@@ -80,12 +108,29 @@
 			<param-name>allowedHeaders</param-name>
 			<param-value>*</param-value>
 		</init-param>
-        <async-supported>true</async-supported>
+		<async-supported>true</async-supported>
 	</filter>
+
 	<filter-mapping>
 		<filter-name>cross-origin</filter-name>
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
-</web-app>
+	<!-- Redirection to secure port -->
+	<!-- Only use if Jetty is configured for SSL -->
+	<!-- <security-constraint> <web-resource-collection> <web-resource-name>Secure 
+		resources</web-resource-name> <url-pattern>/*</url-pattern> </web-resource-collection> 
+		<user-data-constraint> <transport-guarantee>CONFIDENTIAL</transport-guarantee> 
+		</user-data-constraint> </security-constraint> -->
 
+	<session-config>
+		<!-- web.xml expects the session timeout in minutes. -->
+		<session-timeout>60</session-timeout>
+	</session-config>
+	
+<!-- 	this should be implemented in the future -->
+<!-- 	<error-page> -->
+<!-- 		<error-code>404</error-code> -->
+<!-- 		<location>/page-not-found.html</location> -->
+<!-- 	</error-page> -->
+</web-app>

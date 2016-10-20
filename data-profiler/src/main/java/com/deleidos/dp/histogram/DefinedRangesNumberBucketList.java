@@ -14,6 +14,12 @@ import com.deleidos.dp.beans.Histogram;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 
+/**
+ * Bucket list that will create "pretty" bucket labels for ranged values.  Must be given min and max.  Class should
+ * not be instantiated directly.  Use AbstractNumberBucketList methods.
+ * @author leegc
+ *
+ */
 public class DefinedRangesNumberBucketList extends AbstractNumberBucketList {
 	private static final Logger logger = Logger.getLogger(DefinedRangesNumberBucketList.class);
 	public static final MathContext HISTOGRAM_CONTEXT = MathContext.DECIMAL32;

@@ -9,14 +9,17 @@ body {
     background-image: url(../img/linen.png);
 }
 
+:focus, :focus .active {
+    outline: 1px solid rgb(97,34,115) !important;
+}
+
 .banner {
     width: 100%;
     height: 37px;
     color: white;
     padding-left: 10px;
     padding-top: 6px;
-    background-image: url(../img/banner-background.png);
-    background-repeat: repeat-x;
+    background: rgb(135,39,136)  url(../img/banner-background-leidos.png) no-repeat;
     text-shadow: 1px 0px 3px rgb(0, 0, 64);
 }
 
@@ -46,7 +49,7 @@ body {
     padding: 0px;
     padding-top: 2px;
     color: white;
-    background-color: rgb(64, 125, 169);
+    background-color:  rgb(97, 34, 115);
     font-size: 10px;
     font-family: 'MS Reference Sans Serif', sans-serif;
     text-align: center;
@@ -59,7 +62,7 @@ body {
     width: 100%;
     height: 100%;
     padding-top: 100px;
-    background-image: url(../img/waterfall.png);
+    background-image: url(../img/dataswirl.jpg);
     background-size: cover;
 }
 
@@ -69,7 +72,7 @@ body {
     margin: 0 auto;
     padding-top: 100px;
     background-image: url(../img/sw-about-animated.gif);
-    border: 5px ridge rgb(140, 200, 245);
+    border: 5px ridge rgb(194,56,194);
     z-index: 999;
 }
 
@@ -102,7 +105,7 @@ body {
     padding: 20px;
     background-color: white;
     font-size: 10pt;
-    border: 5px ridge rgb(140, 200, 245);
+    border: 5px ridge rgb(194,56,194);
 }
 
 #popupPage {
@@ -123,7 +126,7 @@ body {
     padding: 20px;
     background-color: white;
     font-size: 10pt;
-    border: 5px ridge rgb(140, 200, 245);
+    border: 5px ridge rgb(194,56,194);
 }
 
 .full-size {
@@ -136,7 +139,8 @@ body {
 
 .btn, .btn-xs, .btn-primary {
     color: white;
-    background-color: rgb(44, 125, 180) !important;
+    background-color: rgb(135, 39, 136) !important;
+    border: thin solid rgb(97, 34, 115);
 }
 
 #banner .btn, #banner .btn-primary {
@@ -157,7 +161,7 @@ body {
     color: white;
     font-style: italic;
     background-color: rgb(100, 100, 100) !important;
-    border: thin solid rgb(64, 125, 169);
+    border: thin solid rgb(97, 34, 115);
 }
 
 .btn-graphic-only {
@@ -175,7 +179,7 @@ body {
 
 .btn-graphic-plus-text:hover {
     color: white;
-    border-color: rgb(64, 125, 169);
+    border-color: rgb(97,34,115);
 }
 
 .btn-property {
@@ -242,21 +246,21 @@ body {
 .tab-headers ul {
     float: left;
     border-radius: 5px;
-    border: solid 1px rgb(64, 125, 169);
+    border: solid 1px rgb(135,39,136);
     padding: 7px 11px;
     background-color: rgb(255, 255, 255);
 }
 
 .tab-headers li {
     float: left;
-    background-color: rgb(44, 125, 180);
+    background-color: rgb(135,39,136);
     padding: 5px 19px;
     margin: 0px 2px 0px 0px;
     list-style: none;
 }
 
 .tab-headers li:hover, li:hover a {
-    background-color: rgb(100, 160, 205);
+    background-color: rgb(194,56,194);
     color: white !important;
 }
 
@@ -281,9 +285,9 @@ body {
 .tab-headers .active {
     height: 30px;
     background-color: rgb(255, 255, 255);
-    border-top: thin solid rgb(140, 200, 245);
-    border-left: thin solid rgb(140, 200, 245);
-    border-right: thin solid rgb(64, 125, 169);
+    border-top: thin solid rgb(194,56,194);
+    border-left: thin solid rgb(194,56,194);
+    border-right: thin solid rgb(97,34,115);
     border-bottom: thick solid white;
 }
 
@@ -292,18 +296,17 @@ body {
 }
 
 .tab-headers .active:hover {
-    border-bottom: thick solid rgb(100, 160, 205);
+    border-bottom: thick solid rgb(194,56,194);
 }
 
 .panel-primary {
     margin: 0px;
     background-color: white;
-    border: thin solid rgb(64, 125, 169);
+    border: thin solid rgb(97,34,115);
     border-radius: 5px;
 }
 
 .modal-dialog {
-    /* override bootstrap top position */
     margin: 200px auto;
     width: 350px;
 }
@@ -312,20 +315,17 @@ body {
     overflow-y: hidden;
 }
 
-.modal-open .modal {
-    overflow-x: hidden;
-    overflow-y: hidden;
-}
-
 .modal-header, .close {
     width: 100%;
     height: 35px;
-    color: white;
+    border-radius: 4px;
     padding-left: 10px;
-    padding-top: 0px;
+    padding-top: 4px;
     font-style: normal;
     font-size: 11pt;
     font-family: 'Cambria', Cambria, sans-serif;
+    color: white;
+    background-color: rgb(97,34,115);
     background: url(../img/popup-banner-background.png) repeat-x;
 }
 
@@ -334,9 +334,14 @@ body {
 }
 
 .modal-footer {
-    background-color: rgb(109, 158, 192);
     padding-top: 4px;
     padding-bottom: 4px;
+    border-radius: 4px;
+    background-color: rgb(97,34,115);
+    background: -webkit-linear-gradient(left, #2a1856, #612273, #e8e8e8); /* For Safari 5.1 to 6.0 */
+    background: -o-linear-gradient(right, #2a1856, #612273, #e8e8e8); /* For Opera 11.1 to 12.0 */
+    background: -moz-linear-gradient(right, #2a1856, #612273, #e8e8e8); /* For Firefox 3.6 to 15 */
+    background: linear-gradient(to right, #2a1856, #612273, #e8e8e8); /* Standard syntax */
 }
 
 .modal-560 {
@@ -350,6 +355,18 @@ body {
 
 .modal-body-button {
     padding: 5px;
+}
+
+.stripe-even {
+    background-color: white;
+}
+
+.stripe-odd {
+    background-color: #f0f4ff;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f0f4ff;
 }
 
 .table {
@@ -418,7 +435,7 @@ fieldset {
 }
 
 .progress-bar {
-    background-color: rgb(44, 125, 180);
+    background-color: rgb(135, 39, 136);
     opacity: 1.0;
 }
 
@@ -441,7 +458,6 @@ fieldset {
 }
 
 .button-area > a {
-    padding: 1em 1.4em;
     font-size: .9em;
     margin: 1em;
     text-decoration: none;
@@ -480,14 +496,14 @@ select.ng-invalid {
 }
 
 .popover {
-    border: 2px outset rgb(109, 158, 192);
+    border: 2px outset rgb(97,34,115);
 }
 
 .popover-title {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
     color: white;
-    background-color: rgb(44, 125, 180);
+    background-color: rgb(135,39,136);
 }
 
 .popover-content.tour-step-content {
@@ -522,4 +538,47 @@ select.ng-invalid {
        white-space: normal;
     }
 }
+/*removes spinner for input - number*/
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.draggableList ul[dnd-list],
+.draggableList ul[dnd-list] > li {
+    position: relative;
+}
 
+.draggableList ul[dnd-list] {
+    min-height: 42px;
+    padding-left: 0px;
+    max-width: 700px;
+    max-height: 300px;
+}
+
+.draggableList ul[dnd-list] .dndDraggingSource {
+    display: none;
+}
+
+.draggableList ul[dnd-list] .dndPlaceholder {
+    display: block;
+    background-color: #ddd;
+    min-height: 42px;
+    max-width: 700px;
+    max-height: 165px;
+}
+
+.draggableList ul[dnd-list] li {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-top-right-radius: 4px;
+    border-top-left-radius: 4px;
+    display: block;
+    padding: 10px 15px;
+    margin-bottom: -1px;
+}
+
+.draggableList ul[dnd-list] li.selected {
+    background-color: #dff0d8;
+    color: #3c763d;
+}

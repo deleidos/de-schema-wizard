@@ -2,10 +2,10 @@ package com.deleidos.dmf.framework;
 
 import org.apache.log4j.Logger;
 
-import com.deleidos.dmf.analyzer.workflows.AbstractAnalyzerTestWorkflow;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.ProgressBarManager.ProgressBar;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.dmf.workflows.AbstractAnalyzerTestWorkflow;
 
 public class TestingWebSocketUtility extends SchemaWizardSessionUtility {
 	private static final Logger logger = Logger.getLogger(TestingWebSocketUtility.class);
@@ -39,7 +39,9 @@ public class TestingWebSocketUtility extends SchemaWizardSessionUtility {
 		}
 		
 		super.updateProgress(updater, AbstractAnalyzerTestWorkflow.testSessionId);
-		logger.debug("After " + numCalls + " calls to the fake progress bar, update sent as " + updateBean.getNumerator() + "/" + updateBean.getDenominator());
+		if (numCalls % 100 == 0) {
+			logger.debug("After " + numCalls + " calls to the fake progress bar, update sent as " + updateBean.getNumerator() + "/" + updateBean.getDenominator());
+		}
 		
 	}
 	

@@ -19,6 +19,11 @@ import com.deleidos.dp.beans.RowEntry;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.reversegeocoding.CoordinateProfile;
 
+/**
+ * Convenience class for merging a known set of RegionData together.
+ * @author leegc
+ *
+ */
 public class ReverseGeocodingLoader { 
 	private static final Logger logger = Logger.getLogger(ReverseGeocodingLoader.class);
 	//private boolean calledLoadOutput = false;

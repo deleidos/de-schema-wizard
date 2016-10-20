@@ -3,16 +3,16 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('wizardFinalizeCtrl',
-        function($rootScope, $scope, $resource, $location, $route, $routeParams, $log, schemaData, statusCodesFactory, $confirm) {
+        function($rootScope, $scope, $resource, $location, $route, $routeParams, schemaData, statusCodesFactory, $confirm) {
 
             schemaData.$promise.then(function (response) {
-                $log.debug("wizardFinalizeCtrl");
-                $log.debug(schemaData);
+                console.log("wizardFinalizeCtrl");
+                console.log(schemaData);
                 $rootScope.$broadcast("schemaUpdate", {
                     schema: schemaData
                 });
                 }, function (error) {
-                    $log.debug(error);
+                    console.log(error);
                     statusCodesFactory.get().$promise.then(function (response) {
                         $confirm(
                             {

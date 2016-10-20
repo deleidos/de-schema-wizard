@@ -5,20 +5,46 @@
     schemaWizardApp.constant("defaultInterpretationMatch", false);
     schemaWizardApp.controller('schemaWizardCtrl', ['$scope', '$rootScope', '$window',
         '$cookies', '$location', '$http', '$routeParams', '$uibModal', '$timeout',
-        '$interval', '$log', 'DomainInformation', 'Server', 'UploadParameters',
-        'matchConfidenceThreshold', 'defaultInterpretationMatch', 'myModals', '$confirm', '$sce', 'guidedTourStepFactory', '$q', 'uiTourService', 'statusCodesFactory',
+        '$interval', 'DomainInformation', 'Server', 'UploadParameters', 'version',
+        'matchConfidenceThreshold', 'defaultInterpretationMatch', 'myModals', '$confirm', '$sce',
+        'guidedTourStepFactory', '$q', 'uiTourService', 'statusCodesFactory', 'Globals', 'Utilities',
         function ($scope, $rootScope, $window, $cookies, $location, $http, $routeParams,
-                  $uibModal, $timeout, $interval, $log,
-                  DomainInformation, Server, UploadParameters,
-                  matchConfidenceThreshold, defaultInterpretationMatch, myModals, $confirm, $sce, guidedTourStepFactory, $q, TourService, statusCodesFactory) {
+                  $uibModal, $timeout, $interval,
+                  DomainInformation, Server, UploadParameters, version,
+                  matchConfidenceThreshold, defaultInterpretationMatch, myModals, $confirm, $sce,
+                  guidedTourStepFactory, $q, TourService, statusCodesFactory, Globals, Utilities) {
 
-            $scope.userid = "wizard-user";
+            $scope.userid = Globals.setDefaultUserId();
+            $scope.$on("userIdChanged", function (event, args) {
+                $scope.userid = args.userId;
+            }); // onUserIdChanged
+
+            $scope.logout =  function () {
+                var restURL =
+                    $location.protocol() + "://" +
+                    $location.host() + ":" +
+                    $location.port() +
+                    "/schwiz/rest/logout";
+                $http({
+                    method: 'POST',
+                    url: restURL
+                }).then(function successCallback(response) {
+                    console.log(response);
+                    Globals.setDefaultUserId();
+                    $scope.navigateTo("/login");
+                }, function errorCallback(response) {
+                    console.log(response)
+                });
+            }; // logout
+
+            $scope.fileIndex = -1;
 
             $scope.animationsEnabled = true;
             $scope.isCollapsed = true;
             $scope.modifySchemaMode = false;
             $scope.confidenceThreshold = matchConfidenceThreshold;
             $scope.interpretationMatch = defaultInterpretationMatch;
+            $scope.matchingFieldsUndoId = 99;
 
             $scope.initializeModels = function () {
                 $scope.model = {
@@ -46,7 +72,7 @@
                 $rootScope.tourInformation = response;
                 $scope.mainTour = $rootScope.tourInformation.mainTour;
                 $scope.inspectionTour = $rootScope.tourInformation.inspectSampleTour;
-                $scope.inspectDataSourceTour = $rootScope.tourInformation.inspectDataSourceTour;
+                $scope.matchFieldsTour = $rootScope.tourInformation.matchFieldsTour;
                 $scope.finalizeSchemaTour = $rootScope.tourInformation.finalizeSchemaTour;
                 console.log($rootScope.tourInformation)
             });
@@ -58,7 +84,6 @@
                     $cookies.put('schwiz.tours.interpretations', "visited");
                 }
             }
-
             //TODO: test
             $scope.fileIndex = -1;
 
@@ -84,13 +109,13 @@
                     var tableHeader = document.getElementById('customTableHeader');
                     tableHeader.style.position = "fixed";
                     $scope.hasBeenClicked = true;
-                    console.log($scope.hasBeenClicked)
+                    //console.log($scope.hasBeenClicked)
                 }
 
                 if ($scope.hasBeenClicked == true) {
                     var tableHeader = document.getElementById('customTableHeader');
                     tableHeader.style.position = "relative";
-                    console.log($scope.hasBeenClicked)
+                    //console.log($scope.hasBeenClicked)
                 }
             }; // transformTable
 
@@ -101,14 +126,12 @@
                     $scope.transformTable();
                     document.getElementById("resizePanelDiv").style.width = "100%";
                     document.getElementById("collapseImage").src = "assets/img/collapse-panel-16x16.png";
-
                 } else {
                     $scope.transformTable();
                     setTimeout(resizeOnMinimize, 300);
                     function resizeOnMinimize() {
                         document.getElementById('customTableHeader').style.position = "relative";
                     }
-
                     document.getElementById("resizePanelDiv").style.width = "";
                     document.getElementById("collapseImage").src = "assets/img/expand-panel-16x16.png";
                 }
@@ -126,15 +149,15 @@
             $scope.schemaTolerance = $location.search().tolerance;
             UploadParameters.setSchemaDomain($scope.schemaDomain);
             UploadParameters.setSchemaTolerance($scope.schemaTolerance);
-            //$log.debug("UploadParameters");
-            //$log.debug(UploadParameters.get());
+            //console.log("UploadParameters");
+            //console.log(UploadParameters.get());
 
-            $scope.path = "/startup";
+            $scope.path = "";
             $scope.resizeWizard = function () {
                 try {
-                    $log.debug("|" + $scope.path + "|");
+                    console.log("|" + $scope.path + "|");
                     if ($scope.path) {
-                        //$log.debug("window.innerWidth: " + window.innerWidth);
+                        //console.log("window.innerWidth: " + window.innerWidth);
                         var newViewHeight = (window.innerHeight
                             - document.getElementById("banner").style.height
                             - 20 /* footer */
@@ -190,7 +213,6 @@
                                     console.log(e.toString());
                                 }
                                 break;
-                            case "/startup":
                             case "/catalog":
                                 document.getElementById("catalogPanel").style.height =
                                     newViewHeight - 123 + "px";
@@ -261,7 +283,7 @@
                                 document.getElementById("wizardMatchFieldsContainer").style.height =
                                     newViewHeight - 107 + "px";
                                 document.getElementById("wizardMatchFieldsProfilesPanelBody").style.height =
-                                    newViewHeight - 193 + "px";
+                                    newViewHeight - 223 + "px";
                                 document.getElementById("wizardDetails1PanelBody").style.height =
                                     newViewHeight - 193 + "px";
                                 document.getElementById("wizardDetails2PanelBody").style.height =
@@ -310,6 +332,15 @@
                 }
             }; // resizeWizard
 
+            // logout if detecting a browser reload has occurred
+            angular.element($window).bind('load', function () {
+                var startupUrl = $location.absUrl();
+                startupUrl = startupUrl.slice(startupUrl.indexOf('#'));
+                if (startupUrl != "#/login") {
+                    $scope.logout();
+                }
+            }); // onOnLoad
+
             angular.element($window).bind('resize', function () {
                 $scope.resizeWizard();
             });
@@ -319,15 +350,15 @@
                 $scope.resizeWizard();
             });
             $scope.$on("resizeWizard", function (event, args) {
-                $log.debug("onResizeWizard delay: " + args.delay);
+                console.log("onResizeWizard delay: " + args.delay);
                 $timeout($scope.resizeWizard, args.delay);
             }); // onResizeWizard
             $scope.resizeWizard();
 
             $scope.previousDialog = "";
             $scope.navigateTo = function (path, param1, param2, param3) {
-                $log.debug("navigateTo: " + path);
-                $log.debug("parameters: " + param1 + ", " + param2 + ", " + param3);
+                console.log("navigateTo: " + path);
+                console.log("parameters: " + param1 + ", " + param2 + ", " + param3);
                 var fullPath = path;
                 (param1 ? fullPath += '/:' + param1 : fullPath);
                 (param2 ? fullPath += '/:' + param2 : fullPath);
@@ -338,7 +369,7 @@
                     document.getElementById('titleRef').style.pointerEvents = 'auto';
                     $rootScope.$broadcast("closeWebSocket", {});
                 }
-                if (path == "/wizardUploadSample" || "/startup") {
+                if (path == "/wizardUploadSample") {
                     $rootScope.tabNumber = 1;
                 }
                 if (path == "/sampleData") {
@@ -347,7 +378,7 @@
                 $timeout($scope.resizeWizard, 300);
             }; // navigateTo
             $scope.browseSchema = function (schema) {
-                //$log.debug("$scope.browseSchema: " + schema.sId);
+                //console.log("$scope.browseSchema: " + schema.sId);
                 $scope.navigateTo("/schema", schema.sId);
             }; // browseSchema
             $scope.browseSample = function (sample, rtnMethod, rtnParm) {
@@ -384,7 +415,7 @@
                     case "wizard-upload-samples-existing-schema":
                         $scope.modifySchemaMode = true;
                         $scope.schemaDomain = $scope.currentSchema.sDomainName;
-                        $log.debug("wizard-upload-samples-existing-schema $scope.currentSchema.sDomainName: " + $scope.currentSchema.sDomainName);
+                        console.log("wizard-upload-samples-existing-schema $scope.currentSchema.sDomainName: " + $scope.currentSchema.sDomainName);
                         $scope.wizardStateControl('wizard-upload-samples');
                         break;
                     case "wizard-upload-samples":
@@ -424,7 +455,7 @@
                                 $confirm({
                                         title: 'Schema Wizard does not support this file type',
                                         text: "Cannot determine the format of the data sample, or does not support: "
-                                        + $scope.sampleFiles[$scope.currentSampleIndex].name +
+                                        + $scope.sampleFiles[$scope.fileIndex].name +
                                         "\n\nPress OK to discard and proceed to the next data sample.",
                                         ok: 'OK'
                                     },
@@ -433,7 +464,6 @@
                                     $scope.model.dataSamples.splice($scope.currentSampleIndex, 1);
                                     // decrement the index since we just created a hole
                                     $scope.currentSampleIndex -= 1;
-                                    $scope.fileIndex -=1;
                                     $scope.wizardStateControl('wizard-inspect-samples');
                                 })
                             }
@@ -446,9 +476,8 @@
                             $scope.navigateTo("/wizardInspectSamples");
                             // broadcast to treeTableController (after waiting for it to become available in the dom)
                             $timeout(function () {
-                                    $rootScope.$broadcast("setCurrentSample", {
-                                    sample: $scope.currentSample
-                                })}, 500);
+                                        $rootScope.$broadcast("setCurrentSample", { sample: $scope.currentSample });
+                                    }, 500);
                         } else {
                             $scope.wizardStateControl("wizard-match-fields");
                             $scope.fileIndex = -1;
@@ -463,11 +492,11 @@
                         }
                         if ($scope.modifySchemaMode === true) {
                             $scope.addSchemaToModel();
-                            //$log.debug("$scope.model.properties");
-                            //$log.debug($scope.model.properties);
+                            //console.log("$scope.model.properties");
+                            //console.log($scope.model.properties);
                         }
-                        $log.debug("$scope.model.dataSamples");
-                        $log.debug($scope.model.dataSamples);
+                        console.log("$scope.model.dataSamples");
+                        console.log($scope.model.dataSamples);
                         // make a copy of data samples to preserve the originals
                         // repeatMatching() needs to start with the original copy each time it gets called
                         $scope.model.originalDataSamples = angular.copy($scope.model.dataSamples);
@@ -475,7 +504,7 @@
                         $scope.interpretationMatch = defaultInterpretationMatch;
                         $scope.addNewDataSamples($scope.model.dataSamples,
                                                  $scope.confidenceValues.selectedConfidenceValue,
-                                                 $scope.interpretationMatch);
+                                                $scope.interpretationMatch);
 
                         var foundDetailsToDisplay = false;
                         angular.forEach(Object.keys($scope.model.properties), function (property) {
@@ -486,9 +515,12 @@
                                 foundDetailsToDisplay = true;
                             }
                         });
+                        // reinitialize hidePanel
+                        $scope.hidePanel = false;
                         $scope.navigateTo("/wizardMatchFields");
                         break;
                     case "wizard-finalize-schema":
+                        $scope.hidePanel = false;
 
                         if ($cookies.get('schwiz.tours.finalizeSchema') !== "visited") {
                             $timeout(function () {
@@ -496,7 +528,7 @@
                             }, 2500);
                             $cookies.put('schwiz.tours.finalizeSchema', "visited");
                         }
-                        $log.debug("wizard-finalize-schema");
+                        console.log("wizard-finalize-schema");
 
                         // interate through linked data sources to get alias names
                         angular.forEach(Object.keys($scope.model.properties), function (property) {
@@ -512,7 +544,7 @@
                             })
                         });
                         // overwrite the original dataSamples with the possibly altered ones after matching
-                        $log.debug($scope.model.dataSamples);
+                        console.log($scope.model.dataSamples);
                         // open the websocket for progress bar updates
                         $rootScope.$broadcast("openWebSocket", {
                             sessionId: Server.getSessionId().sessionId
@@ -531,15 +563,15 @@
                           "existing-schema": ($scope.modifySchemaMode ? $scope.currentSchema : null),
                           "data-samples" :  $scope.model.dataSamples
                         };
-                        $log.debug(restURL);
+                        console.log(restURL);
                         $http({
                             method: 'POST',
                             url: restURL,
                             data: schemaAnalysisData
                         })
                         .success(function (data) {
-                            $log.debug("post uploadModifiedSamples success");
-                            $log.debug(data);
+                            console.log("post uploadModifiedSamples success");
+                            console.log(data);
                             $scope.currentSchema = data;
                             if ($scope.currentSchema.sVersion == null) {
                                 $scope.currentSchema.sVersion = "1.0";
@@ -564,8 +596,8 @@
                         $scope.navigateTo("/wizardSave");
                         break;
                     case "wizard-complete":
-                        $log.debug("wizard-complete");
-                        $log.debug($scope.currentSchema);
+                        console.log("wizard-complete");
+                        console.log($scope.currentSchema);
                         document.getElementById('titleRef').style.pointerEvents = 'auto';
                         // open the websocket for progress bar updates
                         $rootScope.$broadcast("openWebSocket", {
@@ -579,15 +611,15 @@
                             $location.host() + ":" +
                             $location.port() +
                             "/schwiz/rest/schema";
-                        $log.debug(restURL);
+                        console.log(restURL);
                         $http({
                             method: 'POST',
                             url: restURL,
                             data: $scope.currentSchema
                         })
                         .success(function (data) {
-                            $log.debug("post saveSchema success");
-                            $log.debug(data);
+                            console.log("post saveSchema success");
+                            console.log(data);
                             $scope.hideMask();
                             $rootScope.$broadcast("closeWebSocket", {});
                             $scope.navigateTo("/catalog");
@@ -599,34 +631,48 @@
             }; // wizardStateControl
 
             /* Titlebar Menu Items */
-            $scope.useLeidosTheme = function ($event, use) {
+            $scope.setTheme = function ($event, theme) {
                 if ($event) $event.preventDefault();
+                var cssFile;
+                switch (theme) {
+                    // the digital edge 3 theme is in main.css, de3-theme.css won't be found
+                    // but all the other '-theme.css' files will get disabled
+                    case 'blue':   cssFile = "blue-theme.css"; break;
+                    case 'green':  cssFile = "green-theme.css"; break;
+                    case 'de3':    cssFile = "de3-theme.css"; break;
+                    default:       cssFile = "de3-theme.css"; break;
+                }
                 for (var i = 0; i < document.styleSheets.length; i++) {
-                    if (document.styleSheets[i].href &&
-                        document.styleSheets[i].href.indexOf("leidos-theme.css") > 0) {
-                        document.styleSheets[i].disabled = !use;
-                        $cookies.put('schwiz.theme', (use ? 'leidos' : 'digitalEdge2'));
-                        break;
+                    if (document.styleSheets[i].href) {
+                        if (document.styleSheets[i].href.indexOf(cssFile) > 0) {
+                            document.styleSheets[i].disabled = false;
+                            $cookies.put('schwiz.theme', theme);
+                        } else if (document.styleSheets[i].href.indexOf("-theme.css") > 0) {
+                            document.styleSheets[i].disabled = true;
+                        }
                     }
                 }
-            }; // useLeidosTheme
-            $scope.useLeidosTheme(null,
-                (!$cookies.get('schwiz.theme') ? true : $cookies.get('schwiz.theme') === 'leidos'));
+                // the digital edge theme won't be set in a cookie above so check and set it here
+                if (theme == "de") $cookies.put('schwiz.theme', theme);
+            }; // setTheme
+            $scope.setTheme(null, (!$cookies.get('schwiz.theme') ? 'leidos' : $cookies.get('schwiz.theme')));
 
             $scope.launchHelp = function () {
                 var childWindowForHelp = window.open('assets/help/Default.htm', "", "width=950,height=850");
                 childWindowForHelp.moveTo(300, 50);
             }; // launchHelp
 
-            $scope.launchAbout = function () {
-                $scope.successMessage = 'About-Coming Soon';
-                var modal = myModals.alert('generic', $scope.successMessage, 'small');
-                modal.result.then(function (data) {
-                    // do something with data on close
-                }, function (data) {
-                    // do something on dismiss
-                })
-            };  // signout
+            $scope.launchAbout = function ($event) {
+                if ($event) $event.preventDefault();
+                $confirm({
+                        title: 'About Schema Wizard',
+                        text: version,
+                        ok: 'OK'
+                    },
+                    {templateUrl: 'schema-wizard/schema-wizard.about.template.html'}
+                ).then(function () {
+                });
+            };
 
             $scope.clearDetails = function (dropzone) {
                 $scope.dropzoneModels['selected' + dropzone] = null;
@@ -676,59 +722,59 @@
             // get the sample files from fileUploadCtrl
             $scope.$on("sampleFilesSelected", function (event, args) {
                 $scope.sampleFiles = args.newSampleFiles;
-                $log.debug("sampleFilesSelected:");
-                $log.debug($scope.sampleFiles);
+                console.log("sampleFilesSelected:");
+                console.log($scope.sampleFiles);
             }); // onSampleFilesSelected
 
             // get the data sources from fileUploadCtrl
             $scope.$on("dataSamplesReceived", function (event, args) {
                 $scope.hideMask();
-                $log.debug("dataSamplesReceived: " + args.newDataSamples);
+                console.log("dataSamplesReceived: " + args.newDataSamples);
                 $scope.model.dataSamples = args.newDataSamples;
                 // get a dump of the data samples by uncommenting the following line
-                //$log.debug(angular.toJson($scope.model.dataSamples, true));
+                //console.log(angular.toJson($scope.model.dataSamples, true));
                 // initialize index used to iterate through inspection of samples
                 $scope.currentSampleIndex = -1;
                 $scope.wizardStateControl('wizard-inspect-samples');
             }); // ondataSamplesReceived
 
             $scope.$on("setCurrentSample", function (event, args) {
-                $log.debug("onSetCurrentSample");
-                $log.debug(args);
-                $log.debug(args.sample);
+                console.log("onSetCurrentSample");
+                console.log(args);
+                console.log(args.sample);
                 $scope.currentSample = args.sample;
             }); // onsetCurrentSample
 
             $scope.$on("setCurrentSchema", function (event, args) {
-                $log.debug("onSetCurrentSchema");
-                $log.debug(args.schema);
+                console.log("onSetCurrentSchema");
+                console.log(args.schema);
                 $scope.currentSchema = args.schema;
                 //TODO dont use rootscope to try and resolve scoping issue before broadcast
                 $rootScope.test = $scope.currentSchema;
             }); // onsetCurrentSchema
 
             $scope.$on("setSchemaDomain", function (event, args) {
-                $log.debug("onSetSchemaDomain");
-                $log.debug(args.schemaDomain);
+                console.log("onSetSchemaDomain");
+                console.log(args.schemaDomain);
                 $scope.schemaDomain = args.schemaDomain;
             }); // onsetCurrentSchema
 
             $scope.$on("schemaUpdate", function (event, args) {
-                $log.debug("onSchemaUpdate");
-                $log.debug(args.schema);
+                console.log("onSchemaUpdate");
+                console.log(args.schema);
                 $scope.currentSchema = args.schema;
             }); // onSchemaUpdate
 
             $scope.showCurrentSchema = function () {
-                $log.debug("showCurrentSchema");
-                $log.debug($scope.currentSchema);
+                console.log("showCurrentSchema");
+                console.log($scope.currentSchema);
             }; // showCurrentSchema
 
             $scope.addSchemaToModel = function () {
-                $log.debug("addSchemaToModel");
-                $log.debug($scope.currentSchema);
+                console.log("addSchemaToModel");
+                console.log($scope.currentSchema);
                 angular.forEach(Object.keys($scope.currentSchema.sProfile), function (property) {
-                    $log.debug("adding property: " + property);
+                    console.log("adding property: " + property);
                     $scope.model.properties[property] = $scope.currentSchema.sProfile[property];
                     $scope.model.properties[property]["interpretations"] = [];
                     for (var i = 0; i < $scope.currentSchema.sProfile[property].interpretations.length; i++) {
@@ -739,14 +785,14 @@
                     $scope.model.properties[property]["linkedDs"] = [];
                     $scope.model.properties[property]["existing-schema-property"] = true;
                 });
-                $log.debug("$scope.model.properties");
-                $log.debug($scope.model.properties);
+                console.log("$scope.model.properties");
+                console.log($scope.model.properties);
             }; // addSchemaToModel
 
             $scope.addPropertyToModel = function (dataSample, property) {
-                $log.debug("addPropertyToModel property: " + property);
-                if ($scope.modifySchemaMode) $log.debug(dataSample);
-                //$log.debug(dataSample);
+                console.log("addPropertyToModel property: " + property);
+                if ($scope.modifySchemaMode) console.log(dataSample);
+                //console.log(dataSample);
                 if (!$scope.model.properties.hasOwnProperty(property)) {
                     // add the property and an array for linking data samples
                     $scope.model.properties[property] =
@@ -773,42 +819,40 @@
             }; // addPropertyToModel
 
             $scope.repeatMatching = function (interpretationMatch) {
-                $log.debug("confidenceThreshold");
+                console.log("confidenceThreshold");
                 $scope.interpretationMatch = interpretationMatch;
-                //TODO: make this work with modify existing schema
-                // can't do this when modifying existing schema, would need to start with addSchemaToModel
-                if (!$scope.modifySchemaMode) {
-                    $scope.model.properties = {};
-                    //$rootScope.$apply();
-                    $timeout(function () {
-                        $log.debug("$scope.confidenceValues.selectedConfidenceValue");
-                        $log.debug($scope.confidenceValues.selectedConfidenceValue);
-                        $log.debug("$scope.interpretationMatch: " + $scope.interpretationMatch);
-                        // start matching over using the original copy of the data samples
-                        $scope.model.dataSamples = angular.copy($scope.model.originalDataSamples);
-                        $log.debug("$scope.model.dataSamples");
-                        $log.debug($scope.model.dataSamples);
-                        $scope.addNewDataSamples($scope.model.dataSamples,
-                                                 $scope.confidenceValues.selectedConfidenceValue,
-                                                 $scope.interpretationMatch);
-                        var foundDetailsToDisplay = false;
-                        angular.forEach(Object.keys($scope.model.properties), function (property) {
-                            if ($scope.model.properties[property].linkedDs.length > 1 &&
-                                $scope.model.properties[property].linkedDs[0].dsProfile[property]['main-type'] == "number" && !foundDetailsToDisplay) {
-                                $scope.showInDetails1($scope.model.properties[property].linkedDs[0], property, false);
-                                $scope.showInDetails2($scope.model.properties[property].linkedDs[1], property, false);
-                                foundDetailsToDisplay = true;
-                            }
-                        });
-                    }, 300)
+                $scope.model.properties = {};
+                if ($scope.modifySchemaMode) {
+                    $scope.addSchemaToModel();
                 }
+                $timeout(function () {
+                    console.log("$scope.confidenceValues.selectedConfidenceValue");
+                    console.log($scope.confidenceValues.selectedConfidenceValue);
+                    console.log("$scope.interpretationMatch: " + $scope.interpretationMatch);
+                    // start matching over using the original copy of the data samples
+                    $scope.model.dataSamples = angular.copy($scope.model.originalDataSamples);
+                    console.log("$scope.model.dataSamples");
+                    console.log($scope.model.dataSamples);
+                    $scope.addNewDataSamples($scope.model.dataSamples,
+                                             $scope.confidenceValues.selectedConfidenceValue,
+                                             $scope.interpretationMatch);
+                    var foundDetailsToDisplay = false;
+                    angular.forEach(Object.keys($scope.model.properties), function (property) {
+                        if ($scope.model.properties[property].linkedDs.length > 1 &&
+                            $scope.model.properties[property].linkedDs[0].dsProfile[property]['main-type'] == "number" && !foundDetailsToDisplay) {
+                            $scope.showInDetails1($scope.model.properties[property].linkedDs[0], property, false);
+                            $scope.showInDetails2($scope.model.properties[property].linkedDs[1], property, false);
+                            foundDetailsToDisplay = true;
+                        }
+                    });
+                }, 300)
             }; // repeatMatching
 
             // TODO: test interpretation match in the future
             $scope.matchesFieldInOtherDataSample = function(interpretationsToMatch, fieldToMatch, newDataSamples) {
-                $log.debug("matchesFieldInOtherDataSample");
-                $log.debug("interpretationsToMatch: " + angular.toJson(interpretationsToMatch));
-                $log.debug("fieldToMatch: " + fieldToMatch);
+                console.log("matchesFieldInOtherDataSample");
+                console.log("interpretationsToMatch: " + angular.toJson(interpretationsToMatch));
+                console.log("fieldToMatch: " + fieldToMatch);
                 foundMatch = false;
                 findMatch: for (var i = 0; i < interpretationsToMatch.length; i++) {
                     for (var j = 0; j < newDataSamples.length; j++) {
@@ -828,8 +872,8 @@
             }; // matchesFieldInOtherDataSample
 
             $scope.addNewDataSamples = function (newDataSamples,  confidenceThreshold, interpretationMatch) {
-                $log.debug("addNewDataSamples");
-                $log.debug(newDataSamples);
+                console.log("addNewDataSamples");
+                console.log(newDataSamples);
                 angular.forEach(newDataSamples, function (newDs) {
                     var propertiesToDelete = [];
                     angular.forEach(Object.keys(newDs.dsProfile), function (property) {
@@ -894,7 +938,7 @@
                                         newDs.dsProfile[property]['match-names'].selectedOption;
                                     // show the original property name at the top of the drop-down listbox
                                     newDs.dsProfile[property]['match-names']['availableOptions'].unshift(
-                                        {id: 99, name: property});
+                                        {id: $scope.matchingFieldsUndoId, name: property});
                                     newDs.dsProfile[matchingField['matching-field']] = angular.copy(newDs.dsProfile[property]);
                                     // delete later otherwise the loop index will be incorrect
                                     propertiesToDelete.push(property);
@@ -910,8 +954,9 @@
                         $scope.addPropertyToModel(newDs, property);
                     });
                 });
-                $log.debug("$scope.model");
-                $log.debug($scope.model);
+                $scope.model.properties = $scope.sortModelProperties($scope.model.properties);
+                console.log("$scope.model");
+                console.log($scope.model);
             }, function (error) {
                 statusCodesFactory.get().$promise.then(function (response) {
                     $confirm(
@@ -926,15 +971,15 @@
             }; // addNewDataSamples
 
             $scope.changeMatchedProperty = function (dataSample, property) {
-                $log.debug("changeMatchField");
-                $log.debug(dataSample);
-                $log.debug(property);
-                $log.debug(dataSample.dsProfile[property]['match-names'].selectedOption);
+                console.log("changeMatchField");
+                console.log(dataSample);
+                console.log(property);
+                console.log(dataSample.dsProfile[property]['match-names'].selectedOption);
                 var newName = dataSample.dsProfile[property]['match-names'].selectedOption.name
                     .substring(0, dataSample.dsProfile[property]['match-names'].selectedOption.name.indexOf(":"));
-                $log.debug("newName: " + newName);
+                console.log("newName: " + newName);
 
-                // check if the new name already exists.
+                // check if the new name already exists in the same data sample file.
                 if (dataSample.dsProfile.hasOwnProperty(newName)) {
                     $confirm(
                         {
@@ -960,7 +1005,9 @@
                         break;
                     }
                 }
-                if (dataSample.dsProfile[property]['match-names'].selectedOption.id == 99) {
+                // check whether this is an undo operation, if so prep for restore and do cleanup
+               // if not add a selection operation that will permit an undo to occur
+                if (dataSample.dsProfile[property]['match-names'].selectedOption.id == $scope.matchingFieldsUndoId) {
                     newName = removedDs.dsProfile[property]['original-name'];
                     delete removedDs.dsProfile[property]['original-name'];
                 } else if (!removedDs.dsProfile[property]['original-name']) {
@@ -968,20 +1015,25 @@
                     // show the original property name at the top of the drop-down listbox (only once)
                     if (removedDs.dsProfile[property]['match-names']['availableOptions'][0].name != property) {
                         removedDs.dsProfile[property]['match-names']['availableOptions'].unshift(
-                            {id: 99, name: property});
+                            {id: $scope.matchingFieldsUndoId, name: property});
                     }
                 }
                 // save current selection for an undo
                 removedDs.dsProfile[property]['match-names'].previousOption =
                     removedDs.dsProfile[property]['match-names'].selectedOption;
-                $log.debug("newName: " + newName);
-                removedDs.dsProfile[newName] =
-                    angular.copy(removedDs.dsProfile[property]);
+                console.log("newName: " + newName);
+                // make a deep copy of property to restore
+                removedDs.dsProfile[newName] = angular.copy(removedDs.dsProfile[property]);
+                // delete old profile from the linked list
                 delete removedDs.dsProfile[property];
-                $log.debug("linkedDs");
-                $log.debug(linkedDs);
-                if (linkedDs.length == 0 && $scope.modifySchemaMode === false) {
-                    delete $scope.model.properties[property];
+                console.log("linkedDs");
+                console.log(linkedDs);
+                // if no profile remain in the linked list them remove the property
+                if (linkedDs.length == 0) {
+                    if ($scope.modifySchemaMode === false ||
+                        $scope.model.properties[property]['existing-schema-property'] !== true) {
+                        delete $scope.model.properties[property];
+                    }
                 } else {
                     // rebuild the interpretations for this property based on the linked data samples
                     $scope.model.properties[property].interpretations = [];
@@ -1028,9 +1080,9 @@
             };
 
             $scope.showInGenericDetails = function (dataSource, property) {
-                $log.debug("showInGenericDetails");
-                $log.debug(dataSource);
-                $log.debug(property);
+                console.log("showInGenericDetails");
+                console.log(dataSource);
+                console.log(property);
                 // interate through dataSource properties to turn off shown-in-details
                 angular.forEach(Object.keys(dataSource.dsProfile), function (property) {
                     dataSource.dsProfile[property]['shown-in-details'] = false;
@@ -1050,15 +1102,15 @@
                 else {
                     $scope.detailModels.detailPanels.panel1[0].viz = "hbc";
                 }
-                $log.debug("detailModels.detailPanels.panel1[0]");
-                $log.debug($scope.detailModels.detailPanels.panel1[0]);
-                $log.debug(dataSource);
+                console.log("detailModels.detailPanels.panel1[0]");
+                console.log($scope.detailModels.detailPanels.panel1[0]);
+                console.log(dataSource);
             }; // showInGenericDetails
 
             $scope.showInDetails1 = function (dataSource, property, schemaProperty) {
-                $log.debug("showInDetails1");
-                $log.debug(dataSource);
-                $log.debug(property);
+                console.log("showInDetails1");
+                console.log(dataSource);
+                console.log(property);
                     // interate through working model properties to turn off shown-in-details1
                     angular.forEach(Object.keys($scope.model.properties), function (property) {
                         $scope.model.properties[property]['shown-in-details1'] = false;
@@ -1095,14 +1147,14 @@
                         $scope.detailModels.detailPanels.panel1[0]["confidence"] =
                             dataSource.dsProfile[property]['matching-fields'][0]['confidence'];
                     }
-                    $log.debug("detailModels.detailPanels.panel1[0]");
-                    $log.debug($scope.detailModels.detailPanels.panel1[0]);
+                    console.log("detailModels.detailPanels.panel1[0]");
+                    console.log($scope.detailModels.detailPanels.panel1[0]);
             }; // showInDetails1
 
             $scope.showInDetails2 = function (dataSource, property) {
-                $log.debug("showInDetails2");
-                $log.debug(dataSource);
-                $log.debug(property);
+                console.log("showInDetails2");
+                console.log(dataSource);
+                console.log(property);
                     // interate through linked data sources to turn off shown-in-details2
                     angular.forEach(Object.keys($scope.model.properties), function (property) {
                         angular.forEach($scope.model.properties[property].linkedDs, function (linkedDs) {
@@ -1128,14 +1180,14 @@
                         $scope.detailModels.detailPanels.panel2[0]["confidence"] =
                             dataSource.dsProfile[property]['matching-fields'][0]['confidence'];
                     }
-                    $log.debug("detailModels.detailPanels.panel2[0]");
-                    $log.debug($scope.detailModels.detailPanels.panel2[0]);
+                    console.log("detailModels.detailPanels.panel2[0]");
+                    console.log($scope.detailModels.detailPanels.panel2[0]);
             }; // showInDetails2
 
             $scope.editFieldName = function ($event, oldName, newName) {
                 $scope.editFieldNames = function () {
                     document.getElementById("wizard-finalize-schema-back").disabled = true;
-                    $log.debug("editFieldName oldName: '" + oldName + "', newName: '" + newName + "'");
+                    console.log("editFieldName oldName: '" + oldName + "', newName: '" + newName + "'");
                     $scope.currentSchema.sProfile[newName] =
                         angular.copy($scope.currentSchema.sProfile[oldName]);
                     $scope.currentSchema.sProfile[newName]['display-name'] = newName;
@@ -1160,7 +1212,7 @@
                         }
                     }
                     delete $scope.currentSchema.sProfile[oldName];
-                    $log.debug($scope.currentSchema);
+                    console.log($scope.currentSchema);
                     return newName;
                 }, function (error) {
                     statusCodesFactory.get().$promise.then(function (response) {
@@ -1174,8 +1226,8 @@
                             {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                     })
                 };
-                $log.debug($event);
-                $log.debug("oldName: '" + oldName + "'   newName: '" + newName + "'");
+                console.log($event);
+                console.log("oldName: '" + oldName + "'   newName: '" + newName + "'");
                 if (oldName !== newName && newName !== '') {
                     if (document.getElementById("wizard-finalize-schema-back").disabled) {
                         $scope.editFieldNames();
@@ -1188,7 +1240,9 @@
                                 cancel: 'Cancel'
                             }
                         ).then(function () {
-                            $scope.editFieldNames();
+                            document.getElementById("wizard-finalize-schema-back").disabled = true;
+//$event.originalEvent.srcElement.focus();
+                            $scope.editFieldName($event, oldName, newName);
                         }, function (error) {
                             statusCodesFactory.get().$promise.then(function (response) {
                                 $confirm(
@@ -1217,7 +1271,7 @@
                     $scope.currentSchema.sProfile['New-field']["presence"] = -1;
                     $scope.currentSchema.sProfile['New-field']["detail"] = {};
                     $scope.currentSchema.sProfile['New-field']["detail"]["detail-type"] = "phrase";
-                    $log.debug($scope.currentSchema);
+                    console.log($scope.currentSchema);
 
                     // need some time until DOM finishes
                     $timeout($scope.focusNewField, 250);
@@ -1259,13 +1313,13 @@
 
             $scope.setMenuTop = function (arr) {
                 var styleObj = "{top: " + (-arr.length * 22) + "px !important;}";
-                //$log.debug("setMenuTop");
-                //$log.debug(styleObj);
+                //console.log("setMenuTop");
+                //console.log(styleObj);
                 return styleObj;
             }; // setMenuTop
 
             $scope.useInSchema = function (property) {
-                $log.debug("useInSchema property: " + property);
+                console.log("useInSchema property: " + property);
                 var linkedDs = $scope.model.properties[property["property-name"]].linkedDs;
                 for (var i = 0; i < linkedDs.length; i++) {
                     var dsProfile = linkedDs[i].dsProfile;
@@ -1281,18 +1335,18 @@
             }; // useInSchema
 
             $scope.useAsInSchema = function (ds, property) {
-                $log.debug("useAsInSchema property: " + property);
-                $log.debug(ds);
+                console.log("useAsInSchema property: " + property);
+                console.log(ds);
             }; // useAsInSchema
 
             $scope.mergeIntoSchema = function (property) {
-                $log.debug("mergeIntoSchema");
+                console.log("mergeIntoSchema");
                 property['merged-into-schema'] = true;
             }; // mergeIntoSchema
 
             $scope.mergeAsIntoSchema = function (ds, property) {
-                $log.debug("mergeAsIntoSchema property: " + property);
-                $log.debug(ds);
+                console.log("mergeAsIntoSchema property: " + property);
+                console.log(ds);
             }; // mergeAsIntoSchema
 
             $scope.discardDataSource = function (currentSampleIndex) {
@@ -1303,23 +1357,23 @@
                         cancel: 'Cancel'
                     }
                 ).then(function () {
-                    $log.debug("discardDataSource currentSampleIndex: " + currentSampleIndex);
-                    $log.debug($scope.model.dataSamples[currentSampleIndex]);
+                    console.log("discardDataSource currentSampleIndex: " + currentSampleIndex);
+                    console.log($scope.model.dataSamples[currentSampleIndex]);
                     // delete the linked data source and any properties it uniquely introduced
                     angular.forEach(Object.keys($scope.model.properties), function (property) {
                         var linkedDs = $scope.model.properties[property].linkedDs;
                         for (var i = 0; i < linkedDs.length; i++) {
                             if (linkedDs[i] == $scope.model.dataSamples[$scope.currentSampleIndex]) {
-                                $log.debug("Found dataSource linkedDs index: " + i);
-                                $log.debug(linkedDs[i]);
+                                console.log("Found dataSource linkedDs index: " + i);
+                                console.log(linkedDs[i]);
                                 // if this is the only linked data souce then it introduced this property
                                 // so delete the property
                                 if (linkedDs.length == 1) {
-                                    $log.debug("before");
-                                    $log.debug($scope.model.properties);
+                                    console.log("before");
+                                    console.log($scope.model.properties);
                                     delete $scope.model.properties[property];
-                                    $log.debug("after");
-                                    $log.debug($scope.model.properties);
+                                    console.log("after");
+                                    console.log($scope.model.properties);
                                 }
                                 linkedDs.splice(i, 1);
                             }
@@ -1338,7 +1392,7 @@
                                 " (" + error.status + ")",
                                 ok: 'OK'
                             },
-                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
+                           {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                     })
                 });
             }; // discardDataSource
@@ -1435,37 +1489,31 @@
                 }
             }; // dragEnd
 
-            $scope.sort = function (obj, type, caseSensitive) {
-                var temp_array = [];
+            $scope.sortModelProperties = function (obj) {
+                var sorting_array = [];
                 for (var key in obj) {
                     if (obj.hasOwnProperty(key)) {
-                        if (!caseSensitive) {
-                            key = (key['toLowerCase'] ? key.toLowerCase() : key);
-                        }
-                        temp_array.push(key);
+                       keyLowerCase = (obj[key]['display-name']['toLowerCase'] ? obj[key]['display-name'].toLowerCase() : obj[key]['display-name']);
+                        sorting_array.push({ "sortKey": keyLowerCase, "originalKey": key });
                     }
                 }
-                if (typeof type === 'function') {
-                    temp_array.sort(type);
-                } else if (type === 'value') {
-                    temp_array.sort(function (a, b) {
-                        var x = obj[a];
-                        var y = obj[b];
-                        if (!caseSensitive) {
-                            x = (x['toLowerCase'] ? x.toLowerCase() : x);
-                            y = (y['toLowerCase'] ? y.toLowerCase() : y);
-                        }
-                        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
-                    });
-                } else {
-                    temp_array.sort();
+                function compare(a,b) {
+                    if (a.sortKey < b.sortKey)
+                        return -1;
+                    if (a.sortKey > b.sortKey)
+                        return 1;
+                    return 0;
                 }
-                var temp_obj = {};
-                for (var i = 0; i < temp_array.length; i++) {
-                    temp_obj[temp_array[i]] = obj[temp_array[i]];
+                sorting_array.sort(compare);
+                var sorted_obj = {};
+                for (var i = 0; i < sorting_array.length; i++) {
+                    console.log(sorting_array[i]["sortKey"]);
+                    console.log(sorting_array[i]["originalKey"]);
+                    console.log(obj[sorting_array[i]["originalKey"]]);
+                    sorted_obj[sorting_array[i]["originalKey"]] = obj[sorting_array[i]["originalKey"]];
                 }
-                return temp_obj;
-            }; // sort
+                return sorted_obj;
+            }; // sortModelProperties
         }]); // schemaWizardCtrl
 
     schemaWizardApp.directive('singleClick', ['$parse', '$timeout', function ($parse, $timeout) {

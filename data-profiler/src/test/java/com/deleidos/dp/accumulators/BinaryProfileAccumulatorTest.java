@@ -41,6 +41,6 @@ public class BinaryProfileAccumulatorTest {
 		}
 		BinaryDetail binaryDetail = Profile.getBinaryDetail(BundleProfileAccumulator.generateBinaryProfile(imageName, DetailType.IMAGE, bufferedExampleValues));
 		assertTrue(MetricsCalculationsFacade.stripNumDistinctValuesChars(binaryDetail.getNumDistinctValues()) > 0);
-		assertTrue(binaryDetail.getByteHistogram().getLabels().size() > 0);
+		assertTrue(binaryDetail.getHistogram().getLabels().size() > 0);
 	}
 }

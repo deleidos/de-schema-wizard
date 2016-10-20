@@ -16,7 +16,7 @@ import org.xml.sax.ContentHandler;
 import com.deleidos.dmf.exception.AnalyticsParsingRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.profiler.BinaryProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
@@ -39,7 +39,7 @@ public class BinaryParser extends AbstractAnalyticsParser {
 
 	@Override
 	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata,
-			TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+			TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		String enableBinary;
 		if((enableBinary = System.getenv(ENABLE_BINARY_PARSING)) != null) {
 			binaryParsingEnabled = ("true".equals(enableBinary) || "1".equals(enableBinary)) ? true : false; 
@@ -58,7 +58,7 @@ public class BinaryParser extends AbstractAnalyticsParser {
 
 	@Override
 	public ProfilerRecord getNextProfilerRecord(InputStream stream, ContentHandler handler, Metadata metadata,
-			TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+			TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		if(!binaryParsingEnabled) {
 			return null;
 		}
@@ -83,7 +83,7 @@ public class BinaryParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public void postParse(ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public void postParse(ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		super.postParse(handler, metadata, context);
 	}
 

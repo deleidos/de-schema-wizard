@@ -1,6 +1,7 @@
 package com.deleidos.dp.accumulators;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,17 +29,6 @@ public class BundleAccumulatorTest {
 	public void testDetemineNumberWithDecimalAndInteger() throws MainTypeException {
 		Profile p = BundleProfileAccumulator.generateProfile("test", Arrays.asList("1.1", "80"));
 		assertTrue(p.getDetail().getDetailType().equals(DetailType.DECIMAL.toString()));
-	}
-	
-	@Test
-	public void testCommaAccumulate() {
-		try {
-			BundleProfileAccumulator.generateProfile("test", Arrays.asList(",", ",", ","));
-			logger.info("Exception not thrown while accumulating commas.");
-		} catch (Exception e) {
-			logger.error("Expected exception was thrown for pseduo empty data.");
-			assertTrue(false);
-		}
 	}
 	
 	@Test
@@ -224,7 +214,13 @@ public class BundleAccumulatorTest {
 		bundleAccumulator.accumulate("0");
 		bundleAccumulator.accumulate("0");
 		logger.info("Test accumulate integer type: " + bundleAccumulator.getBestGuessProfile(13).get().getDetail().getDetailType());
-		assertTrue(bundleAccumulator.getBestGuessProfile(13).get().getDetail().getDetailType().equals(DetailType.INTEGER.toString()));
+		try {
+			assertTrue(bundleAccumulator.getBestGuessProfile(13).get().getDetail().getDetailType().equals(DetailType.INTEGER.toString()));
+		} catch (AssertionError e) {
+			logger.error("Integer expected, got: " + 
+						bundleAccumulator.getBestGuessProfile(13).get().getDetail().getDetailType());
+			fail();
+		}
 	}
 	
 	@Test

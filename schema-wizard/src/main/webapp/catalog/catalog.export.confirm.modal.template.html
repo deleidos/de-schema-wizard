@@ -1,0 +1,9 @@
+<div class="modal-header">
+    <div class="modal-title">{{data.title}}</div>
+</div>
+<div class="button-area">{{data.text}}</div>
+<input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="restInput" placeholder="Enter REST Endpoint" autofocus><br>
+<div class="modal-footer btn-group-xs">
+    <button class="btn btn-primary btn-group-xs" ng-click="cancel()">{{data.cancel}}</button>
+    <button class="btn btn-primary btn-group-xs" ng-enter="ok();" ng-click="ok()">{{data.ok}}</button>
+</div>

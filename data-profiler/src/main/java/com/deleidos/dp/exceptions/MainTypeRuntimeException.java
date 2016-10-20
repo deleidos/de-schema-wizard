@@ -1,5 +1,10 @@
 package com.deleidos.dp.exceptions;
 
+/**
+ * RuntimeException that represents an error in how the program handles main types.
+ * @author leegc
+ *
+ */
 public class MainTypeRuntimeException extends RuntimeException {
 	
 	public MainTypeRuntimeException() {

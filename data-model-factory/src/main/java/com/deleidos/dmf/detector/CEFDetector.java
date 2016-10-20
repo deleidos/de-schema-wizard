@@ -15,6 +15,11 @@ import org.apache.tika.mime.MediaType;
 
 import com.deleidos.dmf.framework.AbstractMarkSupportedAnalyticsDetector;
 
+/**
+ * Use the Tika framework to parse Common Events Format files. 
+ * @author leegc
+ *
+ */
 public class CEFDetector extends AbstractMarkSupportedAnalyticsDetector {
 	public static final MediaType CONTENT_TYPE = MediaType.application("cef");
 	
@@ -25,10 +30,6 @@ public class CEFDetector extends AbstractMarkSupportedAnalyticsDetector {
 
 	@Override
 	public MediaType analyticsDetect(InputStream inputStream, Metadata metadata) throws IOException {
-		MediaType type = null;
-		//TemporaryResources tmp = new TemporaryResources();;
-
-		//input.mark(Integer.MAX_VALUE);
 		StringBuilder firstSevenPipes = new StringBuilder();
 		StringBuilder rawKeyValuePairs = new StringBuilder();
 		String[] headerSplit = new String[2];
@@ -58,7 +59,7 @@ public class CEFDetector extends AbstractMarkSupportedAnalyticsDetector {
 		if(pipeCount == 7) {
 			return CONTENT_TYPE;
 		} else {
-			return null;
+			return MediaType.OCTET_STREAM;
 		}
 	}
 

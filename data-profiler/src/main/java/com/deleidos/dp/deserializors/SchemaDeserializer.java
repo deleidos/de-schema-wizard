@@ -17,6 +17,11 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 
+/**
+ * Deserializer for schemas.  This class should be added as a module in the ObjectMapper.
+ * @author leegc
+ *
+ */
 public class SchemaDeserializer extends JsonDeserializer<Schema> {
 
 	@Override

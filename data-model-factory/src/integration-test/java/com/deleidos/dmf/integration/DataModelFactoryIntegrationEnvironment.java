@@ -7,8 +7,8 @@ import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.BeforeClass;
 
-import com.deleidos.dmf.analyzer.workflows.AbstractAnalyzerTestWorkflow;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.dmf.workflows.AbstractAnalyzerTestWorkflow;
 import com.deleidos.dp.h2.H2DataAccessObject;
 import com.deleidos.dp.interpretation.IEConfig;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;

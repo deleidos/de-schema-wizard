@@ -2,8 +2,37 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.controller('exportController', function ($scope, $uibModal, $window, $log) {
+    schemaWizardApp.controller('exportController', function ($scope, $uibModal, $window, $confirm, $http) {
         $scope.exportSchema = function (schema) {
+
+            //open modal for REST
+            $scope.restModal = function(){
+                $confirm({
+                        title: 'Rest Endpoint',
+                        text: "Enter a REST Endpoint:",
+                        ok: 'Submit',
+                        cancel:'Cancel'
+                    },
+                    {templateUrl: 'catalog/catalog.export.confirm.modal.template.html'}
+                ).then(function () {
+                   $scope.restEndpoint =  document.getElementById('restInput').value;
+                    var schemaData = angular.toJson(schema, true);
+                    schemaData = schemaData.replace(/\n/g, "\r\n");
+                    var file = schemaData;
+                    var fd = new FormData();
+                    fd.append('file', schemaData);
+                         $http.post($scope.restEndpoint, fd, {
+                        transformRequest: angular.identity,
+                        headers: {
+                            'Content-Type': undefined,
+                            'enctype': "multipart/form-data"
+                        }
+                    });
+                    console.log("Sent to endpoint: " + $scope.restEndpoint);
+                    // console.log(schemaData);
+                })
+
+            };
 
             $scope.name = schema.sName;
             //Export for Ingest
@@ -21,17 +50,22 @@
             angular.forEach(schema.sProfile, function (value, key) {
                 fieldCount += 1;
                 var vizWizArrayObject = {};
-
                 if (value['presence'] === -1) {
-                    vizWizExportObject.sProfile[key].mainType = (value['main-type']);
+                    vizWizArrayObject.fullName = key;
+                    try {
+                        vizWizExportObject.sProfile[key].mainType = (value['main-type']);
+                    } catch(ex){
+                        vizWizArrayObject.mainType = "string";
+                    }
 //TODO: remove try/catch after detail gets set for user added fields (ref VersionOne B-06537)
                     try {
                         vizWizExportObject.sProfile[key].detailType = (value['detail']['detail-type']);
                     } catch (ex) {
-                        vizWizExportObject.sProfile[key].detailType = "Unknown";
+                        vizWizArrayObject.detailType = "Unknown";
                     }
-                    vizWizExportObject.sProfile[key].numberDistinctValues = 0;
-                    vizWizExportObject.sProfile[key].interpretations = "Unknown";
+                    vizWizArrayObject.numberDistinctValues = 0;
+                    vizWizArrayObject.interpretations = "Unknown";
+                    vizWizExportObject.sProfile.push(vizWizArrayObject);
                 } else {
                     // creates the array of objects for vizWiz
                     vizWizArrayObject.fullName = key;
@@ -52,7 +86,11 @@
                 // DigitalEdge
                 digitalEdgeExportObject.sProfile[key] = (value['main-type']);
                 //Ingest Object
-                ingestExportObject[key] = "get(" + (value['alias-names'][0]['alias-name']) + ")";
+                try {
+                    ingestExportObject[key] = "get(" + (value['alias-names'][0]['alias-name']) + ")";
+                } catch(ex){
+                    ingestExportObject[key] = "get(" + "null" + ")";
+                }
             });
             //Export DigitalEdge
             var digitalEdgeData = angular.toJson(digitalEdgeExportObject, true);
@@ -96,7 +134,7 @@
             // File export for other file types
             var schemaData = angular.toJson(schema, true);
             schemaData = schemaData.replace(/\n/g, "\r\n")
-            //$log.debug(schemaData)
+            //console.log(schemaData)
             var blob = new Blob([schemaData], {type: "octet/stream"})
             var url = $window.URL || $window.webkitURL;
             $scope.fileUrl = url.createObjectURL(blob);
@@ -125,7 +163,7 @@
             });
             modalInstance.result.then(function () {
             }, function () {
-                $log.info("exportSchema Modal dismissed");
+                console.log("exportSchema Modal dismissed");
             });
         }; // exportSchema
     }); // exportController

@@ -14,7 +14,7 @@ import org.xml.sax.ContentHandler;
 
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 
@@ -32,7 +32,7 @@ public class BestEffortTXTParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 

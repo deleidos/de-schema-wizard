@@ -8,7 +8,8 @@ import com.deleidos.dp.enums.GroupingBehavior;
 
 /**
  * Interface for records that a profiler gathers.  Meant to allow flexibility for data that does not have a definitive concept 
- * of a record.
+ * of a record.  The expectation of an implementation is to normalize the record into a flat
+ * mapping of field names to their values.
  * @author leegc
  *
  */
@@ -20,6 +21,10 @@ public interface ProfilerRecord {
 	 */
 	public Map<String, List<Object>> normalizeRecord(GroupingBehavior groupingBehavior);
 	
+	/**
+	 * Normalize the record, and assume that the desired grouping behavior is GROUP_ARRAY_VALUES.
+	 * @return
+	 */
 	default Map<String, List<Object>> normalizeRecord() {
 		return normalizeRecord(GroupingBehavior.GROUP_ARRAY_VALUES);
 	}

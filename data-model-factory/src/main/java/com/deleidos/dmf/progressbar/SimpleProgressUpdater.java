@@ -7,6 +7,15 @@ import org.apache.log4j.Logger;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 
+/**
+ * Give this class the session, the progress bar manager, and the total number of expected records, and this class
+ * will handle the rest of the progress updates.  The actual numeric update for the progress bar is calculated by
+ * dividing the progress update by the total number of expected records
+ * multiplying that by the current {@link ProgressState}'s range,
+ * and reporting that value to the {@link ProgressBarManager} to see if an update is appropriate.
+ * @author leegc
+ *
+ */
 public class SimpleProgressUpdater implements ProfilingProgressUpdateHandler {
 	private static final Logger logger = Logger.getLogger(SimpleProgressUpdater.class);
 	private final ProgressBarManager progressBar;

@@ -1,18 +1,30 @@
 package com.deleidos.dp.profiler.api;
 
-public interface Profiler {
-	/**
-	 * Load a Profiler Record object into the profiler
-	 * @param metrics The metrics that the object will be loaded into.
-	 * @param jsonObject Any flat JSON object.  The object should be pushed to the appropriate metrics loader in the
-	 * interfacing class.
-	 */
-	public int load(ProfilerRecord record);
+import com.deleidos.dp.accumulator.Accumulator;
+import com.deleidos.dp.exceptions.MainTypeException;
 
+/**
+ * A Profiler implementation is an Accumulator that specifically accumulates ProfilerRecords.
+ * The ProfilerRecord is the abstraction of a "record" that brings all parsers to a common
+ *  {@link com.deleidos.dp.profiler.api.ProfilerRecord} data type.
+ * 
+ * @author leegc
+ *
+ */
+public interface Profiler<T> extends Accumulator<T, ProfilerRecord> {
+	
 	/**
-	 * Return a bean of the data that has been profiled.
-	 * @return A bean (as of 2/8/16, either DataSample or Schema
+	 * By default, throw an UnsupportedOperationException for Profiler classes.
 	 */
-	public Object asBean();
-
+	@Override
+	default T getState() {
+		throw new UnsupportedOperationException("getState() method not supported -- profiler must be finished to get state.");
+	}
+	
+	/**
+	 * For profilers, the main type exception should be handled rather than thrown.
+	 */
+	@Override
+	public void accumulate(ProfilerRecord value);
+	
 }

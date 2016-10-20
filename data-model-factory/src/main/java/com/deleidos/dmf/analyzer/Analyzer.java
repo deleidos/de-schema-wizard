@@ -3,14 +3,12 @@ package com.deleidos.dmf.analyzer;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import org.json.JSONArray;
 
 import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
-import com.deleidos.dmf.progressbar.ProgressState;
 import com.deleidos.dmf.progressbar.ProgressState.STAGE;
 import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dp.beans.DataSample;
@@ -19,7 +17,6 @@ import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.h2.H2DataAccessObject;
-import com.deleidos.hd.h2.H2Database;
 
 /**
  * Analyzer interface to add new analyzing functionality to Schema Wizard.
@@ -28,7 +25,7 @@ import com.deleidos.hd.h2.H2Database;
  * @param <SampleParameters> the parameter type that needs to be passed to complete a sample analysis
  * @param <SchemaParameters> the parameter type that needs to be passed to complete a schema analysis
  */
-public interface Analyzer<SampleParameters extends AnalyzerParameters, SchemaParameters extends AnalyzerParameters> {
+public interface Analyzer<SampleParameters extends AnalyzerParameters<DataSample>, SchemaParameters extends AnalyzerParameters<Schema>> {
 
 	/**
 	 * Analyzes the given parameters in the context of the sample analysis process.  
@@ -52,15 +49,15 @@ public interface Analyzer<SampleParameters extends AnalyzerParameters, SchemaPar
 
 	default JSONArray matchAnalyzedFields(String sessionId, String schemaGuid, String[] sampleGuids, 
 			ProgressBarManager existingProgressBar) throws DataAccessException {
+		final double defaultMatchCutoff = .8;
 		List<DataSample> samples = H2DataAccessObject.getInstance().getSamplesByGuids(sampleGuids); 
 		List<String> names = new ArrayList<String>();
 		samples.forEach(x->names.add(x.getDsName()));
-		Set<String> failedGuids = H2Database.getFailedAnalysisMapping().keySet();
 		Schema schema = (schemaGuid == null) ? null : H2DataAccessObject.getInstance().getSchemaByGuid(schemaGuid, true);
 		
 		int totalFields = 0;
 		for(DataSample ds : samples) {
-			if(!failedGuids.contains(ds.getDsGuid())) {
+			if(ds.getDsProfile() != null) {
 				totalFields += ds.getDsProfile().size();
 			}
 		}
@@ -73,12 +70,12 @@ public interface Analyzer<SampleParameters extends AnalyzerParameters, SchemaPar
 		} else {
 			progressBar = existingProgressBar;
 		}
-		
 		progressBar.jumpToNthIndexStage(0, STAGE.MATCHING);
-		SimpleProgressUpdater progressUpdater = new SimpleProgressUpdater(sessionId, progressBar, totalFields);
 		
+		SimpleProgressUpdater progressUpdater = 
+				new SimpleProgressUpdater(sessionId, progressBar, totalFields);
 		samples = MetricsCalculationsFacade.matchFieldsAcrossSamplesAndSchema(
-				schema, samples, failedGuids, progressUpdater);
+				schema, samples, defaultMatchCutoff, progressUpdater);
 		return new JSONArray(SerializationUtility.serialize(samples));
 	}
 	/**

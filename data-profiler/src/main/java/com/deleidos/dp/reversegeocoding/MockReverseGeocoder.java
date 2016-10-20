@@ -9,6 +9,12 @@ import org.apache.log4j.Logger;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 
+/**
+ * A fake reverse geocoder for the BuiltinInterpretationEngine.  Used primarily for testing.
+ * 
+ * @author leegc
+ *
+ */
 public class MockReverseGeocoder implements ReverseGeocoder.ReverseGeocodingWorker {
 	private static final Logger logger = Logger.getLogger(MockReverseGeocoder.class);
 	private List<String> testIsoCodes;

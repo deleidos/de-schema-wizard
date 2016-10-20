@@ -35,7 +35,7 @@
             template: '<div class="modal-header"><div class="modal-title">{{data.title}}</div></div>' +
             '<div class="button-area">{{data.text}}</div>' +
             '<div class="modal-footer btn-group-xs">' +
-            '<button class="btn btn-primary btn-group-xs" ng-click="ok()">{{data.ok}}</button>' +
+            '<button class="btn btn-primary btn-group-xs" ng-enter="ok();" ng-click="ok()">{{data.ok}}</button>' +
             '<button class="btn btn-default" ng-click="cancel()">{{data.cancel}}</button>' +
             '</div>',
             controller: 'ConfirmModalController',

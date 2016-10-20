@@ -2,6 +2,7 @@ package com.deleidos.dmf.web;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -21,14 +22,20 @@ import com.deleidos.analytics.websocket.api.WebSocketMessageFactory;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.ProgressBarManager.ProgressBar;
 import com.deleidos.dp.deserializors.SerializationUtility;
-import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
+/**
+ * Manage backend resources by keeping track of session data.  Session data is currently based on active 
+ * websocket connections.  So, this class is only active/important during sample/schema analysis time.
+ * @author leegc
+ *
+ */
 public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocketMessageFactory, WebSocketEventListener {
 	private static SchemaWizardSessionUtility INSTANCE = null;
 	private static final Logger logger = Logger.getLogger(SchemaWizardSessionUtility.class);
+	private final WeakList recentSessionRegistry;
 	private final BiMap<String, String> sessionSocketBidirectionalMapping;
 	private final Map<String, SessionData> sessionDataMapping;
 	private final Map<String, Long> memoryUsageMapping;
@@ -44,15 +51,16 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 
 	protected SchemaWizardSessionUtility() {
 		try {
-			OVER_ESTIMATE_MULTIPLIER = (System.getenv(OVER_ESTIMATE_ENV_VAR)) != null ? Double.valueOf(System.getenv(OVER_ESTIMATE_ENV_VAR)) : 6;
+			OVER_ESTIMATE_MULTIPLIER = (System.getenv(OVER_ESTIMATE_ENV_VAR)) != null ? Double.valueOf(System.getenv(OVER_ESTIMATE_ENV_VAR)) : 3;
 		} catch (Exception e) {
-			OVER_ESTIMATE_MULTIPLIER = 6;
+			OVER_ESTIMATE_MULTIPLIER = 3;
 		}
 		executorService = Executors.newCachedThreadPool();
 		sessionSocketBidirectionalMapping = HashBiMap.create();
 		memoryUsageMapping = new ConcurrentHashMap<String, Long>();
 		sessionDataMapping = new ConcurrentHashMap<String, SessionData>();
 		overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		recentSessionRegistry = new WeakList(10);
 	}
 
 	public static SchemaWizardSessionUtility getInstance(SchemaWizardSessionUtility testUtility) {
@@ -120,9 +128,10 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 		logger.debug("Session "+sessionId+" associated with socket " +socketId + "." );
 		sessionSocketBidirectionalMapping.put(sessionId, socketId);
 		sessionDataMapping.put(sessionId, new SessionData());
+		recentSessionRegistry.add(sessionId);
 	}
 
-	private boolean isAssociated(String sessionId) {
+	private synchronized boolean isAssociated(String sessionId) {
 		return sessionSocketBidirectionalMapping.containsKey(sessionId) && sessionDataMapping.containsKey(sessionId);
 	}
 
@@ -202,9 +211,10 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 		Optional<SessionData> sessionData = Optional.ofNullable(sessionDataMapping.get(sessionId));
 		if(sessionData.isPresent()) {
 			return sessionData.get().isCancelled();
-		} else {
+		} else if (recentSessionRegistry.contains(sessionId)) {
 			return true;
 		}
+		return false;
 	}
 
 	public void waitForAvailableResources(String sessionId, File sampleFile) throws FileUploadException {
@@ -231,7 +241,9 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 					throw new FileUploadException("File upload timed out while waiting for resources.");
 				} else if(memoryUsageMapping.size() == 0 
 						|| (memoryUsageMapping.size() == 1 && memoryUsageMapping.containsKey(sessionId))) {
-					throw new FileUploadException("There is not enough space in the JVM for this file.");
+					// throw new FileUploadException("There is not enough space in the JVM for this file.");
+					// let front end handle size limit - always attempt to process it
+					break;
 				}
 				if(this.memoryUsageMapping.size() <= 1) {
 					overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -340,4 +352,21 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 		return executorService;
 	}
 
+	private static class WeakList extends ArrayList<String> {
+		private final int sizeLimit;
+		
+		public WeakList(int sizeLimit) {
+			super(sizeLimit);
+			this.sizeLimit = sizeLimit;
+		}
+		
+		@Override
+		public boolean add(String e) {
+			if (this.size() > sizeLimit) {
+				this.remove(0);
+			}
+			return super.add(e);
+		}
+	}
+	
 }

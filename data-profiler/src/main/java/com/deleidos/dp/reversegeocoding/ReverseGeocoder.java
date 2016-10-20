@@ -9,6 +9,12 @@ import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.interpretation.HttpInterpretationEngine;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 
+/**
+ * Class that passes requests for reverse geocoding to the Interpretation Engine.  Use a ReverseGeocoderCallbackListener
+ * to receive the results of the request.
+ * @author leegc
+ *
+ */
 public class ReverseGeocoder {
 	private static final Logger logger = Logger.getLogger(ReverseGeocoder.class);
 	private ReverseGeocodingWorker reverseGeocodingWorker;
@@ -17,10 +23,10 @@ public class ReverseGeocoder {
 	public ReverseGeocoder() throws DataAccessException {
 		reverseGeocodingWorker = InterpretationEngineFacade.getInstance();
 	}
-	
-	/*public ReverseGeocoder(TestReverseGeocodingDataAccessObject trgdao) {
-		logger.info("Test reverse geocoder initialized.");
-	}*/
+
+	public interface ReverseGeocodingWorker {
+		public List<String> getCountryCodesFromCoordinateList(List<Double[]> latlngs) throws DataAccessException;
+	}
 	
 	public interface ReverseGeocoderCallbackListener {
 		public void handleResult(int coordinateProfileIndex, List<String> resultingCountryNames);
@@ -31,7 +37,6 @@ public class ReverseGeocoder {
 	}
 	
 	public void getCountriesFromLatLngsASync(int coordinateProfileIndex, List<Double[]> latLngs) {
-		// mimic the functionality of a separate container with another thread for now
 		if(latLngs.isEmpty()) {
 			if(callbackListener != null) {
 				synchronized(callbackListener) {
@@ -52,17 +57,13 @@ public class ReverseGeocoder {
 					resultList = new ArrayList<String>();
 				}
 				if(callbackListener != null) {
+					// synchronized on callbackListener so other threads aren't changing values concurrently
 					synchronized(callbackListener) {
-						// nothing else should be changing values in the callbackListener at this point
 						callbackListener.handleResult(coordinateProfileIndex, resultList);
 					}
 				}
 			};
 		};
 		t.start();
-	}
-	
-	public interface ReverseGeocodingWorker {
-		public List<String> getCountryCodesFromCoordinateList(List<Double[]> latlngs) throws DataAccessException;
 	}
 }

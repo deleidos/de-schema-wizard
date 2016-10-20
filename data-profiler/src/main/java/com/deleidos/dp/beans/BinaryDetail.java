@@ -1,9 +1,8 @@
 package com.deleidos.dp.beans;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import com.deleidos.dp.histogram.ByteBucketList;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 
@@ -42,10 +41,13 @@ public class BinaryDetail extends Detail {
 		this.hash = hash;
 	}
 
-	public Histogram getByteHistogram() {
+	@Override
+	@JsonProperty("byte-freq-histogram")
+	public Histogram getHistogram() {
 		return byteHistogram;
 	}
 
+	@JsonProperty("byte-freq-histogram")
 	public void setByteHistogram(Histogram characterHistogram) {
 		this.byteHistogram = characterHistogram;
 	}

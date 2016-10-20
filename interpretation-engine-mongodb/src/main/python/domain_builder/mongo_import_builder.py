@@ -62,7 +62,8 @@ def generate_mongo_imports(resource_base, domain_output, interpretation_output):
                 detail_type = interpretation['iConstraints']['detail-type']
                 assert detail_type == 'decimal' or detail_type == 'integer' or detail_type == 'exponent' \
                     or detail_type == 'term' or detail_type == 'phrase' or detail_type == 'boolean' or detail_type == 'date-time' \
-                    or detail_type == 'audio' or detail_type == 'video' or detail_type == 'image'
+                    or detail_type == 'audio' or detail_type == 'video' or detail_type == 'image' or detail_type == 'text' \
+                    or detail_type == 'date_time'
                 interpretation_output.write(json.dumps(interpretation)+"\n")
                 
 

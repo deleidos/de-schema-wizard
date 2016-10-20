@@ -3,14 +3,14 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('sampleDetailsCtrl',
-        function ($rootScope, $scope, $resource, $location, $route, $routeParams, $log, sampleData, $confirm, statusCodesFactory) {
+        function ($rootScope, $scope, $resource, $location, $route, $routeParams, sampleData, $confirm, statusCodesFactory) {
 
             sampleData.$promise.then(function (response) {
                     $rootScope.$broadcast("setCurrentSample", {
                         sample: sampleData
                     })
                 }, function (error) {
-                    $log.debug(error);
+                    console.log(error);
                     statusCodesFactory.get().$promise.then(function (response) {
                         $confirm(
                             {

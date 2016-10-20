@@ -111,7 +111,7 @@ public class AddAndRetreiveAllDataTypesIT extends DataProfilerIntegrationEnviron
 		final int expectedFieldCount = 3;
 		String guid = H2DataAccessObject.getInstance().addSample(sample);
 		DataSample sample = H2DataAccessObject.getInstance().getSampleByGuid(guid);
-		assertTrue(Profile.getBinaryDetail(sample.getDsProfile().get(imageResource.substring(1))).getByteHistogram().getLabels().size() == 256);
+		assertTrue(Profile.getBinaryDetail(sample.getDsProfile().get(imageResource.substring(1))).getHistogram().getLabels().size() == 256);
 
 		boolean sampleProfileSizeAssertion = schema.getsProfile().keySet().size() == expectedFieldCount;
 		if(sampleProfileSizeAssertion) {
@@ -123,7 +123,9 @@ public class AddAndRetreiveAllDataTypesIT extends DataProfilerIntegrationEnviron
 
 		String schemaGuid = H2DataAccessObject.getInstance().addSchema(schema);
 		Schema schema = H2DataAccessObject.getInstance().getSchemaByGuid(schemaGuid, true);
-		assertTrue(Profile.getBinaryDetail(schema.getsProfile().get(imageResource.substring(1))).getByteHistogram().getLabels().size() == 256);
+		
+		String imageKey = imageResource.substring(imageResource.lastIndexOf(".") + 1);
+		assertTrue(Profile.getBinaryDetail(schema.getsProfile().get(imageKey)).getHistogram().getLabels().size() == 256);
 
 
 		String sch = SerializationUtility.serialize(schema);

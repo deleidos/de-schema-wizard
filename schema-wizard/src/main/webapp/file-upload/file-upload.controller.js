@@ -2,8 +2,8 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.directive('fileModel', ['$parse', '$log', '$confirm',
-        function ($parse, $log, $confirm) {
+    schemaWizardApp.directive('fileModel', ['$parse', '$confirm',
+        function ($parse, $confirm) {
             return {
                 restrict: 'A',
                 link: function (scope, element, attrs) {
@@ -13,9 +13,7 @@
                     element.bind('change', function () {
                         // if the file open dialog is raised and the file name
                         // is cleared and cancel is pressed then a reset is needed
-                        document.getElementById('file-upload-name').innerHTML = "";
                         document.getElementById('file-upload-btn').disabled = true;
-
                         // status always needs reset if choosing another file
                         scope.$apply(function () {
                             modelSetter(scope, element[0].files);
@@ -26,7 +24,7 @@
                                 var numberOfDataSamples = element[0].files.length;
                                 for (var i = 0; i < element[0].files.length; i++) {
                                     totalFilesSize = element[0].files[i].size + totalFilesSize;
-                                    numberOfDataSamples = element[0].files[i]
+                                    numberOfDataSamples = element[0].files[i];
                                     if (totalFilesSize > maxFilesSize) {
                                         $confirm(
                                             {
@@ -37,7 +35,6 @@
                                             {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                                             .then(function () {
                                                 totalFilesSize = 0;
-                                                document.getElementById('file-upload-name').innerHTML = "";
                                                 document.getElementById('file-upload-btn').disabled = true;
                                             });
                                     }
@@ -52,14 +49,10 @@
                                             },
                                             {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                                             .then(function () {
-                                                document.getElementById('file-upload-name').innerHTML = "";
-                                                document.getElementById('file-upload-btn').disabled = true;
                                             });
                                     }// try and prevent users from uploading unsupported files.
                                      //this is a work-around for IE
-                                    document.getElementById('file-upload-name').innerHTML +=
-                                        element[0].files[i].name + " ";
-                                    document.getElementById('file-upload-btn').disabled = false;
+
                                 }
                             }
                         });
@@ -68,14 +61,38 @@
             };
         }]); // fileModel
 
-    schemaWizardApp.service('fileUpload', ['$http', '$log',
-        function ($http, $log) {
+    schemaWizardApp.service('fileUpload', ['$http', '$rootScope',
+        function ($http, $rootScope) {
             this.uploadFileToUrl = function (file, uploadUrl) {
-                //$log.debug("file(s)");
-                //$log.debug(file);
+                //console.log("file(s)");
+                for (i = 0; i < $rootScope.originalSeedFileArray.length; i++) {
+                    for (j = 0; j < file.length; j++) {
+                        if (file[j].label == $rootScope.originalSeedFileArray[i].name) {
+                            // console.log("pushed to" + file[j].label);
+                            // console.log($rootScope.originalSeedFileArray[i].name);
+                            // console.log(file[j].label);
+                            file[j].file = $rootScope.originalSeedFileArray[i];
+                        }
+                        else {
+                            // console.log("originalSeedFileArray[" + i + "], file[" + j + "]")
+                            // console.log("originalSeedFileArray is " + $rootScope.originalSeedFileArray[i].name)
+                            // console.log("file is " + file[j].label)
+                        }
+                    }
+                }
+                console.log(file)
                 var fd = new FormData();
+                var seedFile = $rootScope.seedFileName;
+                var keyValue = -1;
                 angular.forEach(file, function (value, key) {
-                    fd.append(key, value);
+                    if (value.label == seedFile) {
+                        fd.append(++keyValue, value.file);
+                    }
+                });
+                angular.forEach(file, function (value, key) {
+                    if (value.label != seedFile) {
+                        fd.append(++keyValue, value.file);
+                    }
                 });
                 return $http.post(uploadUrl, fd, {
                     transformRequest: angular.identity,
@@ -88,9 +105,51 @@
         }]); // fileUpload
 
     schemaWizardApp.controller('fileUploadCtrl',
-        function ($scope, $rootScope, $log, $http, UploadParameters, fileUpload, $confirm) {
+        function ($scope, $rootScope, $http, UploadParameters, fileUpload, $confirm) {
+            window.onbeforeunload = function() {
+                return "Reloading will clear your session";
+            };
             document.getElementById('titleRef').style.pointerEvents = 'none';
+            //TODO think of a better way to handle scoping issues to a Service
+            $rootScope.originalSeedFileArray = [];
+            $scope.seedFileName = "";
+            $scope.seedFileObject = {
+                selected: null,
+                lists: {"seed": []}
+            };
+            $scope.clearFiles = function () {
+                $scope.seedFileObject = {
+                    selected: null,
+                    lists: {"seed": []}
+                };
+                document.getElementById('file-upload').value = "";
+            };
+            $scope.dropCallback = function (event, index, item, external, type) {
+                if (external) {
+                    if (allowedType === 'itemType' && !item.label && !item.file) return false;
+                    if (allowedType === 'containerType' && !angular.isArray(item)) return false;
+                }
+                return item;
+            };
 
+            $scope.removeFile = function (item) {
+                for (i = 0; i < document.getElementById('file-upload').files.length; i++) {
+                    if (item.label == $scope.seedFileObject.lists.seed[i].label) {
+                        $scope.seedFileObject.lists.seed.splice(i, 1);
+                    }
+                }
+            };
+
+            $scope.$watch('seedFileObject', function (model) {
+                if (document.getElementById('file-upload').files.length > 0) {
+                    console.log($scope.seedFileObject.lists.seed[0].label);
+                    $scope.seedFileName = $scope.seedFileObject.lists.seed[0].label;
+                    //TODO think of a better way to handle scoping issues to a Service
+                    $rootScope.seedFileName = $scope.seedFileName;
+                }
+
+            }, true);
+            $scope.selected = null;
             $scope.hideMask = function () {
                 document.getElementById("mask").style.display = "none";
             };
@@ -104,13 +163,15 @@
             }; // setSchemaDomain
 
             $scope.setSchemaTolerance = function ($event, schemaTolerance) {
-                $event.preventDefault();
+                if ($event) $event.preventDefault();
                 $scope.schemaTolerance = schemaTolerance;
             }; // setSchemaTolerance
+            // set default to "Strict"
+            $scope.setSchemaTolerance(null, "Strict");
 
             $scope.domains = UploadParameters.get().domainsArray;
-            $log.debug("Domains");
-            $log.debug($scope.domains);
+            console.log("Domains");
+            console.log($scope.domains);
             if ($scope.domains.length === 0) {
                 $scope.schemaDomain = "Not Available";
             }
@@ -128,10 +189,11 @@
             }
             ;
             $scope.setSchemaDomain(null, $scope.schemaDomain);
-            //$log.debug("$scope.schemaDomain");
-            //$log.debug("'" + $scope.schemaDomain + "'");
+            //console.log("$scope.schemaDomain");
+            //console.log("'" + $scope.schemaDomain + "'");
 
             // enable/disable the upload button when all parameters are set
+
             $scope.$watch(function (scope) {
                     return scope.schemaDomain && scope.schemaTolerance &&
                         document.getElementById('file-upload').files.length > 0;
@@ -143,18 +205,44 @@
                     } else {
                         document.getElementById('file-upload-btn').disabled = true;
                     }
+                });
+
+            $scope.$watch(function (scope) {
+                    return document.getElementById('file-upload').files.length > 0;
+                },
+                function () {
+                    if(document.getElementById('file-upload').files.length > 0){
+                        for (i = 0; i < document.getElementById('file-upload').files.length; i++) {
+                            if (document.getElementById('file-upload').files[i].name.indexOf(".xlsx") == -1) {
+                                $scope.fileDialogHasBeenOpened = +1;
+                                $rootScope.originalSeedFileArray.push(document.getElementById('file-upload').files[i]);
+                                $scope.seedFileObject.lists.seed.push({
+                                    label: document.getElementById('file-upload').files[i].name,
+                                    file: document.getElementById('file-upload').files[i],
+                                    originalIndex: i
+                                });
+                            }
+                        }
+                    }
+                    if (document.getElementById('file-upload').files.length > 0 &&
+                        $scope.schemaDomain != null && $scope.schemaTolerance != null) {
+                        document.getElementById('file-upload-btn').disabled = false;
+                    } else {
+                        document.getElementById('file-upload-btn').disabled = true;
+                    }
                 }
             ); // watchFileUpload
 
             $scope.uploadFile = function () {
-                var file = $scope.sampleFile;
-                $scope.numberOfFiles = document.getElementById('file-upload').files.length;
+                $scope.numberOfFiles = $scope.seedFileObject.lists.seed.length;
+                var file = $scope.seedFileObject.lists.seed;
                 $scope.filesTotalSize = 0;
-                for (var i = 0; i < document.getElementById('file-upload').files.length; i++) {
+                for (var i = 0; i < $scope.numberOfFiles; i++) {
                     $scope.filesTotalSize = document.getElementById('file-upload').files[i].size + $scope.filesTotalSize;
                 }
-                //$log.debug("fileUploadCtrl file(s) to upload:");
+                //console.log("fileUploadCtrl file(s) to upload:");
                 //console.dir(file);
+
                 $rootScope.$broadcast("sampleFilesSelected", {
                     newSampleFiles: file
                 });
@@ -168,9 +256,9 @@
                     "numberOfFiles=" + $scope.numberOfFiles + "&" +
                     "filesTotalSize=" + $scope.filesTotalSize)
                     .success(function (data) {
-                        $log.debug("Data returned:");
-                        $log.debug(data);
-                        $log.info("File(s) uploaded successfully.");
+                        console.log("Data returned:");
+                        console.log(data);
+                        console.log("File(s) uploaded successfully.");
                         // create an event for the enclosing controller so
                         // it can update the data sources in it's scope
                         $rootScope.$broadcast("dataSamplesReceived", {
@@ -179,7 +267,7 @@
                         $rootScope.$broadcast("closeWebSocket", {});
                     })
                     .error(function (data) {
-                        $log.debug("file upload failed")
+                        console.log("file upload failed")
                         console.log(data);
                         data = data.trim();
                         if (data == "Server timed out trying to reach the Python Interpretation Engine.") {
@@ -192,7 +280,7 @@
                                 {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                                 .then(function () {
                                     $rootScope.$broadcast("closeWebSocket", {});
-                                    $log.debug(data);
+                                    console.log(data);
                                     $scope.hideMask();
                                     $scope.navigateTo("/catalog");
                                 });
@@ -207,7 +295,7 @@
                                 {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
                                 .then(function () {
                                     $rootScope.$broadcast("closeWebSocket", {});
-                                    $log.debug(data);
+                                    console.log(data);
                                     $scope.hideMask();
                                     $scope.navigateTo("/catalog");
                                 });

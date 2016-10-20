@@ -1,0 +1,16 @@
+<div class="modal-header">
+    <div class="modal-title">{{data.title}}</div>
+</div>
+<div class="button-area">
+    <p id="incorrect" style=" color: red; "></p>
+    <form style="width: 100%;">
+            <label><b>Username</b></label><br>
+            <input style="width: 96%;" type="text" placeholder="Enter Username" id="loginUsername" required>
+            <br>
+            <label><b>Password</b></label><br>
+            <input style="width: 96%;" type="password" placeholder="Enter Password" id="loginPassword" required>
+    </form>
+</div>
+<div class="modal-footer btn-group-xs">
+    <button id="loginButton" class="btn btn-primary btn-group-xs" ng-enter="ok();" ng-click="ok()">{{data.ok}}</button>
+</div>

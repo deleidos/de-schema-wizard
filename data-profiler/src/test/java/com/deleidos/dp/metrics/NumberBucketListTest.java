@@ -86,7 +86,7 @@ public class NumberBucketListTest {
 		}
 		assertTrue(size >= AbstractCoalescingBucketList.DEFAULT_NUM_BUCKETS_LOW && size <= AbstractCoalescingBucketList.DEFAULT_NUM_BUCKETS_HIGH);
 		assertTrue(bl.getBucketList().get(0).getCount().compareTo(BigInteger.ZERO) > 0);
-		logger.debug(SerializationUtility.serialize(bl.asBean()));
+		logger.debug(SerializationUtility.serialize(bl.finish()));
 	}
 
 	//@Test

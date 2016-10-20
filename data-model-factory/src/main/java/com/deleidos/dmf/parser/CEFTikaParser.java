@@ -17,14 +17,14 @@ import org.xml.sax.ContentHandler;
 
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dmf.splitter.LineSplitter;
 import com.deleidos.dmf.splitter.Splitter;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 
 /**
- * 
+ * Parse Common Events Format files
  * @author leegc
  *
  */
@@ -191,12 +191,12 @@ public class CEFTikaParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		splitter.setInputStream(inputStream);
 	}
 
 	@Override
-	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		String split = splitter.split();
 		if(split == null) return null;
 		context.setCharsRead(context.getCharsRead()+split.length());

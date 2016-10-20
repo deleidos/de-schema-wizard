@@ -18,7 +18,7 @@ import org.xml.sax.ContentHandler;
 
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
@@ -44,7 +44,7 @@ public class XMLTikaParser extends AbstractAnalyticsParser {
 	InputStream inputStream;
 
 	@Override
-	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		this.inputStream = inputStream;
 	}
 
@@ -54,7 +54,7 @@ public class XMLTikaParser extends AbstractAnalyticsParser {
 	}
 	
 	@Override
-	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		try {
 			return xmlParse(context);
 		} catch (IOException e) {
@@ -64,7 +64,7 @@ public class XMLTikaParser extends AbstractAnalyticsParser {
 	}
 
 	// Private Methods
-	private ProfilerRecord xmlParse(TikaProfilerParameters params) throws IOException {
+	private ProfilerRecord xmlParse(TikaAnalyzerParameters params) throws IOException {
 		JSONObject json = null;
 		StringBuilder builder = new StringBuilder();
 		int tempChar = 0;

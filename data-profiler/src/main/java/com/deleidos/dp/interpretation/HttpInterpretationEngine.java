@@ -29,9 +29,17 @@ import com.deleidos.dp.accumulator.BundleProfileAccumulator;
 import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.deserializors.SerializationUtility;
-import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException.DeadMongo;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+/**
+ * InterpretationEngine implementation that interprets fields using REST
+ * endpoints of the external Interpretation Engine.
+ * 
+ * @author leegc, yoonj
+ *
+ */
 public class HttpInterpretationEngine implements InterpretationEngine {
 	private static final Logger logger = Logger.getLogger(HttpInterpretationEngine.class);
 
@@ -47,6 +55,7 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 	private final String REVERSE_GEO_PATH = "/reversegeo";
 	private final String VALIDATE_PYTHON_PATH = "/validatePythonScript";
 	private final String TEST_PYTHON_PATH = "/testPythonScript";
+	private final String TEST_MONGO_CONNECTION = "/testMongo";
 	private final int CONNECTION_TIMEOUT;
 	private final int READ_TIMEOUT;
 	private String baseUrl;
@@ -54,28 +63,28 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 	private ResourceBundle bundle = ResourceBundle.getBundle("error-messages");
 	private boolean isLive;
 
-	public HttpInterpretationEngine(String url) throws DataAccessException {
+	public HttpInterpretationEngine(String url) throws IEDataAccessException {
 		this(IEConfig.dynamicConfig(url));
 	}
 
-	public HttpInterpretationEngine(IEConfig config) throws DataAccessException {
-		this.CONNECTION_TIMEOUT = config.getConnectionTimeout();
-		this.READ_TIMEOUT = config.getReadTimeout();
+	public HttpInterpretationEngine(IEConfig config) throws IEDataAccessException {
+		this.CONNECTION_TIMEOUT = config.getIETimeout();
+		this.READ_TIMEOUT = config.getIETimeout();
 		this.config = config;
 		this.baseUrl = config.getUrl() + ROOT_CONTEXT;
 		if (!testConnection()) {
-			throw new DataAccessException("Could not connect to Interpretation Engine at " + config.getUrl() + ".");
+			throw new IEDataAccessException("Could not connect to Interpretation Engine at " + config.getUrl() + ".");
 		} else {
 			logger.info("Initialized Interpretation Engine at " + baseUrl + ".");
 		}
 	}
 
-	public HttpInterpretationEngine() throws DataAccessException, IOException {
+	public HttpInterpretationEngine() throws IEDataAccessException, IOException {
 		this(new IEConfig().load());
 	}
 
 	@Override
-	public JSONObject getInterpretationListByDomainGuid(String domainName) throws DataAccessException {
+	public JSONObject getInterpretationListByDomainGuid(String domainName) throws IEDataAccessException {
 		logger.debug("Get Interpretations by Domain received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -96,8 +105,10 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 					json.put(jArray.getJSONObject(i).getString("iName"), jArray.getJSONObject(i));
 				}
 				return json;
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -105,12 +116,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			logger.error("Read timeout is currently set to " + READ_TIMEOUT + "ms.");
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
-			throw new DataAccessException(e.toString());
+			throw new IEDataAccessException(e.toString());
 		}
 	}
 
 	@Override
-	public JSONArray getAvailableDomains() throws DataAccessException {
+	public JSONArray getAvailableDomains() throws IEDataAccessException {
 		logger.debug("Get Domains request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -127,8 +138,10 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			if (status == Status.OK) {
 				JSONArray jArray = new JSONArray(body);
 				return jArray;
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -137,14 +150,14 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
 	public Map<String, Profile> interpret(String domainGuid, Map<String, Profile> profileMap, int timeout)
-			throws DataAccessException {
-		if(domainGuid == null || domainGuid.equals("Not Available")) {
+			throws IEDataAccessException {
+		if (domainGuid == null || domainGuid.equals("Not Available")) {
 			return profileMap;
 		}
 		timeout = (timeout < READ_TIMEOUT) ? READ_TIMEOUT : timeout;
@@ -194,14 +207,16 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 					return profileMap;
 				} catch (Exception e) {
 					logger.error("Error using Interpretation Engine: " + e);
-					throw new DataAccessException(
+					throw new IEDataAccessException(
 							"Data from the Python Interpretation Engine was received, but there was an error retreiving the data. "
 									+ e);
 				}
 			} else if (status == Status.FORBIDDEN) {
-				throw new DataAccessException(bundle.getString("create.domain.duplicate.name"));
+				throw new IEDataAccessException(bundle.getString("create.domain.duplicate.name"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -210,12 +225,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public List<String> getCountryCodesFromCoordinateList(List<Double[]> latlngs) throws DataAccessException {
+	public List<String> getCountryCodesFromCoordinateList(List<Double[]> latlngs) throws IEDataAccessException {
 		logger.debug("Get Country Codes request received. Sending request to the Python Interpretation Engine.");
 		List<String> countryList = null;
 		try {
@@ -240,8 +255,10 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				logger.error("Received an unsuccessful response code from Interpretation Engine REST interface " + "at "
 						+ url + ".  Returning null.");
 				logger.error(conn.getResponseCode() + ": " + conn.getResponseMessage());
-				throw new DataAccessException(
+				throw new IEDataAccessException(
 						"There was an error receiving and interpretation from the Python Interpretation Engine");
+			} else if (conn.getResponseCode() == HttpURLConnection.HTTP_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
 				BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 				StringBuilder sb = new StringBuilder();
@@ -256,7 +273,7 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 					});
 				} catch (Exception e) {
 					logger.error("Error using Interpretation Engine: " + e);
-					throw new DataAccessException(
+					throw new IEDataAccessException(
 							"Data from the Python Interpretation Engine was received, but there was an error retreiving the data. "
 									+ e);
 				}
@@ -269,20 +286,20 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (MalformedURLException e) {
 			logger.error(e);
-			throw new DataAccessException("There was a problem with the URL. " + e);
+			throw new IEDataAccessException("There was a problem with the URL. " + e);
 		} catch (IOException e) {
 			logger.error(e);
-			throw new DataAccessException(
+			throw new IEDataAccessException(
 					"There was a problem reading the data from the Python Interpretation Engine " + e);
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 		return countryList;
 	}
 
 	@Override
-	public JSONObject createDomain(JSONObject domainJson) throws DataAccessException {
+	public JSONObject createDomain(JSONObject domainJson) throws IEDataAccessException {
 		logger.debug("Create Domain request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -302,9 +319,11 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.FORBIDDEN) {
-				throw new DataAccessException(bundle.getString("create.domain.duplicate.name"));
+				throw new IEDataAccessException(bundle.getString("create.domain.duplicate.name"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -313,12 +332,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public JSONObject createInterpretation(JSONObject interpretationJson) throws DataAccessException {
+	public JSONObject createInterpretation(JSONObject interpretationJson) throws IEDataAccessException {
 		logger.debug("Create Interpretation request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -338,9 +357,11 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.FORBIDDEN) {
-				throw new DataAccessException(bundle.getString("create.interpretation.duplicate.name"));
+				throw new IEDataAccessException(bundle.getString("create.interpretation.duplicate.name"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -349,12 +370,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public JSONObject updateDomain(JSONObject domainJson) throws DataAccessException {
+	public JSONObject updateDomain(JSONObject domainJson) throws IEDataAccessException {
 		logger.debug("Update Interpretation request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -374,11 +395,13 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.CONFLICT) {
-				throw new DataAccessException(bundle.getString("update.domain.many.found"));
+				throw new IEDataAccessException(bundle.getString("update.domain.many.found"));
 			} else if (status == Status.NOT_FOUND) {
-				throw new DataAccessException(bundle.getString("update.domain.none.found"));
+				throw new IEDataAccessException(bundle.getString("update.domain.none.found"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -387,12 +410,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public JSONObject updateInterpretation(JSONObject interpretationJson) throws DataAccessException {
+	public JSONObject updateInterpretation(JSONObject interpretationJson) throws IEDataAccessException {
 		logger.debug("Update Interpretation request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -412,11 +435,13 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.CONFLICT) {
-				throw new DataAccessException(bundle.getString("update.interpretation.many.found"));
+				throw new IEDataAccessException(bundle.getString("update.interpretation.many.found"));
 			} else if (status == Status.NOT_FOUND) {
-				throw new DataAccessException(bundle.getString("update.interpretation.none.found"));
+				throw new IEDataAccessException(bundle.getString("update.interpretation.none.found"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -425,12 +450,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public JSONObject deleteDomain(JSONObject domainJson) throws DataAccessException {
+	public JSONObject deleteDomain(JSONObject domainJson) throws IEDataAccessException {
 		logger.debug("Delete Domain request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -450,11 +475,13 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.CONFLICT) {
-				throw new DataAccessException(bundle.getString("delete.domain.many.found"));
+				throw new IEDataAccessException(bundle.getString("delete.domain.many.found"));
 			} else if (status == Status.NOT_FOUND) {
-				throw new DataAccessException(bundle.getString("delete.domain.none.found"));
+				throw new IEDataAccessException(bundle.getString("delete.domain.none.found"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -463,12 +490,12 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
 	@Override
-	public JSONObject deleteInterpretation(JSONObject interpretationJson) throws DataAccessException {
+	public JSONObject deleteInterpretation(JSONObject interpretationJson) throws IEDataAccessException {
 		logger.debug("Delete Interpretation request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -488,11 +515,13 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				jObject.put("returnValue", body);
 				return jObject;
 			} else if (status == Status.CONFLICT) {
-				throw new DataAccessException(bundle.getString("delete.interpretation.many.found"));
+				throw new IEDataAccessException(bundle.getString("delete.interpretation.many.found"));
 			} else if (status == Status.NOT_FOUND) {
-				throw new DataAccessException(bundle.getString("delete.interpretation.none.found"));
+				throw new IEDataAccessException(bundle.getString("delete.interpretation.none.found"));
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -501,11 +530,11 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
-	public JSONObject validatePythonScript(JSONObject iIdJson) throws DataAccessException {
+	public JSONObject validatePythonScript(JSONObject iIdJson) throws IEDataAccessException {
 		logger.debug("Validate Python Script request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -524,8 +553,10 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				JSONObject jObject = new JSONObject();
 				jObject.put("returnValue", body);
 				return jObject;
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -534,11 +565,11 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
-	public JSONObject testPythonScript(JSONObject iIdJson) throws DataAccessException {
+	public JSONObject testPythonScript(JSONObject iIdJson) throws IEDataAccessException {
 		logger.debug("Test Python Script request received. Sending request to the Python Interpretation Engine.");
 		logger.debug("");
 		try {
@@ -582,8 +613,10 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 				JSONObject jObject = new JSONObject();
 				jObject.put("returnValue", body);
 				return jObject;
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
-				throw new DataAccessException(response.getEntity().toString());
+				throw new IEDataAccessException(response.getEntity().toString());
 			}
 		} catch (ProcessingException e) {
 			logger.error(bundle.getString("ie.server.timeout"));
@@ -592,7 +625,7 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 			throw new ProcessingException(bundle.getString("ie.server.timeout"));
 		} catch (Exception e) {
 			logger.error(e.toString());
-			throw new DataAccessException(bundle.getString("ie.unexpected.error"));
+			throw new IEDataAccessException(bundle.getString("ie.unexpected.error"));
 		}
 	}
 
@@ -612,6 +645,37 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 		}
 		isLive = connected;
 		return isLive;
+	}
+
+	public boolean testMongoConnection() throws IEDataAccessException {
+		try {
+			logger.debug("Checking if MongoDB is up.");
+			logger.debug("");
+
+			String url = baseUrl + TEST_MONGO_CONNECTION;
+			logger.debug("Connecting with URL " + url);
+			WebTarget resourceTarget = disposableClient(CONNECTION_TIMEOUT, READ_TIMEOUT)
+					.target(url);
+			Response response = resourceTarget.request(MediaType.TEXT_PLAIN).get();
+			Status status = Status.fromStatusCode(response.getStatus());
+			logger.debug("Received content from Interpretation Engine.");
+			logger.debug("Response code: " + response.getStatus());
+
+			if (status == Status.OK) {
+				return true;
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				logger.error("Unable to connect to MongoDB.");
+				throw new IEDataAccessException.DeadMongo("Unable to connect to MongoDB.");
+			} else {
+				logger.error("Unable to connect to the Interpretation Engine.");
+				throw new IEDataAccessException("Unable to connect to the Interpretation Engine.");
+			}
+		} catch (ProcessingException e) {
+			logger.error(bundle.getString("ie.server.timeout"));
+			logger.error("Connection timeout is currently set to " + CONNECTION_TIMEOUT + "ms.");
+			logger.error("Read timeout is currently set to " + READ_TIMEOUT + "ms.");
+			throw new ProcessingException(bundle.getString("ie.server.timeout"));
+		} 
 	}
 
 	@Override
@@ -637,6 +701,8 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 
 			if (status == Status.OK) {
 				return buildStandardResponse(status, response, "Interpretation", true);
+			} else if (status == Status.SERVICE_UNAVAILABLE) {
+				throw new IEDataAccessException.DeadMongo("Unable to reach MongoDB.");
 			} else {
 				return buildStandardErrorResponse(response, url);
 			}

@@ -9,8 +9,14 @@ import org.json.JSONObject;
 
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.IEDataAccessException;
 import com.deleidos.dp.reversegeocoding.ReverseGeocoder.ReverseGeocodingWorker;
 
+/**
+ * Interface for calls to the interpretation engine.
+ * @author leegc
+ *
+ */
 public interface InterpretationEngine extends ReverseGeocodingWorker {
 	
 	public boolean isLive();
@@ -36,5 +42,7 @@ public interface InterpretationEngine extends ReverseGeocodingWorker {
 	public JSONObject validatePythonScript(JSONObject b64Script) throws DataAccessException;
 	
 	public JSONObject testPythonScript(JSONObject iIdJson) throws DataAccessException;
+	
+	public boolean testMongoConnection() throws IEDataAccessException;
 	
 }

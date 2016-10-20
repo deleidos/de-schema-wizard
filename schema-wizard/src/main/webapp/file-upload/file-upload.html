@@ -1,86 +1,129 @@
 <div ng-controller="fileUploadCtrl" ng-model="sampleFile">
-    <div style="width: 500px; margin: 0 auto;">
-        Select a domain, select an invalid data tolerance level, choose one or more<br>
-        sample files which are representative of data sources then press 'Upload' to<br>
-        submit them for processing.
+    <div style="width: 600px; margin: 0 auto;">
+        Choose a domain, choose an invalid data tolerance level, choose one or more data sample<br>
+        files which are representative of data sources. Using drag and drop, reorder the data sample<br>
+        files, if necessary, so the better samples are at the top of the list. The top file is referred<br>
+        to as the 'seed file' whose property names become the preferred name for schema fields. Finally,<br>
+        press 'Upload' to submit them for processing.
     </div>
+    <br>
+    <div style="width: 600px; margin: 0 auto;">
+        <div style="display: inline-block; float: left; margin-left: 2px;">
+            <span style="text-shadow: none; margin-top: 10px;" uib-dropdown>
+                <button id="btn-append-to-domain-button" type="button" class="btn" uib-dropdown-toggle>
+                    <span>Choose Domain</span>
+                    <span class="caret"></span>
+                    <span class="sr-only">Split button!</span>
+                </button>
+                <ul class="dropdown-menu" uib-dropdown-menu role="menu"
+                    aria-labelledby="btn-append-to-domain-button"
+                    style="font: normal normal 10pt sans-serif;">
+                    <li role="menuitem" ng-repeat="domain in domains">
+                        <a href="#" class="dropdown-item"
+                           ng-click="setSchemaDomain($event, domain.dName)">
+                            {{domain.dName}}
+                        </a>
+                    </li>
+                </ul>
+            </span>
+            <span id="schema-domain">{{schemaDomain}}</span>
+        </div>
 
-    <div style="margin-left: 2px; margin-top: 10px;">
-        <span style="text-shadow: none; margin-top: 10px;" uib-dropdown>
-            <button id="btn-append-to-domain-button" type="button" class="btn" uib-dropdown-toggle>
-                <span>Choose Domain</span>
-                <span class="caret"></span>
-                <span class="sr-only">Split button!</span>
-            </button>
-            <ul class="dropdown-menu" uib-dropdown-menu role="menu"
-                aria-labelledby="btn-append-to-domain-button"
-                style="font: normal normal 10pt sans-serif;">
-                <li role="menuitem" ng-repeat="domain in domains">
-                    <a href="#" class="dropdown-item"
-                       ng-click="setSchemaDomain($event, domain.dName)">
-                        {{domain.dName}}
-                    </a>
-                </li>
-            </ul>
-        </span>
-        <span id="schema-domain">{{schemaDomain}}</span>
+        <div style="display: inline-block; float: right; margin-right: 2px;">
+            <span style="text-shadow: none; margin-top: 10px;" uib-dropdown>
+                <button id="btn-append-to-tolerance-button" type="button" class="btn btn-primary" uib-dropdown-toggle>
+                    <span>Choose Tolerance</span>
+                    <span class="caret"></span>
+                    <span class="sr-only">Split button!</span>
+                </button>
+                <ul class="dropdown-menu" uib-dropdown-menu role="menu"
+                    aria-labelledby="btn-append-to-tolerance-button"
+                    style="font: normal normal 10pt sans-serif;" ng-model="schemaTolerance">
+                    <li role="menuitem">
+                        <a href="#" class="dropdown-item"
+                           ng-click="setSchemaTolerance($event, 'Strict')">
+                            Strict
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a href="#" class="dropdown-item"
+                           ng-click="setSchemaTolerance($event, 'Moderate')">
+                            Moderate
+                        </a>
+                    </li>
+                    <li role="menuitem">
+                        <a href="#" class="dropdown-item"
+                           ng-click="setSchemaTolerance($event, 'Relaxed')">
+                            Relaxed
+                        </a>
+                    </li>
+                </ul>
+            </span>
+            <span id="schema-tolerance">{{schemaTolerance}}</span>
+        </div>
     </div>
+    <br><br>
 
-    <div style="margin-left: 2px; margin-top: 10px;">
-        <span style="text-shadow: none; margin-top: 10px;" uib-dropdown>
-            <button id="btn-append-to-tolerance-button" type="button" class="btn btn-primary" uib-dropdown-toggle>
-                <span>Choose Tolerance</span>
-                <span class="caret"></span>
-                <span class="sr-only">Split button!</span>
-            </button>
-            <ul class="dropdown-menu" uib-dropdown-menu role="menu"
-                aria-labelledby="btn-append-to-tolerance-button"
-                style="font: normal normal 10pt sans-serif;" ng-model="schemaTolerance">
-                <li role="menuitem">
-                    <a href="#" class="dropdown-item"
-                       ng-click="setSchemaTolerance($event, 'Strict')">
-                        Strict
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" class="dropdown-item"
-                       ng-click="setSchemaTolerance($event, 'Moderate')">
-                        Moderate
-                    </a>
-                </li>
-                <li role="menuitem">
-                    <a href="#" class="dropdown-item"
-                       ng-click="setSchemaTolerance($event, 'Relaxed')">
-                        Relaxed
-                    </a>
-                </li>
-            </ul>
-        </span>
-        <span id="schema-tolerance">{{schemaTolerance}}</span>
-    </div>
-
-    <!-- Two divs are overlayed in order to provide a styled
-         button for the input tag and display of the chosen file name.
-         The 'file' input tag displays poorly in IE so it is hidden
-         and the file name is displayed in a separate span -->
-    <div style="display: none;">
-        <input id="file-upload" type="file" multiple="multiple" file-model="sampleFile"/>
-                <!--accept="image/jpeg,image/gif,image/png"-->
-    </div>
-    <div style="left: 18px; margin-top: 10px;">
-        <label for="file-upload" class="btn btn-primary">
-            Choose Files
-        </label>
-        <span id="file-upload-name"></span>
-    </div>
-    <div style="margin-left: 2px; margin-top: 10px;">
-        <button id="file-upload-btn" class="btn btn-primary"
-                ng-click="showMask(); uploadFile();" disabled>
-            Upload
-        </button>
-        <button class="btn btn-primary" style="float: right;"
-                ng-click="navigateTo('/catalog')">
-            Cancel
-        </button>
+    <div style="width: 600px; margin: 0 auto;">
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">Data Sample Files <i>(use drag and drop to reorder)</i></h3>
+            </div>
+            <div id="schemaPanelBody" class="panel-body"
+                 style="width: 596px; max-height: 129px; margin: 0 auto; margin-bottom: -6px; overflow: auto;">
+                <div class="draggableList">
+                    <span id="seed-title">{{seedTitle}}</span>
+                    <ul style="border: thin solid turquoise"
+                        dnd-list="seedFileObject.lists.seed"
+                        dnd-drop="dropCallback(event, index, item, external, type) ">
+                        <!-- The dnd-draggable directive makes an element draggable and will
+                             transfer the object that was assigned to it. If an element was
+                             dragged away, you have to remove it from the original list
+                             yourself using the dnd-moved attribute -->
+                        <li ng-repeat="item in seedFileObject.lists.seed"
+                            style="padding: 2px;"
+                            dnd-draggable="item"
+                            dnd-moved="seedFileObject.lists.seed.splice($index, 1)"
+                            dnd-effect-allowed="move"
+                            dnd-selected="seedFileObject.selected = item"
+                            dnd-inserted="logEvent('Element was inserted at position ' + index, event)"
+                            ng-class="{'selected': seedFileObject.selected === item}">
+                            {{item.label}}
+                            <button class="btn-graphic-only btn-remove" type="button"
+                                    ng-model="singleModel"
+                                    uib-tooltip="Remove File"
+                                    tooltip-placement="right"
+                                    ng-click="removeFile(item)">
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div style="width: 600px; margin: 0 auto;">
+                <!-- Two divs are overlayed in order to provide a styled
+                     button for the input tag and display of the chosen file name.
+                     The 'file' input tag displays poorly in IE so it is hidden
+                     and the file name is displayed in a separate span -->
+                <div style="display: none;">
+                    <input id="file-upload" type="file" multiple="multiple" file-model="sampleFile" ng-click="clearFiles()"/>
+                    <!--accept="image/jpeg,image/gif,image/png"-->
+                </div>
+                <div style="display: inline-block; margin: 8px;">
+                    <label for="file-upload" class="btn btn-primary">
+                        Choose Files
+                    </label>
+                </div>
+                <div style="display: inline-block; float: right; margin: 8px;">
+                    <button id="file-upload-btn" class="btn btn-primary"
+                            ng-click="showMask(); uploadFile();" disabled>
+                        Upload
+                    </button>
+                    <button class="btn btn-primary" style="float: right; margin-left: 8px;"
+                            ng-click="navigateTo('/catalog')">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

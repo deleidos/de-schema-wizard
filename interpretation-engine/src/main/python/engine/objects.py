@@ -66,8 +66,10 @@ class MetricsDictionary(object):
             self.user_facing_profile_mapping['number_average'] = profile['detail']['average']
             self.user_facing_profile_mapping['number_std_dev'] = profile['detail']['std-dev']
             num_distinct = str(profile['detail']['num-distinct-values'])
-            if(num_distinct.startswith(">=")):
+            if num_distinct.startswith(">="):
                 num_distinct = num_distinct[2:]
+            elif num_distinct.startswith("&ge;"):
+                num_distinct = num_distinct[4:]
             logging.info("num distinct " + str(num_distinct))
             self.user_facing_profile_mapping['num_distinct_values'] = num_distinct 
         elif self.user_facing_profile_mapping['main_type'] == 'string':
@@ -76,8 +78,10 @@ class MetricsDictionary(object):
             self.user_facing_profile_mapping['string_average_length'] = profile['detail']['average-length']
             self.user_facing_profile_mapping['string_std_dev_length'] = profile['detail']['std-dev-length']
             num_distinct = str(profile['detail']['num-distinct-values'])
-            if(num_distinct.startswith(">=")):
+            if num_distinct.startswith(">="):
                 num_distinct = num_distinct[2:]
+            elif num_distinct.startswith("&ge;"):
+                num_distinct = num_distinct[4:]
             self.user_facing_profile_mapping['num_distinct_values'] = num_distinct
         elif self.user_facing_profile_mapping['main_type'] == 'binary':
             self.user_facing_profile_mapping['binary_length'] = profile['detail']['length']

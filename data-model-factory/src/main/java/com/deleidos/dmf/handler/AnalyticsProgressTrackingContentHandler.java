@@ -12,6 +12,12 @@ import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
+/**
+ * Content handler used specifically to track progress of parsers that to not implement progress callbacks 
+ * (namely, built in Tika parsers).
+ * @author leegc
+ *
+ */
 public class AnalyticsProgressTrackingContentHandler extends BodyContentHandler {
 	private static final Logger logger = Logger.getLogger(AnalyticsProgressTrackingContentHandler.class);
 	private final List<String> imageSources = new ArrayList<String>();

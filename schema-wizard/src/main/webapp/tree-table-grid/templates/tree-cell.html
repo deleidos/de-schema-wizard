@@ -3,5 +3,5 @@
     <span id="{{'treecell-' + nodeId}}"
           ng-show="nodeLabel1 != '~'" style="cursor: pointer; text-align: left;"
           ng-style="cursor == 'not-allowed' && { 'cursor': 'not-allowed' }"
-          ng-click="node = internalMethod1(node)">{{nodeLabel1}}</span>
+          ng-click="node = cbMethod($event, 'showInDetails', { 'node': node })">{{nodeLabel1}}</span>
 </span>

@@ -1,0 +1,103 @@
+:focus, :focus .active {
+    outline: 1px solid rgb(64, 125, 169) !important;
+}
+.banner {
+    background-image: url(../img/banner-background.png);
+    background-repeat: repeat-x;
+    text-shadow: 1px 0px 3px rgb(0, 0, 64);
+}
+.footer {
+    background-color: rgb(64, 125, 169);
+}
+#logoPage {
+    background-image: url(../img/waterfall.png);
+}
+#logoDialog {
+    border: 5px ridge rgb(140, 200, 245);
+}
+#exportDialog {
+    border: 5px ridge rgb(140, 200, 245);
+}
+#popupDialog {
+    border: 5px ridge rgb(140, 200, 245);
+}
+.btn, .btn-xs, .btn-primary {
+    color: white;
+    background-color: rgb(44, 125, 180) !important;
+    border: thin solid rgb(64, 125, 169);
+
+}
+.btn:hover, .btn-primary:hover {
+    color: white;
+    font-style: italic;
+    background-color: rgb(100,100,100) !important;
+    border: thin solid rgb(64, 125, 169);
+}
+.btn-graphic-plus-text:hover {
+    border-color: rgb(64, 125, 169);
+}
+.well {
+    background-color: floralwhite;
+}
+.tab-headers ul {
+    border: solid 1px rgb(64, 125, 169);
+}
+.tab-headers li {
+    background-color: rgb(44, 125, 180);
+}
+.tab-headers li:hover, li:hover a {
+    background-color: rgb(100, 160, 205);
+}
+.tab-headers .active {
+    border-top: thin solid rgb(140, 200, 245);
+    border-left: thin solid rgb(140, 200, 245);
+    border-right: thin solid rgb(64, 125, 169);
+}
+.tab-headers .active:hover {
+    border-bottom: thick solid rgb(100, 160, 205);
+}
+.panel-primary {
+    border: thin solid rgb(64, 125, 169);
+}
+.modal-header, .close {
+    background-color: rgb(109, 158, 192);
+    background: url(../img/popup-banner-background-blue.png) repeat-x;
+}
+.modal-footer {
+    background-color: rgb(109, 158, 192);
+    background: -webkit-linear-gradient(left, #336699, #6699cc, #e8e8e8); /* For Safari 5.1 to 6.0 */
+    background: -o-linear-gradient(right, #336699, #6699cc, #e8e8e8); /* For Opera 11.1 to 12.0 */
+    background: -moz-linear-gradient(right, #336699, #6699cc, #e8e8e8); /* For Firefox 3.6 to 15 */
+    background: linear-gradient(to right, #336699, #6699cc, #e8e8e8); /* Standard syntax */
+}
+.stripe-odd {
+    background-color: #e0f6ff;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #e0f6ff;
+}
+/**
+ * Show dropzones in different colors
+ */
+#dropzone-1 .dndDragging {
+    background-color: floralwhite;
+}
+/**
+ * Show selected elements in same color as their dropzone
+ */
+#data-sources-table li.selected1 {
+    background-color: floralwhite;
+}
+.progress-bar{
+    background-color: rgb(44, 125, 180);
+}
+*.popover {
+    border: 2px outset rgb(109, 158, 192);
+}
+*.popover-title {
+    background-color: rgb(44, 125, 180);
+}
+.popover-content.tour-step-content {
+/*    border-color: rgb(40,155,80);*/
+}
+

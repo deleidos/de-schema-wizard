@@ -22,4 +22,13 @@ public class AliasNameDetails {
 		this.aliasName = aliasName;
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof AliasNameDetails) {
+			AliasNameDetails otherAlias = (AliasNameDetails) obj;
+			return otherAlias.getAliasName().equals(aliasName) && otherAlias.getDsGuid().equals(dsGuid);
+		}
+		return false;
+	}
+	
 }

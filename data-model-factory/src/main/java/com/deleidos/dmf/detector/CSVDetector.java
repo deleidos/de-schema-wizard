@@ -55,13 +55,13 @@ public class CSVDetector extends AbstractMarkSupportedAnalyticsDetector {
 		br = new BufferedReader(new InputStreamReader(inputStream));
 		separator = detectSeparators(br);
 		if(separator == 0) {
-			return null;
+			return MediaType.OCTET_STREAM;
 		}
 		while(!lv.complete) {
 			lv.loadNextCompleteCSVLine(br);
 			int commaCount = lv.popCommaCount();
 			if(!lv.validate(commaCount)) {
-				return null;
+				return MediaType.OCTET_STREAM;
 			}
 		}
 		return CONTENT_TYPE;

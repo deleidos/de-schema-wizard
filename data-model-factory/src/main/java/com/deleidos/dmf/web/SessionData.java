@@ -1,9 +1,9 @@
 package com.deleidos.dmf.web;
 
 /**
- * Caching, convenience access, etc..
+ * This class maintains some session information that will help report messages to the user.
  * @author leegc
- * TODO 
+ *
  */
 public class SessionData {
 	public static final int ERROR_CUTOFF = 10;

@@ -9,6 +9,12 @@ import java.util.Vector;
 import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 
+/**
+ * Unused 8/25/16
+ * Conceptual implementation of a profiler record that can handle structured data.
+ * @author leegc
+ *
+ */
 public class VectorOrderProfilerRecord extends HashMap<VectorOrderedProfilerKey, Object> implements ProfilerRecord {
 	
 	/**

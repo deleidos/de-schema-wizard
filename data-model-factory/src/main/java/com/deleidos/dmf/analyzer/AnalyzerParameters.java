@@ -5,13 +5,13 @@ package com.deleidos.dmf.analyzer;
  * @author leegc
  *
  */
-public interface AnalyzerParameters {
+public interface AnalyzerParameters<T> {
 	
 	/**
 	 * Get the profiler bean.  As of 3/14/16, this is either a DataSample or Schema object.
 	 *   
 	 * @return A bean that represents the data that was analyzed.
 	 */
-	public Object getProfilerBean();
+	public T getProfilerBean();
 	
 }

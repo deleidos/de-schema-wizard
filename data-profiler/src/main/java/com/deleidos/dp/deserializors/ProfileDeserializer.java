@@ -23,6 +23,11 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 
+/**
+ * Deserializer for profiles.  This class should be added as a module in the ObjectMapper.
+ * @author leegc
+ *
+ */
 public class ProfileDeserializer extends JsonDeserializer<Profile> {
 	private static final Logger logger = Logger.getLogger(ProfileDeserializer.class);
 

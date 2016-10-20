@@ -9,6 +9,11 @@ import java.util.List;
 import com.deleidos.dp.beans.Histogram;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 
+/**
+ * Bucket that holds unique numeric values.  Ranges are handled by DefinedRangesNumberBucketList
+ * @author leegc
+ *
+ */
 public class UniqueValuesNumberBucketList extends AbstractNumberBucketList {
 
 	protected UniqueValuesNumberBucketList() {

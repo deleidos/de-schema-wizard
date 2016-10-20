@@ -11,6 +11,8 @@ import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
 
+import com.deleidos.dmf.exception.AnalyticsRuntimeException;
+
 /**
  * Abstract class to add extensions to the Tika Detectors.  <b> You must add the fully qualified class name to this 
  * project's src/main/resources/META-INF/services/org.apache.tika.detect.Detector file. </b>
@@ -30,17 +32,29 @@ public abstract class AbstractMarkSupportedAnalyticsDetector extends AnalyticsDe
 		setHasBodyPlainTextContent(false);
 	}
 
+	/**
+	 * Implementation of the Tika detect() method.  Adds some additional functionality to the
+	 */
 	@Override
 	public MediaType detect(InputStream input, Metadata metadata)
 			throws IOException {
 		TemporaryResources tmp = new TemporaryResources();
 		TikaInputStream tikaInputStream = TikaInputStream.get(input, tmp);
+		if (tikaInputStream.available() == 0) {
+			throw new AnalyticsRuntimeException("Stream does not have anything available.");
+		}
+		
 		MediaType type = null;
 		try {
-			if(closeOnBinaryDetection(tikaInputStream)) return null;
+			if(closeOnBinaryDetection(tikaInputStream)) { 
+				return MediaType.OCTET_STREAM; 
+			}
 			tikaInputStream.mark(Integer.MAX_VALUE);
 			type = analyticsDetect(tikaInputStream, metadata);
-			if(type != null && Float.floatToRawIntBits(confidenceInterval) == 0) {
+			if (type == null) {
+				throw new AnalyticsRuntimeException("Detector subclasses should not return null.");
+			}
+			if(!type.equals(MediaType.OCTET_STREAM) && Float.floatToRawIntBits(confidenceInterval) == 0) {
 				confidenceInterval = .99f; //as of 1/19, default confidence is 99%
 			}
 			tikaInputStream.reset();

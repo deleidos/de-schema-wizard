@@ -1,5 +1,10 @@
 package com.deleidos.dp.enums;
 
+/**
+ * Enum of possible detail types.
+ * @author leegc, yoonj
+ *
+ */
 public enum DetailType {
 	INTEGER, DECIMAL, EXPONENT, DATE_TIME, BOOLEAN, TERM, PHRASE, IMAGE, VIDEO_FRAME, AUDIO_SEGMENT, TEXT;
 	

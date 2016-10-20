@@ -5,22 +5,21 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.accumulator.BundleProfileAccumulator;
 import com.deleidos.dp.beans.DataSample;
-import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
-import com.deleidos.dp.profiler.api.Profiler;
+import com.deleidos.dp.profiler.api.AbstractProfiler;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 
@@ -28,71 +27,46 @@ import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
  * Profiler class for sample data sets.  Takes in objects and loads them into a BundleAccumulator.  Every object key
  * has an associated BundleAccumulator.  This accumulator is a group of all three metrics types 
  * (number, string, binary) that will push the object's values into them as long as they are able to be parsed into that
- * form.
+ * form.  Most metrics (not histograms, though) are accumulated on the first pass 8/25/16.
  * 
  * @author leegc
  *
  */
-public class SampleProfiler implements Profiler {
+public class SampleProfiler extends AbstractProfiler<DataSample> {
 	private ProfilingProgressUpdateHandler progressUpdateListener;
 	private static Logger logger = Logger.getLogger(SampleProfiler.class);
-	//private String domainName;
 	private Tolerance tolerance;
-	//private int numGeoSpatialQueries = 0;
-	private int recordsParsed;
 	protected Map<String, BundleProfileAccumulator> fieldMapping;
 
 	public SampleProfiler(Tolerance tolerance) {
 		setTolerance(tolerance);
 		fieldMapping = new LinkedHashMap<String, BundleProfileAccumulator>();
-		recordsParsed = 0;
 	}
 
 	@Override
-	public int load(ProfilerRecord record) {
-		boolean isBinary = record instanceof BinaryProfilerRecord;
-		Map<String, List<Object>> normalizedMapping = record.normalizeRecord();
-		for(String key : normalizedMapping.keySet()) {
-			if(normalizedMapping.get(key) == null) {
-				continue;
-			}
-			String accumulatorKey = key;
-			BundleProfileAccumulator bundleAccumulator;
-			List<Object> values = normalizedMapping.get(key);
+	public void accumulateBinaryRecord(BinaryProfilerRecord binaryRecord) {
+		// binary profiler records only have one key and do not affect presence
+		String key = binaryRecord.getBinaryName();
+		List<Object> values = binaryRecord.normalizeRecord().get(key);
+		fieldMapping.putIfAbsent(key, new BundleProfileAccumulator(key, tolerance));
+		accumulateNormalizedValues(fieldMapping.get(key), key, values);
 
-			if(fieldMapping.containsKey(accumulatorKey)) { 
-				bundleAccumulator = fieldMapping.get(accumulatorKey);
-			} else {
-				bundleAccumulator = new BundleProfileAccumulator(accumulatorKey, tolerance);
-				fieldMapping.put(accumulatorKey, bundleAccumulator);
-			}
-			if(!values.isEmpty()) {
-				bundleAccumulator.accumulate(values.get(0), !isBinary);
-				for(int i = 1; i < values.size(); i++) {
-					bundleAccumulator.accumulate(values.get(i), false);
-				}
-			}
-			
-		}
-		if(!isBinary) {
-			// do not increment records parsed count for binary objects
-			recordsParsed++;
-		} else {
-			// if the record binary, use get the detail type from the profiler record
-			// this is a special case because we need Tika (in dmf) to determine the detail type
-			// for binary
-			BinaryProfilerRecord binaryRecord = (BinaryProfilerRecord) record;
-			if(fieldMapping.containsKey(binaryRecord.getBinaryName())) {
-				BundleProfileAccumulator bundleAccumulator = fieldMapping.get(binaryRecord.getBinaryName());
-				BundleProfileAccumulator.getBinaryProfileAccumulator(bundleAccumulator.getState()).ifPresent(
-					binAccumulator->{
-						binAccumulator.getDetailTypeTracker()
-						[binaryRecord.getDetailType().getIndex()]++;
-					});
-			}
-		}
+		// if the record binary, use get the detail type from the profiler record
+		// this is a special case because we need Tika (in dmf) to determine the detail type
+		// for binary
+		BundleProfileAccumulator.getBinaryProfileAccumulator(
+				fieldMapping.get(key).getState()).ifPresent(binAccumulator->
+				binAccumulator.getDetailTypeTracker()[binaryRecord.getDetailType().getIndex()]++);
 
-		return recordsParsed;
+	}
+
+	@Override
+	public void accumulateRecord(ProfilerRecord record) {
+		record.normalizeRecord().forEach((key, values)->{
+			fieldMapping.putIfAbsent(key, new BundleProfileAccumulator(key, tolerance));
+			accumulateNormalizedValues(fieldMapping.get(key), key, values);
+		});
+		recordsLoaded++;
 	}
 
 	/**
@@ -108,54 +82,6 @@ public class SampleProfiler implements Profiler {
 		return fieldMapping.keySet();
 	}
 
-	@Override
-	public DataSample asBean() {
-		DataSample dataSample = new DataSample();
-		dataSample.setRecordsParsedCount(recordsParsed);
-		final Map<String, Profile> dsProfile = new LinkedHashMap<String, Profile>();
-
-		// put any recognizable profiles in the dsProfile map
-		fieldMapping.forEach((k,v)-> 
-			v.getBestGuessProfile(getRecordsParsed()).ifPresent(profile->dsProfile.put(k, profile)));
-
-		/*if(!hasCalledInterpretationEngine && domainName != null) {
-			try {
-				dsProfile.putAll(InterpretationEngineFacade.getInstance().interpret(domainName, dsProfile));
-			} catch (DataAccessException e) {
-				logger.error("Could not interpret data sample.");
-				logger.error(e);
-			}
-			hasCalledInterpretationEngine = true;
-		}
-
-		int numLats = 0;
-		int numLngs = 0;
-
-		for(String key : dsProfile.keySet()) {
-			Profile profile = dsProfile.get(key);
-			if(Interpretation.isLatitude(profile.getInterpretation())) {
-				numLats += profile.getDetail().getWalkingCount().intValue();
-			} else if(Interpretation.isLongitude(profile.getInterpretation())) {
-				numLngs += profile.getDetail().getWalkingCount().intValue();
-			}
-		}
-
-		numGeoSpatialQueries = Math.min(numLats, numLngs);*/
-
-		dsProfile.putAll(DisplayNameHelper.determineDisplayNames(dsProfile));
-		dataSample.setDsProfile(dsProfile);
-
-		return dataSample;
-	}
-
-	/*public String getDomainGuid() {
-		return domainName;
-	}
-
-	public void setDomainName(String domainName) {
-		this.domainName = domainName;
-	}*/
-
 	public Tolerance getTolerance() {
 		return tolerance;
 	}
@@ -165,7 +91,7 @@ public class SampleProfiler implements Profiler {
 	}
 
 	public int getRecordsParsed() {
-		return recordsParsed;
+		return recordsLoaded;
 	}
 
 	/*public int getNumGeoSpatialQueries() {
@@ -193,16 +119,32 @@ public class SampleProfiler implements Profiler {
 	 */
 	public static DataSample generateDataSampleFromProfilerRecords(String domain, Tolerance tolerance, List<ProfilerRecord> records) throws DataAccessException {
 		SampleProfiler sampleProfiler = new SampleProfiler(tolerance);
-		records.forEach(record->sampleProfiler.load(record));
-		DataSample bean = sampleProfiler.asBean();
+		records.forEach(record->sampleProfiler.accumulate(record));
+		DataSample bean = sampleProfiler.finish();
 		InterpretationEngineFacade.interpretInline(bean, domain, null);
 		SampleSecondPassProfiler secondPassProfiler = new SampleSecondPassProfiler(bean);
-		records.forEach(record->secondPassProfiler.load(record));
-		DataSample sample = secondPassProfiler.asBean();
+		records.forEach(record->secondPassProfiler.accumulate(record));
+		DataSample sample = secondPassProfiler.finish();
 		sample.setDsName(UUID.randomUUID().toString());
 		sample.setDsGuid(sample.getDsName());
 		sample.setDsLastUpdate(Timestamp.from(Instant.now()));
 		return sample;
+	}
+
+	@Override
+	public DataSample finish() {
+		DataSample dataSample = new DataSample();
+		dataSample.setRecordsParsedCount(recordsLoaded);
+		final Map<String, Profile> dsProfile = new LinkedHashMap<String, Profile>();
+
+		// put any recognizable profiles in the dsProfile map
+		fieldMapping.forEach((k,v)-> 
+		v.getBestGuessProfile(getRecordsParsed()).ifPresent(profile->dsProfile.put(k, profile)));
+
+		dsProfile.putAll(DisplayNameHelper.determineDisplayNames(dsProfile));
+		dataSample.setDsProfile(dsProfile);
+
+		return dataSample;
 	}
 
 }

@@ -1,0 +1,107 @@
+:focus, :focus .active {
+    outline: 1px solid rgb(40,155,80) !important;
+}
+.banner {
+    background-image: url(../img/banner-background-green.png);
+    background-repeat: repeat-x;
+    text-shadow: 1px 0px 3px rgb(0, 0, 64);
+}
+.footer {
+    background-color:  rgb(40,155,80);
+}
+#logoPage {
+    background-image: url(../img/big-data-green.jpg);
+}
+#logoDialog {
+    border: 5px ridge rgb(0,204,102);
+}
+#exportDialog {
+    border: 5px ridge rgb(0,204,102);
+}
+#popupDialog {
+    border: 5px ridge rgb(0,204,102);
+}
+.btn, .btn-primary {
+    color: white;
+    background-color: rgb(51,153,102) !important;
+    border: thin solid rgb(40,155,80);
+}
+.btn:hover, .btn-primary:hover {
+    color: white;
+    font-style: italic;
+    background-color: rgb(100,100,100) !important;
+    border: thin solid rgb(40,155,80);
+}
+.btn-graphic-plus-text {
+    color: black;
+    background-color: white !important;
+}
+.btn-graphic-plus-text:hover {
+    border-color: rgb(40,155,80);
+}
+.well {
+    background-color: floralwhite;
+}
+.tab-headers ul {
+    border: solid 1px rgb(51,153,102);
+    background-color: rgb(255,255,255);
+}
+.tab-headers li {
+    background-color: rgb(51,153,102);
+}
+.tab-headers li:hover, li:hover a {
+    background-color: rgb(0,204,102);
+}
+.tab-headers .active {
+    border-top: thin solid rgb(0,204,102);
+    border-left: thin solid rgb(0,204,102);
+    border-right: thin solid rgb(40,155,80);
+}
+.tab-headers .active:hover {
+    border-bottom: thick solid rgb(0,204,102);
+}
+.panel-primary {
+    border: thin solid rgb(40,155,80);
+}
+.modal-header, .close {
+    background-color: rgb(40,155,80);
+    background: url(../img/popup-banner-background-green.png) repeat-x;
+}
+.modal-footer {
+    background-color: rgb(40,155,80);
+    background: -webkit-linear-gradient(left, #006600, #009900, #e8e8e8); /* For Safari 5.1 to 6.0 */
+    background: -o-linear-gradient(right, #006600, #009900, #e8e8e8); /* For Opera 11.1 to 12.0 */
+    background: -moz-linear-gradient(right, #006600, #009900, #e8e8e8); /* For Firefox 3.6 to 15 */
+    background: linear-gradient(to right, #006600, #009900, #e8e8e8); /* Standard syntax */
+}
+.stripe-odd {
+    background-color: #e0fff6;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #e0fff6;
+}
+/**
+ * Show dropzones in different colors
+ */
+#dropzone-1 .dndDragging {
+    background-color: floralwhite;
+}
+/**
+ * Show selected elements in same color as their dropzone
+ */
+#data-sources-table li.selected1 {
+    background-color: floralwhite;
+}
+.progress-bar{
+    background-color:  rgb(51,153,102)
+}
+*.popover {
+    border: 2px outset rgb(40,155,80);
+}
+*.popover-title {
+    background-color: rgb(51,153,102);
+}
+.popover-content.tour-step-content {
+/*    border-color: rgb(40,155,80);*/
+}
+

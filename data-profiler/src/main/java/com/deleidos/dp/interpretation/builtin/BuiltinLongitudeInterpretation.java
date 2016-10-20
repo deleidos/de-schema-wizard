@@ -42,7 +42,7 @@ public class BuiltinLongitudeInterpretation extends AbstractBuiltinInterpretatio
 		baseComparisonMetrics.setMin(new BigDecimal(-180));
 		baseComparisonMetrics.setMax(new BigDecimal(180));
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.match(name, profile, "Longitude", baseProfile, nameWeight);
+		return MetricsCalculationsFacade.originalMatch(name, profile, "Longitude", baseProfile, nameWeight);
 	}
 
 	@Override
@@ -141,7 +141,7 @@ public class BuiltinLongitudeInterpretation extends AbstractBuiltinInterpretatio
 		baseComparisonMetrics.setStdDevLength(.1);
 		baseComparisonMetrics.setNumDistinctValues(finalStringDetails.getNumDistinctValues());
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.match(stringProfileName, finalStringMetrics, "Longitude", baseProfile, nameWeight);
+		return MetricsCalculationsFacade.originalMatch(stringProfileName, finalStringMetrics, "Longitude", baseProfile, nameWeight);
 	}
 
 	@Override

@@ -16,6 +16,6 @@ describe('test broadcast', function () {
             $scope: $rootScope.$new(),
 
             sampleData: {}
-        })
+        });
         expect($rootScope.$broadcast).toHaveBeenCalledWith('setCurrentSample', {sample:{}})});
-})
+});

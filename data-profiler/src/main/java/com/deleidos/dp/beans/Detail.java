@@ -25,34 +25,16 @@ public abstract class Detail {
 
 	public Detail() { }
 
+	/**
+	 * Return the details histogram
+	 * @return
+	 */
 	@JsonIgnore
 	public Optional<Histogram> getHistogramOptional() {
-		if(this instanceof NumberDetail) {
-			if(this instanceof NumberDetail) {
-				NumberDetail nDetail = (NumberDetail)this;
-				return Optional.of(nDetail.getFreqHistogram());
-			} else {
-				return Optional.empty();
-			}
-		} else if(this instanceof StringDetail) {
-			if(this instanceof StringDetail) {
-				StringDetail sDetail = (StringDetail)this;
-				return Optional.of(sDetail.getTermFreqHistogram());
-			} else {
-				return Optional.empty();
-			}
-		} else if(this instanceof BinaryDetail) {
-			if(this instanceof BinaryDetail) {
-				BinaryDetail bDetail = (BinaryDetail)this;
-				return Optional.of(bDetail.getByteHistogram());
-			} else {
-				return Optional.empty();
-			}
-		} else {
-			logger.error("Not a number, string, or binary detail type!!");
-			return null;
-		}
+		return Optional.ofNullable(getHistogram());
 	}
+	
+	public abstract Histogram getHistogram();
 
 	@JsonIgnore
 	public void nullifyBucketList() {

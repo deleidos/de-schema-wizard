@@ -74,8 +74,9 @@ public class StringDetail extends Detail {
 		//this.charFreqHistogram = charFreqHistogram;
 	}*/
 
+	@Override
 	@JsonProperty("freq-histogram")
-	public Histogram getTermFreqHistogram() {
+	public Histogram getHistogram() {
 		return termFreqHistogram;
 	}
 

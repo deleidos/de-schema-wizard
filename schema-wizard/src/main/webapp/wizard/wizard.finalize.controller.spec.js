@@ -16,6 +16,6 @@ describe('test broadcast', function () {
             $scope: $rootScope.$new(),
 
             schemaData: {}
-        })
+        });
         expect($rootScope.$broadcast).toHaveBeenCalledWith('schemaUpdate', {schema:{}})});
-})
+});

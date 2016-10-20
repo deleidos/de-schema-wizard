@@ -154,7 +154,7 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 		cp.getCountryFrequencyMapping().put("United States", 10);
 		coordinateProfiles.add(cp);
 		existingRegionData = SchemaProfiler.mergeCoordinateProfiles(existingRegionData, mergeMap, coordinateProfiles);
-		existingRegionData.forEach((k,v)->System.out.println(k+":"+SerializationUtility.serialize(v)));
+		existingRegionData.forEach((k,v)->logger.info(k+":"+SerializationUtility.serialize(v)));
 		assertTrue(existingRegionData.get("new-lon").getRows().get(0).getValue() == 10);
 		
 		mergeMap = new HashMap<String, String>();
@@ -165,7 +165,7 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 		cp.getCountryFrequencyMapping().put("United States", 10);
 		coordinateProfiles.add(cp);
 		existingRegionData = SchemaProfiler.mergeCoordinateProfiles(existingRegionData, mergeMap, coordinateProfiles);
-		existingRegionData.forEach((k,v)->System.out.println(k+":"+SerializationUtility.serialize(v)));
+		existingRegionData.forEach((k,v)->logger.info(k+":"+SerializationUtility.serialize(v)));
 		assertTrue(existingRegionData.get("new-lon").getRows().get(0).getValue() == 20);
 		
 	}
@@ -232,7 +232,7 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 			loadSomeRecords(schemaProfiler, numRecords.get(i), randomSeeds.get(i));
 			i++;
 		}
-		Schema schema = schemaProfiler.asBean();
+		Schema schema = schemaProfiler.finish();
 		schema.setsGuid(UUID.randomUUID().toString());
 		return schema;
 	}
@@ -240,19 +240,19 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 	private static DataSample samplePass(int numRecords, int randomSeed) throws MainTypeException, DataAccessException {
 		SampleProfiler sampleProfiler = new SampleProfiler(Tolerance.STRICT);
 		loadSomeRecords(sampleProfiler, numRecords, randomSeed);
-		DataSample sample = sampleProfiler.asBean();
+		DataSample sample = sampleProfiler.finish();
 		InterpretationEngineFacade.interpretInline(sample, "Transportation", null);
 
 		SampleSecondPassProfiler srgProfiler = new SampleSecondPassProfiler(sample);
 		srgProfiler.setMinimumBatchSize(500);
 		loadSomeRecords(srgProfiler, numRecords, randomSeed);
-		DataSample ds = srgProfiler.asBean();
+		DataSample ds = srgProfiler.finish();
 		ds.setDsFileName("/test-sample"+String.valueOf(numRecords)+"-"+String.valueOf(randomSeed));
 		ds.setDsGuid(UUID.randomUUID().toString());
 		return ds;
 	}
 
-	private static void loadSomeRecords(Profiler profiler, int numRecords, int randomSeed) {
+	public static void loadSomeRecords(Profiler profiler, int numRecords, int randomSeed) {
 		Random rand = new Random(randomSeed);
 		for(int i = 0; i < numRecords; i++) {
 			DefaultProfilerRecord profilerRecord = new DefaultProfilerRecord();
@@ -269,7 +269,7 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 			
 			
 			profilerRecord.put("no-geo", randomNotGeo);
-			profiler.load(profilerRecord);
+			profiler.accumulate(profilerRecord);
 		}
 	}
 

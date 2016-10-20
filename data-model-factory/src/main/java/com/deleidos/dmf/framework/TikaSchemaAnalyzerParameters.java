@@ -13,20 +13,25 @@ import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.profiler.SchemaProfiler;
 import com.deleidos.dp.profiler.api.Profiler;
 
-public class TikaSchemaAnalyzerParameters extends TikaProfilerParameters {
+/**
+ * Class that is specifically used to hold components of a schema analysis process.
+ * @author leegc
+ *
+ */
+public class TikaSchemaAnalyzerParameters extends TikaAnalyzerParameters<Schema> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 2710971238389516736L;
-	
+
 	private Schema existingSchema;
 	private JSONArray modifiedSampleList;
 	private JSONObject proposedSchemaAnalysis;		
 	private List<DataSample> userModifiedSampleList;
 	private Map<String, MostCommonFieldWithWalking> mostCommonFieldWithWalkingCount;
 
-	public TikaSchemaAnalyzerParameters(Profiler profiler, ProgressBarManager progressBar, String uploadDir, 
+	public TikaSchemaAnalyzerParameters(SchemaProfiler profiler, ProgressBarManager progressBar, String uploadDir, 
 			String guid, String domainName, List<DataSample> dataSampleList) {
 		super(profiler, progressBar, uploadDir, guid);
 		userModifiedSampleList = dataSampleList;
@@ -59,18 +64,14 @@ public class TikaSchemaAnalyzerParameters extends TikaProfilerParameters {
 
 	@Override
 	public Schema getProfilerBean() {
-		SchemaProfiler profiler = (SchemaProfiler)this.get(Profiler.class);
-		Object bean = profiler.asBean();
-		if(bean instanceof Schema) {
-			Schema schemaBean = (Schema) bean;
-			schemaBean.setsGuid(getGuid());
-			schemaBean.setRecordsParsedCount(profiler.getRecordsParsed());
-			schemaBean.setsDataSamples(profiler.getDataSampleMetaDataList());
-			schemaBean.setsDomainName(this.getDomainName());
-			return schemaBean;
-		} else {
-			throw new AnalyticsRuntimeException("Undefined profiler in Sample Profilable Parameters.");
-		}
+		SchemaProfiler schemaProfiler = (SchemaProfiler) super.profiler;
+		Schema bean = schemaProfiler.finish();
+		Schema schemaBean = (Schema) bean;
+		schemaBean.setsGuid(getGuid());
+		schemaBean.setRecordsParsedCount(schemaProfiler.getRecordsParsed());
+		schemaBean.setsDataSamples(schemaProfiler.getDataSampleMetaDataList());
+		schemaBean.setsDomainName(this.getDomainName());
+		return schemaBean;
 	}
 
 	public Schema getExistingSchema() {
@@ -89,4 +90,8 @@ public class TikaSchemaAnalyzerParameters extends TikaProfilerParameters {
 		this.mostCommonFieldWithWalkingCount = mostCommonFieldWithWalkingCount;
 	}
 
+	@Override
+	public SchemaProfiler getProfiler() {
+		return (SchemaProfiler) profiler;
+	}
 }

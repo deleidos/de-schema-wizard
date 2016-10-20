@@ -24,7 +24,7 @@ import org.xml.sax.ContentHandler;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
 import com.deleidos.dmf.framework.AnalyticsEmbeddedDocumentExtractor;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dmf.parser.pcap.ext.Wireless80211;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
@@ -102,7 +102,7 @@ public class JNetPcapTikaParser extends AbstractAnalyticsParser {
 
 	@Override
 	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata,
-			TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+			TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		errorBuffer = new StringBuilder();
 		String file = context.get(File.class).getAbsolutePath();
 		String metadataFile = metadata.get(AnalyticsEmbeddedDocumentExtractor.RESOURCE_PATH_KEY);
@@ -131,7 +131,7 @@ public class JNetPcapTikaParser extends AbstractAnalyticsParser {
 
 	@Override
 	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata,
-			TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+			TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		// don't even use stream because JnetPcap must handle it internally
 		if(jPacketCallback.getPacketBuffer().isEmpty()) {
 			packetsRead += pcap.loop(packetBufferSize, jPacketCallback, null);
@@ -228,7 +228,7 @@ public class JNetPcapTikaParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public void postParse(ContentHandler handler, Metadata metadata, TikaProfilerParameters context)
+	public void postParse(ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context)
 			throws AnalyticsTikaProfilingException {
 		super.postParse(handler, metadata, context);
 		pcap.close();

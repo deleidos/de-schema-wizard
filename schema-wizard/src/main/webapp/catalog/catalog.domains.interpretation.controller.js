@@ -3,10 +3,10 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('interpretationController', ['$rootScope', '$scope', '$cookies', '$resource',
-        '$location', '$route', '$routeParams', '$log', '$timeout', '$confirm', 'domainName', 'domainId',
+        '$location', '$route', '$routeParams', '$timeout', '$confirm', 'domainName', 'domainId',
         'interpretationData', 'interpretationResource', 'statusCodesFactory', 'pythonValidateResource',
         'pythonTestResource', '$q', 'uiTourService',
-        function ($rootScope, $scope, $cookies, $resource, $location, $route, $routeParams, $log, $timeout,
+        function ($rootScope, $scope, $cookies, $resource, $location, $route, $routeParams, $timeout,
                   $confirm, domainName, domainId, interpretationData, interpretationResource,
                   statusCodesFactory, pythonValidateResource, pythonTestResource, $q, TourService) {
             if($cookies.get('schwiz.tours.interpretations') !== "visited"){
@@ -15,19 +15,19 @@
             }
             $scope.interpretationTour = $rootScope.tourInformation.interpretationsTour;
             $scope.domainName = domainName;
-            $log.debug("$scope.domainName: " + $scope.domainName);
+            console.log("$scope.domainName: " + $scope.domainName);
             $scope.domainId = domainId;
-            $log.debug("$scope.domainId: " + $scope.domainId);
+            console.log("$scope.domainId: " + $scope.domainId);
             $scope.editor = null;
             $scope.selInterpret = null;
             $scope.newInterpretation = null;
             $scope.selInterpretSampleData = null;
             $scope.selInterpretMatchingNames = null;
             interpretationData.$promise.then(function (response) {
-                $log.debug(response);
+                console.log(response);
                 // retrieve the interpretations object
                 $scope.interpretations = interpretationData;
-                $log.debug($scope.interpretations);
+                console.log($scope.interpretations);
                 $timeout(function() {
                     $scope.initEditor();
                     // initialize the forms
@@ -39,9 +39,9 @@
                         $scope.loadInterpretation(Object.keys($scope.interpretations)[0]);
                     }
                     $scope.autoSave = function () {
-                        $log.debug("autoSave");
+                        console.log("autoSave");
                         /*
-                        $log.debug("autoSave \n" +
+                        console.log("autoSave \n" +
                             " 0) " + $scope.newInterpretation + " \n" +
                             " 1) " + $scope.interpretationForm.$valid + " \n" +
                             " 2) " + $scope.interpretationForm.$dirty + " \n" +
@@ -155,10 +155,10 @@
             $scope.loadInterpretation = function (interpretationName) {
                 $scope.clearAllForms();
                 $scope.selInterpret = $scope.interpretations[interpretationName];
-                $log.debug("selInterpret interpretationName: " + interpretationName);
-                $log.debug($scope.selInterpret);
-                //$log.debug("$scope.selInterpret.iScript");
-                //$log.debug($scope.selInterpret.iScript);
+                console.log("selInterpret interpretationName: " + interpretationName);
+                console.log($scope.selInterpret);
+                //console.log("$scope.selInterpret.iScript");
+                //console.log($scope.selInterpret.iScript);
                 var iScr = atob($scope.selInterpret.iScript).split('\n');
                 var iScrBodyLen;
                 for (iScrBodyLen = iScr.length - 1; iScrBodyLen > 0; iScrBodyLen--) {
@@ -166,8 +166,8 @@
                         break;
                     }
                 }
-                $log.debug("iScrBodyLen: " + iScrBodyLen);
-                //$log.debug(iScr.slice(0, iScrBodyLen).join('\n'));
+                console.log("iScrBodyLen: " + iScrBodyLen);
+                //console.log(iScr.slice(0, iScrBodyLen).join('\n'));
                 $scope.editor.getSession().setValue(iScr.slice(0, iScrBodyLen).join('\n'));
 
                 $scope.selInterpretSampleData = "";
@@ -181,8 +181,8 @@
                         $scope.selInterpretSampleData = $scope.selInterpretSampleData.slice(0, -1);
                     }
                 }
-                $log.debug("$scope.selInterpretSampleData.toString()");
-                $log.debug($scope.selInterpretSampleData.toString());
+                console.log("$scope.selInterpretSampleData.toString()");
+                console.log($scope.selInterpretSampleData.toString());
 
                 // work-around for angularjs bug ($setViewValue & $render)
                 $scope.interpretationForm.sampleData.$setViewValue($scope.selInterpretSampleData);
@@ -190,13 +190,13 @@
                 $scope.interpretationForm.sampleData.$setPristine();
                 $scope.interpretationForm.sampleData.$render();
                 /*
-                $log.debug("$scope.interpretationForm.sampleData validation states:");
-                $log.debug("$untouched: " + $scope.interpretationForm.sampleData.$untouched);
-                $log.debug("$touched: " + $scope.interpretationForm.sampleData.$touched);
-                $log.debug("$pristine: " + $scope.interpretationForm.sampleData.$pristine);
-                $log.debug("$dirty: " + $scope.interpretationForm.sampleData.$dirty);
-                $log.debug("$invalid: " + $scope.interpretationForm.sampleData.$invalid);
-                $log.debug("$valid: " + $scope.interpretationForm.sampleData.$valid);
+                console.log("$scope.interpretationForm.sampleData validation states:");
+                console.log("$untouched: " + $scope.interpretationForm.sampleData.$untouched);
+                console.log("$touched: " + $scope.interpretationForm.sampleData.$touched);
+                console.log("$pristine: " + $scope.interpretationForm.sampleData.$pristine);
+                console.log("$dirty: " + $scope.interpretationForm.sampleData.$dirty);
+                console.log("$invalid: " + $scope.interpretationForm.sampleData.$invalid);
+                console.log("$valid: " + $scope.interpretationForm.sampleData.$valid);
                 */
 
                 if (!$scope.selInterpret.iConstraints.quantized) {
@@ -222,8 +222,8 @@
                         $scope.selInterpretMatchingNames = $scope.selInterpretMatchingNames.slice(0, -1);
                     }
                 }
-                $log.debug("$scope.selInterpretMatchingNames.toString()");
-                $log.debug($scope.selInterpretMatchingNames.toString());
+                console.log("$scope.selInterpretMatchingNames.toString()");
+                console.log($scope.selInterpretMatchingNames.toString());
 
                 // work-around for angularjs bug ($setViewValue & $render)
                 $scope.interpretationForm.matchingNames.$setViewValue($scope.selInterpretMatchingNames);
@@ -246,7 +246,7 @@
             }; // loadInterpretation
 
             $scope.isNumber = function (formField) {
-                $log.debug("isNumber formField: " + formField);
+                console.log("isNumber formField: " + formField);
                 $scope.interpretationForm[formField].$commitViewValue();
                 var x = $scope.interpretationForm[formField].$modelValue;
                 if ($scope.interpretationForm[formField].$modelValue == null) {
@@ -260,15 +260,15 @@
                 } catch (e) {
                     retVal = false;
                 }
-                $log.debug("isNumber: '" + x + "'   " + retVal);
+                console.log("isNumber: '" + x + "'   " + retVal);
                 $scope.interpretationForm[formField].$setValidity('number', retVal);
-                $log.debug(formField + " valid: " + $scope.interpretationForm[formField].$valid);
-                $log.debug(formField + " invalid: " + $scope.interpretationForm[formField].$invalid);
+                console.log(formField + " valid: " + $scope.interpretationForm[formField].$valid);
+                console.log(formField + " invalid: " + $scope.interpretationForm[formField].$invalid);
                 return retVal;
             }; // isNumber
 
             $scope.isInteger = function (formField) {
-                $log.debug("isInteger formField: " + formField);
+                console.log("isInteger formField: " + formField);
                 $scope.interpretationForm[formField].$commitViewValue();
                 if ($scope.interpretationForm[formField].$modelValue == null) {
                     $scope.interpretationForm[formField].$setValidity('number', true);
@@ -281,40 +281,40 @@
                 } catch (e) {
                     retVal = false;
                 }
-                $log.debug("isInteger: '" + x + "'   " + retVal);
+                console.log("isInteger: '" + x + "'   " + retVal);
                 $scope.interpretationForm[formField].$setValidity('number', retVal);
-                $log.debug(formField + " valid: " + $scope.interpretationForm[formField].$valid);
-                $log.debug(formField + " invalid: " + $scope.interpretationForm[formField].$invalid);
+                console.log(formField + " valid: " + $scope.interpretationForm[formField].$valid);
+                console.log(formField + " invalid: " + $scope.interpretationForm[formField].$invalid);
                 return retVal;
             }; // isInteger
 
             $scope.updateInterpretation = function () {
                 if ($scope.selInterpret === null || $scope.selInterpret.iName === "") return;
-                $log.debug("$scope.selInterpret save/update");
-                $log.debug($scope.selInterpret);
-                //$log.debug("$scope.interpretationForm");
-                //$log.debug($scope.interpretationForm);
+                console.log("$scope.selInterpret save/update");
+                console.log($scope.selInterpret);
+                //console.log("$scope.interpretationForm");
+                //console.log($scope.interpretationForm);
 
                 $scope.selInterpret.iScript = btoa($scope.editor.getValue() + $scope.defaultPythonEpilogScript);
-                $log.debug("$scope.selInterpret.iScript");
-                $log.debug(atob($scope.selInterpret.iScript));
+                console.log("$scope.selInterpret.iScript");
+                console.log(atob($scope.selInterpret.iScript));
 
                 $scope.interpretationForm.sampleData.$commitViewValue();
                 if ($scope.interpretationForm.sampleData.$modelValue) {
                     $scope.selInterpret.iSampleData = $scope.interpretationForm.sampleData.$modelValue.split("\n");
                 }
-                $log.debug("$scope.selInterpret.iSampleData");
-                $log.debug($scope.selInterpret.iSampleData);
+                console.log("$scope.selInterpret.iSampleData");
+                console.log($scope.selInterpret.iSampleData);
 
                 $scope.interpretationForm.matchingNames.$commitViewValue();
                 if ($scope.interpretationForm.matchingNames.$modelValue) {
                     $scope.selInterpret.iMatchingNames = $scope.interpretationForm.matchingNames.$modelValue.split("\n");
                 }
-                $log.debug("$scope.selInterpret.iMatchingNames");
-                $log.debug($scope.selInterpret.iMatchingNames);
+                console.log("$scope.selInterpret.iMatchingNames");
+                console.log($scope.selInterpret.iMatchingNames);
                 // save new interpretations or update existing ones
                 if ($scope.newInterpretation) {
-                    $log.debug("save new interpretation");
+                    console.log("save new interpretation");
                     $scope.interpretations[$scope.selInterpret["iName"]] = $scope.selInterpret;
                     interpretationResource.save(
                         {
@@ -322,14 +322,14 @@
                             data: $scope.selInterpret
                         })
                         .$promise.then(function (response) {
-                            $log.debug("added new interpretation successfully")
+                            console.log("added new interpretation successfully")
                             $scope.selInterpret.iId = response.returnValue;
                             $scope.newInterpretation = null;
                             $scope.interpretationForm.editorValidationMsg.$setPristine();
                             $scope.resetForm();
                             $scope.selInterpret.iValid = true;
                         }, function (error) {
-                            $log.debug(error);
+                            console.log(error);
                             $scope.selInterpret.iValid = false;
                             statusCodesFactory.get().$promise.then(function (response) {
                                 $confirm(
@@ -344,19 +344,19 @@
                         }
                     );
                 } else if ($scope.selInterpret) {
-                    $log.debug("update interpretation");
+                    console.log("update interpretation");
                     interpretationResource.update(
                         {
                             domainId: $scope.selInterpret.iDomainId,
                             data: $scope.selInterpret
                         })
                         .$promise.then(function (response) {
-                            $log.debug("update interpretation successfully")
+                            console.log("update interpretation successfully")
                             $scope.interpretationForm.editorValidationMsg.$setPristine();
                             $scope.resetForm();
                             $scope.selInterpret.iValid = true;
                         }, function (error) {
-                            $log.debug(error);
+                            console.log(error);
                             statusCodesFactory.get().$promise.then(function (response) {
                                 $confirm(
                                     {
@@ -415,7 +415,7 @@
             }; // cancelNewInterpretation
 
             $scope.validatePythonScript = function () {
-                $log.debug("validatePythonScript");
+                console.log("validatePythonScript");
                 // don't attempt to validate an unsaved interpretation;
                 // it does not have an iId yet which is required for validation
                 if ($scope.newInterpretation) return;
@@ -424,11 +424,11 @@
                         interpretationId: $scope.selInterpret.iId
                     })
                     .$promise.then(function (response) {
-                        $log.debug("python script validated successfully");
-                        $log.debug(response);
+                        console.log("python script validated successfully");
+                        console.log(response);
                         if (response.annotations.length > 0) {
-                            $log.debug("python script validation had warnings");
-                            $log.debug(response.annotations);
+                            console.log("python script validation had warnings");
+                            console.log(response.annotations);
                             $scope.editor.getSession().setAnnotations(response.annotations);
                             $scope.setEditorFormValidator('$pristine', true);
                         } else {
@@ -437,12 +437,12 @@
                         };
                         $scope.selInterpret.iValid = true;
                     }, function (error) {
-                        $log.debug(error);
+                        console.log(error);
                         $scope.setEditorFormValidator('$dirty', true);
                         $scope.selInterpret.iValid = false;
                         if (error.status === 417) {
-                            $log.debug("python script failed validation");
-                            $log.debug(error.data.annotations);
+                            console.log("python script failed validation");
+                            console.log(error.data.annotations);
                             $scope.editor.getSession().setAnnotations(error.data.annotations);
                         } else if (error.status === 500) {
                             statusCodesFactory.get().$promise.then(function (response) {
@@ -461,8 +461,8 @@
             }; // validatePythonScript
 
             $scope.testPythonScript = function () {
-                $log.debug("testPythonScript");
-                $log.debug($scope.selInterpret);
+                console.log("testPythonScript");
+                console.log($scope.selInterpret);
                 if (!$scope.selInterpret.iValid) return;
                 $scope.interpretationForm.console.value = null;
                 $scope.consoleOutput = "";
@@ -471,17 +471,17 @@
                         interpretationId: $scope.selInterpret.iId
                     })
                     .$promise.then(function (response) {
-                        $log.debug("python script tested successfully")
-                        //$log.debug(response.consoleOutput);
+                        console.log("python script tested successfully")
+                        //console.log(response.consoleOutput);
                         $scope.consoleOutput = "Schema Wizard Interpretation Engine Python Test Runner\n\n" +
                                                response.consoleOutput['script-trace'] + "\n" +
                                                "Analysis of this interpretation returned: " +
                                                response.consoleOutput['script-result'];
                     }, function (error) {
-                        $log.debug(error);
+                        console.log(error);
                         if (error.status === 417) {
-                            $log.debug("python script execution threw exceptions");
-                            $log.debug(error.data.consoleOutput);
+                            console.log("python script execution threw exceptions");
+                            console.log(error.data.consoleOutput);
                             $scope.consoleOutput = "Schema Wizard Interpretation Engine Python Test Runner\n\n" +
                                 error.data.consoleOutput['script-trace'];
                         } else if (error.status === 500) {
@@ -503,7 +503,7 @@
             $scope.checkForDupNames = function () {
                 $scope.interpretationForm.iName.$commitViewValue();
                 var newInterpretationName = $scope.interpretationForm.iName.$modelValue;
-                $log.debug("checkForDupNames newInterpretationName: " + newInterpretationName);
+                console.log("checkForDupNames newInterpretationName: " + newInterpretationName);
                 if ($scope.interpretations.hasOwnProperty(newInterpretationName)) {
                     $confirm(
                         {
@@ -527,7 +527,7 @@
             $scope.addIdentityToMatchingNames = function () {
                 $scope.interpretationForm.iName.$commitViewValue();
                 var newInterpretationName = $scope.interpretationForm.iName.$modelValue;
-                $log.debug("addIdentityToMatchingNames newInterpretationName: " + newInterpretationName);
+                console.log("addIdentityToMatchingNames newInterpretationName: " + newInterpretationName);
                 $scope.newInterpretation['iMatchingNames'] = [];
                 $scope.newInterpretation['iMatchingNames'].push(newInterpretationName);
                 $scope.selInterpretMatchingNames = newInterpretationName + "\n";
@@ -537,7 +537,7 @@
             }; // addNameToMatchingNames
 
             $scope.removeInterpretation = function (interpretationName) {
-                $log.debug("removeInterpretation: " + interpretationName +
+                console.log("removeInterpretation: " + interpretationName +
                     "(" + $scope.interpretations[interpretationName].iId + ")");
                 $confirm({
                         title: 'Confirm Delete Interpretation',
@@ -546,7 +546,7 @@
                         cancel: 'Cancel'
                     }
                 ).then(function () {
-                    $log.debug("deleting interpretation");
+                    console.log("deleting interpretation");
                     interpretationResource.remove(
                         {
                             domainId: $scope.interpretations[interpretationName].iDomainId,
@@ -567,7 +567,7 @@
                             }
                             delete $scope.interpretations[interpretationName];
                         }, function (error) {
-                            $log.debug("error.status: " + error.status);
+                            console.log("error.status: " + error.status);
                             statusCodesFactory.get().$promise.then(function (response) {
                                 $confirm(
                                     {
@@ -584,7 +584,7 @@
             }; // removeInterpretation
 
             $scope.initEditor = function () {
-                //$log.debug("starting editor");
+                //console.log("starting editor");
                 $scope.editor=ace.edit('editor');
                 $scope.editor.setTheme("ace/theme/" + $scope.editorThemes.selectedTheme);
                 $scope.editor.getSession().setMode("ace/mode/python");
@@ -593,12 +593,12 @@
                 $scope.editor.resize();
 
                 $scope.$on("resizeEditor", function(event, args) {
-                    //$log.debug("resize editor");
+                    //console.log("resize editor");
                     $scope.editor.resize();
                 }); // onResizeEditor
 
                 $scope.editor.on("change", function(e) {
-                    //$log.debug("editor changed, setting form to dirty");
+                    //console.log("editor changed, setting form to dirty");
                     $scope.interpretationForm.editorValidationMsg.$setDirty();
                     $scope.setEditorFormValidator('$dirty');
                     if ($scope.selInterpret) $scope.selInterpret.iValid = false;
@@ -635,7 +635,7 @@
             }; // setEditorFormValidator
 
             $scope.changeEditorTheme = function () {
-                //$log.debug("$scope.changeEditorTheme: '" + $scope.editorThemes.selectedTheme + "'");
+                //console.log("$scope.changeEditorTheme: '" + $scope.editorThemes.selectedTheme + "'");
                 $scope.editor.setTheme("ace/theme/" + $scope.editorThemes.selectedTheme);
                 $cookies.put('schwiz.editor.theme', $scope.editorThemes.selectedTheme);
             }; // changeEditorTheme

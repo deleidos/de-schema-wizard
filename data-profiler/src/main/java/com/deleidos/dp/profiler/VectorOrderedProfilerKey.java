@@ -8,6 +8,12 @@ import java.util.Vector;
 
 import com.deleidos.dp.enums.GroupingBehavior;
 
+/**
+ * Unused - 8/25/16
+ * Conceptual implementation of profiler keys that maintain a structural knowledge.
+ * @author leegc
+ *
+ */
 public class VectorOrderedProfilerKey {
 	public final static Integer UNORDERED = -1;
 	public final static Integer ABSENT = 0;

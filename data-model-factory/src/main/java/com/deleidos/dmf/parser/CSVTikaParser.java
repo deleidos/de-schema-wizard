@@ -38,7 +38,7 @@ import org.xml.sax.ContentHandler;
 import com.deleidos.dmf.exception.AnalyticsParsingRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dmf.splitter.Splitter;
 import com.deleidos.dmf.splitter.TextlineWithQuotesSplitter;
 import com.deleidos.dp.enums.GroupingBehavior;
@@ -50,7 +50,7 @@ import au.com.bytecode.opencsv.CSVReader;
 /**
  * A CSVParser for the analytics framework.  Auto-detects the separator (either ',' or ';' or '\t') and parses 
  * each record based on that separator.
- * based on class by Marco Salgado A. < marco.salgado[at]junar.com >
+ * uses a class by Marco Salgado A. < marco.salgado[at]junar.com >
  * Editted by @author Greg Lee
  */
 public class CSVTikaParser extends AbstractAnalyticsParser {
@@ -73,7 +73,7 @@ public class CSVTikaParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		splitter.setInputStream(inputStream);
 		try {
 			separator = detectSeparators(inputStream);
@@ -86,7 +86,7 @@ public class CSVTikaParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		try {
 			String nextSplit = splitter.split();
 			if(nextSplit == null) {

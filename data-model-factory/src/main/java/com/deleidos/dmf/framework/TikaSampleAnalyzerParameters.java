@@ -8,30 +8,34 @@ import org.xml.sax.ContentHandler;
 
 import com.deleidos.dmf.exception.AnalyticsRuntimeException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser.ProgressUpdatingBehavior;
-import com.deleidos.dmf.framework.TikaProfilerParameters.MostCommonFieldWithWalking;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters.MostCommonFieldWithWalking;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.profiler.api.Profiler;
 
-public class TikaSampleAnalyzerParameters extends TikaProfilerParameters {
+/**
+ * Class that is specifically used to hold necessary components of a sample detecting/parsing/profiling/persisting process.
+ * @author leegc
+ *
+ */
+public class TikaSampleAnalyzerParameters extends TikaAnalyzerParameters<DataSample> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1734197480952109880L;
-	
+
 	private String sampleFilePath; 
 	private int sampleNumber;
 	private int numSamplesUploading;
 	private int recordsInSample = -1;
 	private int reverseGeocodingCallsEstimate;
-	private String uploadFileDir;
 	private String mediaType;
 	private Map<String, MostCommonFieldWithWalking> secondPassMostCommonFieldWithWalkingCount;
-	
+
 	private boolean persist;
-	
-	public TikaSampleAnalyzerParameters(Profiler profiler, ProgressBarManager progressBar, String uploadFileDir, String guid,
+
+	public TikaSampleAnalyzerParameters(Profiler<DataSample> profiler, ProgressBarManager progressBar, String uploadFileDir, String guid,
 			InputStream stream, ContentHandler handler, Metadata metadata) {
 		super(profiler, progressBar, uploadFileDir, guid);
 		this.setStream(stream);
@@ -43,19 +47,14 @@ public class TikaSampleAnalyzerParameters extends TikaProfilerParameters {
 
 	@Override
 	public DataSample getProfilerBean() {
-		Profiler profiler = get(Profiler.class);
-		Object bean = profiler.asBean();
-		if(bean instanceof DataSample) {
-			DataSample dataSampleBean = (DataSample) bean;
-			dataSampleBean.setDsGuid(getGuid());
-			dataSampleBean.setDsFileType(getMediaType());
-			dataSampleBean.setDsFileName(getSampleFilePath());
-			dataSampleBean.setDsFileType(getMediaType());
-			dataSampleBean.setDsExtractedContentDir(getExtractedContentDir());
-			return dataSampleBean;
-		} else {
-			throw new AnalyticsRuntimeException("Undefined profiler in Sample Profilable Parameters.");
-		}
+		DataSample bean = profiler.finish();
+		DataSample dataSampleBean = (DataSample) bean;
+		dataSampleBean.setDsGuid(getGuid());
+		dataSampleBean.setDsFileType(getMediaType());
+		dataSampleBean.setDsFileName(getSampleFilePath());
+		dataSampleBean.setDsFileType(getMediaType());
+		dataSampleBean.setDsExtractedContentDir(getExtractedContentDir());
+		return dataSampleBean;
 	}
 
 	public String getSampleFilePath() {
@@ -98,14 +97,6 @@ public class TikaSampleAnalyzerParameters extends TikaProfilerParameters {
 		this.reverseGeocodingCallsEstimate = reverseGeocodingCallsEstimate;
 	}
 
-	public String getUploadFileDir() {
-		return uploadFileDir;
-	}
-
-	public void setUploadFileDir(String uploadFileDir) {
-		this.uploadFileDir = uploadFileDir;
-	}
-
 	/*public boolean isDoReverseGeocode() {
 		return doReverseGeocode;
 	}
@@ -139,12 +130,9 @@ public class TikaSampleAnalyzerParameters extends TikaProfilerParameters {
 		this.secondPassMostCommonFieldWithWalkingCount = secondPassMostCommonFieldWithWalkingCount;
 	}
 
-	/*public boolean isReverseGeocodingPass() {
-		return isReverseGeocodingPass;
+	@Override
+	public Profiler<DataSample> getProfiler() {
+		return super.getProfiler();
 	}
-
-	public void setReverseGeocodingPass(boolean isReverseGeocodingPass) {
-		this.isReverseGeocodingPass = isReverseGeocodingPass;
-	}*/
 
 }

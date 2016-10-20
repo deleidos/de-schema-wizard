@@ -12,6 +12,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 /**
  * Abstract class for interpretations.  New interpretations should extend this class rather than implement Interpretation directly.
+ * 
+ * Primarily used for testing, though could be a backup if the HttpInterpretationEngine cannot connect 8/25/16
+ * 
  * @author leegc
  *
  */

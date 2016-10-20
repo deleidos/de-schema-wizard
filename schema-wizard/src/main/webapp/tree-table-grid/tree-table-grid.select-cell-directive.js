@@ -4,8 +4,8 @@
 
     schemaWizardApp.directive('selectCell', function () {
         var linker = function (scope, element, attrs) {
-            scope.internalMethod1 = function (selectedItem) {
-                scope.externalMethod1()(selectedItem);
+            scope.cbMethod = function ($event, callback, parms) {
+                scope.callbackMethod()($event, callback, parms);
             };
             scope.data = scope.$eval(decodeURI(attrs.data));
         };
@@ -16,8 +16,7 @@
             replace: true,
             scope: {
                 nodeLabel: '@',
-                externalMethod1: '&',
-                externalMethod2: '&'
+                callbackMethod: "&"
             },
             link: linker
         }

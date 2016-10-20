@@ -41,19 +41,19 @@ public class EmptyStringProfilingTest extends DPMockUpEnvironmentTest {
 	@Test
 	public void testAccumulateEmptyStringAndEmptyValues() throws MainTypeException {
 		SampleProfiler sampleProfiler = new SampleProfiler(Tolerance.STRICT);
-		sampleProfiler.load(new DefaultProfilerRecord() {
+		sampleProfiler.accumulate(new DefaultProfilerRecord() {
 			{
 				put("", Arrays.asList("",""));
 			}
 		});
-		DataSample ds = sampleProfiler.asBean();
+		DataSample ds = sampleProfiler.finish();
 		SampleSecondPassProfiler secondPass = new SampleSecondPassProfiler(ds);
-		secondPass.load(new DefaultProfilerRecord() {
+		secondPass.accumulate(new DefaultProfilerRecord() {
 			{
 				put("", Arrays.asList("",""));
 			}
 		});
-		Map<String, Profile> p =	secondPass.asBean().getDsProfile();
+		Map<String, Profile> p = secondPass.finish().getDsProfile();
 		try {
 			Optional<Histogram> h = p.get(DefaultProfilerRecord.EMPTY_FIELD_NAME_INDICATOR).getDetail().getHistogramOptional();
 			assertTrue(h.isPresent());

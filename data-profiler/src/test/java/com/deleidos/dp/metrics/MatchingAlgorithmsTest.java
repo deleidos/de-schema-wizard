@@ -5,7 +5,9 @@ import static org.junit.Assert.assertTrue;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.junit.Test;
@@ -19,9 +21,12 @@ import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
+import com.deleidos.dp.environ.DPMockUpEnvironmentTest;
+import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
+import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 
-public class MatchingAlgorithmsTest {
+public class MatchingAlgorithmsTest extends DPMockUpEnvironmentTest {
 	private Logger logger = Logger.getLogger(MatchingAlgorithmsTest.class);
 	private String s1 = "Volume";
 	private String s2 = "Vol";
@@ -73,7 +78,7 @@ public class MatchingAlgorithmsTest {
 		logger.info("Similarity for desired-to-be-matching string fields " + similarity);
 		assertTrue(similarity > .80);*/
 		
-		double newSimilarity = MetricsCalculationsFacade.match("Region", p, "Rgn", p2);
+		double newSimilarity = matchProfiles("Region", p, "Rgn", p2);
 		logger.info("New similarity is " +newSimilarity);
 	}
 	
@@ -105,13 +110,13 @@ public class MatchingAlgorithmsTest {
 
 		//sma2.finish();
 		
-		double newSimilarity = MetricsCalculationsFacade.match("Name", p, "Rgn", p2);
+		double newSimilarity = matchProfiles("Name", p, "Rgn", p2);
 		logger.info("New similarity is " +newSimilarity);
 		assertTrue(newSimilarity < .80);
 	}
 	
 	@Test
-	public void numberMetricsMatchingTest() {
+	public void numberMetricsMatchingTest() throws DataAccessException {
 		
 		Profile numberProfile = new Profile();
 		NumberDetail nm = new NumberDetail();
@@ -137,12 +142,9 @@ public class MatchingAlgorithmsTest {
 		nm2.setNumDistinctValues("5");
 		numberProfile2.setDetail(nm2);
 		
-		double similarity = MetricsCalculationsFacade.match(profile1Name, numberProfile, profile2Name, numberProfile2);
-		logger.info("Similarity for desired-to-be-matching number fields " + similarity);
-		assertTrue(Math.abs(similarity - .97333) < .01);
-		
-		double newSimilarity = MetricsCalculationsFacade.match(profile1Name, numberProfile, profile2Name, numberProfile2);
-		logger.info("New similarity is " +newSimilarity);
+		double newSimilarity = matchProfiles(profile1Name, numberProfile, profile2Name, numberProfile2);
+		logger.info("New similarity is " + newSimilarity);
+		assertTrue(newSimilarity > .8);
 	}
 	
 	@Test
@@ -157,7 +159,7 @@ public class MatchingAlgorithmsTest {
 		nma2.accumulate(22, true);
 		nma2.finish();
 		
-		double similarity = MetricsCalculationsFacade.match(nma.getFieldName(), nma.getState(), nma2.getFieldName(), nma2.getState());
+		double similarity = matchProfiles(nma.getFieldName(), nma.getState(), nma2.getFieldName(), nma2.getState());
 		logger.info("Similarity for desired-to-be-matching number fields " + similarity);
 		assertTrue(similarity > .80);
 	}
@@ -186,7 +188,26 @@ public class MatchingAlgorithmsTest {
 		sd2.setNumDistinctValues("498");
 		dtg2.setDetail(sd2);
 		
-		double d = MetricsCalculationsFacade.match("DTG", dtg1, "DTG", dtg2);
+		double d = matchProfiles("DTG", dtg1, "DTG", dtg2);
 		logger.info("DTG similarity calculated to be " + d +".");
+	}
+	
+	private Map<String, Profile> profileToMap(String name, Profile profile) {
+		Map<String, Profile> profileMap = new HashMap<String, Profile>();
+		profileMap.put(name, profile);
+		try {
+			return InterpretationEngineFacade.getInstance().interpret(null, profileMap, 0);
+		} catch (DataAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	private double matchProfiles(String name1, Profile profile1, String name2, Profile profile2) {
+		// need to interpretation the profiles because the interpretations need to be set
+		// for the matching algorithm
+		Map<String, Profile> profileMap1 = profileToMap(name1, profile1);
+		Map<String, Profile> profileMap2 = profileToMap(name2, profile2);
+		return MetricsCalculationsFacade.match(name1, profileMap1.get(name1),
+				name2, profileMap2.get(name2));
 	}
 }

@@ -2,26 +2,34 @@ package com.deleidos.dp.profiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.accumulator.AbstractProfileAccumulator;
-import com.deleidos.dp.beans.RowEntry;
 import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.exceptions.DataAccessException;
-import com.deleidos.dp.profiler.api.Profiler;
-import com.deleidos.dp.profiler.api.ProfilerRecord;
-import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
+import com.deleidos.dp.interpretation.IEConfig;
+import com.deleidos.dp.interpretation.InterpretationEngineFacade;
+import com.deleidos.dp.profiler.api.AbstractProfiler;
 import com.deleidos.dp.reversegeocoding.CoordinateProfile;
 import com.deleidos.dp.reversegeocoding.ReverseGeocoder;
 import com.deleidos.dp.reversegeocoding.ReverseGeocoder.ReverseGeocoderCallbackListener;
 
-public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, ReverseGeocoderCallbackListener {
+/**
+ * 
+ * @author leegc
+ *
+ * @param <B> The type of the bean that should be returned
+ */
+public abstract class AbstractReverseGeocodingProfiler<T> extends AbstractProfiler<T> implements ReverseGeocoderCallbackListener {
 	protected GroupingBehavior groupingBehavior = GroupingBehavior.GROUP_ARRAY_VALUES;
 	private static final Logger logger = Logger.getLogger(AbstractReverseGeocodingProfiler.class);
-	protected Map<String, AbstractProfileAccumulator> accumulatorMapping;
+	protected final int maxGeoCalls;
+	protected Map<String, AbstractProfileAccumulator<?>> accumulatorMapping;
+	private Map<String, QueryTrackingData> queryTrackingMapping;
 	protected List<CoordinateProfile> coordinateProfiles;
 	protected ReverseGeocoder reverseGeocoder;
 	protected volatile int numberASynchronousReverseGeocodingCallbacks = 0;
@@ -29,25 +37,28 @@ public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, R
 	protected int unaffiliatedGeoCount = 0;
 	protected int bufferedQueries = 0;
 	protected int reverseGeocodeQueries = 0;
-	protected int minimumBatchSize = 100;
-	protected B bean;
+	protected int queriesWithheld = 0;
+	protected int minimumBatchSize = 500;
 
 	protected static List<String> emptyCoordinatePair() {
 		return new ArrayList<String>(Arrays.asList(null, null));
 	}
 
 	public AbstractReverseGeocodingProfiler() {
+		if (InterpretationEngineFacade.getHttpInterpretationEngine().isPresent()) {
+			maxGeoCalls = InterpretationEngineFacade.getHttpInterpretationEngine().get().getConfig().getMaxGeoCalls();
+		} else {
+			maxGeoCalls = IEConfig.BUILTIN_CONFIG.getMaxGeoCalls();
+		}
 		coordinateProfiles = new ArrayList<CoordinateProfile>();
+		queryTrackingMapping = new HashMap<String, QueryTrackingData>();
 		try {
 			reverseGeocoder = new ReverseGeocoder();
-			// geocoderReady = ReverseGeocodingDataAccessObject.getInstance().isLive();
 		} catch (Exception e) {
 			logger.error("Geocoder not ready.");
 			logger.error(e);
 		}
-		if(this instanceof ReverseGeocoderCallbackListener) {
-			reverseGeocoder.setCallbackListener((ReverseGeocoderCallbackListener)this);
-		}
+		reverseGeocoder.setCallbackListener(this);
 	}
 
 	protected boolean isOtherIndexNull(String[] coordinatePair, int index) {
@@ -58,8 +69,37 @@ public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, R
 		waitForCallbacks();
 		numberASynchronousReverseGeocodingCallbacks = coordinateProfiles.size();
 		for(CoordinateProfile coordinateProfile : coordinateProfiles) {
-			reverseGeocoder.getCountriesFromLatLngsASync(coordinateProfile.getIndex(), 
-					coordinateProfile.getUndeterminedCoordinateBuffer());
+			if (!queryTrackingMapping.containsKey(coordinateProfile.getLatitude())) {
+				queryTrackingMapping.put(coordinateProfile.getLatitude(), new QueryTrackingData());
+			}
+			QueryTrackingData queryTrackingData = queryTrackingMapping.get(coordinateProfile.getLatitude());
+
+			int maxNumReverseGeoEntries = maxGeoCalls - queryTrackingData.count;
+			if (maxNumReverseGeoEntries < coordinateProfile.getUndeterminedCoordinateBuffer().size()) {
+				if (maxNumReverseGeoEntries == 0) {
+					// drop all of the unprocessed reverse geo entries
+					queryTrackingData.droppedCount += coordinateProfile.getUndeterminedCoordinateBuffer().size();
+					coordinateProfile.setUndeterminedCoordinateBuffer(new ArrayList<Double[]>());
+				} else {
+					int numToRemove = coordinateProfile.getUndeterminedCoordinateBuffer().size() - maxNumReverseGeoEntries;
+					queryTrackingData.droppedCount += numToRemove;
+					for (int i = 0; i < numToRemove; i++) {
+						coordinateProfile.getUndeterminedCoordinateBuffer().remove(
+								coordinateProfile.getUndeterminedCoordinateBuffer().size() - 1);
+					}
+				}
+				
+				if (!queryTrackingData.reported) {
+					logger.info("Maximum reverse geocoding queries ("+ 
+							maxGeoCalls+") reached for " + coordinateProfile + ".");
+					queryTrackingData.reported = true;
+				}
+			} 
+
+			queryTrackingData.count += coordinateProfile.getUndeterminedCoordinateBuffer().size();
+			reverseGeocoder.getCountriesFromLatLngsASync(
+					coordinateProfile.getIndex(), coordinateProfile.getUndeterminedCoordinateBuffer());
+
 			coordinateProfile.getUndeterminedCoordinateBuffer().clear();
 		}
 	}
@@ -106,9 +146,9 @@ public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, R
 			numberASynchronousReverseGeocodingCallbacks--;
 		}
 	}
-
+	
 	@Override
-	public Object asBean() {
+	public final T finish() {
 		try {
 			sendCoordinateProfileBatchesToReverseGeocoder();
 			waitForCallbacks(); 
@@ -118,19 +158,13 @@ public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, R
 			logger.error("Lost "+bufferedQueries+" reverse geocoding queries due to a connection timeout.");
 		}
 		logger.debug(reverseGeocodeQueries + " total reverse geocoding queries executed.");
-		return getBean();
+		return subclazzFinish();
 	}
+	
+	protected abstract T subclazzFinish();
 
 	public int getReverseGeocodeQueries() {
 		return reverseGeocodeQueries;
-	}
-
-	protected B getBean() {
-		return bean;
-	}
-
-	protected void setBean(B bean) {
-		this.bean = bean;
 	}
 
 	protected CoordinateProfile getCoordinateProfile(List<CoordinateProfile> coordinateProfiles, String latitudeKey, String longitudeKey) {
@@ -154,12 +188,18 @@ public abstract class AbstractReverseGeocodingProfiler<B> implements Profiler, R
 		return reverseGeocodingAnswers;
 	}
 
-	public Map<String, AbstractProfileAccumulator> getAccumulatorMapping() {
+	public Map<String, AbstractProfileAccumulator<?>> getAccumulatorMapping() {
 		return accumulatorMapping;
 	}
 
-	public void setAccumulatorMapping(Map<String, AbstractProfileAccumulator> accumulatorMapping) {
+	public void setAccumulatorMapping(Map<String, AbstractProfileAccumulator<?>> accumulatorMapping) {
 		this.accumulatorMapping = accumulatorMapping;
+	}
+
+	private class QueryTrackingData {
+		private Integer count = 0;
+		private Integer droppedCount = 0;
+		private Boolean reported = false;
 	}
 
 }

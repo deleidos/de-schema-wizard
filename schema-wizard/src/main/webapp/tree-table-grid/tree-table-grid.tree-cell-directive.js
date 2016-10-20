@@ -7,23 +7,20 @@
     schemaWizardApp.directive('treecell', function () {
         var linker = function (scope, element, attrs) {
 
-            scope.internalMethod1 = function (node) {
+            scope.cbMethod = function ($event, callback, parms) {
+                var node = parms.node;
                 var thisNode = scope.$eval(node);
                 // only act upon leaf nodes
                 if (thisNode && thisNode.children.length == 0) {
                     try {
                         if (previousDetailsNodeId) document.getElementById(previousDetailsNodeId).style.backgroundColor = "transparent";
                     } catch (e) {}
-                    scope.externalMethod1()(thisNode);
+                    scope.callbackMethod()($event, callback, { 'node': thisNode });
                     var thisNodeId = "treecell-" + thisNode.id;
                     document.getElementById(thisNodeId).style.backgroundColor = "gold";
                     previousDetailsNodeId = thisNodeId;
                     return angular.toJson(thisNode);
                 }
-            };
-
-            scope.internalMethod2 = function (node) {
-                scope.externalMethod2()(node);
             };
 
             scope.cursor = (scope.$eval(attrs.node).children.length > 0 ? 'not-allowed' : 'pointer');
@@ -38,8 +35,7 @@
                 nodeId: '@',
                 nodeLabel1: '@',
                 nodeLabel2: '@',
-                externalMethod1: "&",
-                externalMethod2: "&"
+                callbackMethod: "&"
             },
             link: linker
         }

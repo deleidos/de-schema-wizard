@@ -17,13 +17,12 @@ import org.junit.BeforeClass;
 
 import com.deleidos.dmf.analyzer.Analyzer;
 import com.deleidos.dmf.analyzer.TikaAnalyzer;
-import com.deleidos.dmf.analyzer.workflows.AbstractAnalyzerTestWorkflow;
-import com.deleidos.dmf.analyzer.workflows.DefinedTestResource;
+import com.deleidos.dmf.analyzer.workflows.HeadlessResource;
 import com.deleidos.dmf.handler.AnalyticsProgressTrackingContentHandler;
-import com.deleidos.dmf.loader.ResourceLoader;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.dmf.workflows.AbstractAnalyzerTestWorkflow;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.h2.H2DataAccessObject;
@@ -68,7 +67,7 @@ public abstract class DMFMockUpEnvironmentTest extends ResourceLoader {
 				}
 			}*/);
 			SchemaWizardSessionUtility.register();
-			File uploadDir = new File(AbstractAnalyzerTestWorkflow.uploadDir);
+			File uploadDir = new File(AbstractAnalyzerTestWorkflow.TARGET_UPLOAD_DIR);
 			if(!uploadDir.exists() && !uploadDir.mkdirs()) {
 				throw new IOException("Could not create upload directory base.");
 			}
@@ -76,10 +75,10 @@ public abstract class DMFMockUpEnvironmentTest extends ResourceLoader {
 		}
 	}
 	
-	public static TikaSampleAnalyzerParameters generateTestSampleParameters(DefinedTestResource dtr, int sampleNumber, int totalNumberSamples) throws FileNotFoundException, IOException {
+	public static TikaSampleAnalyzerParameters generateTestSampleParameters(HeadlessResource dtr, int sampleNumber, int totalNumberSamples) throws FileNotFoundException, IOException {
 		String sessionId = AbstractAnalyzerTestWorkflow.testSessionId;
 		String guid = Analyzer.generateUUID();
-		String uploadFileDir = AbstractAnalyzerTestWorkflow.uploadDir;
+		String uploadFileDir = AbstractAnalyzerTestWorkflow.TARGET_UPLOAD_DIR;
 		String domainName = "Transportation";
 		String tolerance = Tolerance.STRICT.toString();
 		String name = new File(dtr.getFilePath()).getName();

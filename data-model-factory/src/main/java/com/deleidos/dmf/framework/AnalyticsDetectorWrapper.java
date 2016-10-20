@@ -73,9 +73,10 @@ public class AnalyticsDetectorWrapper implements Detector, Comparable<AnalyticsD
 
 	@Override
 	public int compareTo(AnalyticsDetectorWrapper other) {
-		if(other.confidenceInterval > this.confidenceInterval) {
+		float dif = other.confidenceInterval - this.confidenceInterval;
+		if(dif > 0) {
 			return 1; 
-		} else if(Float.floatToRawIntBits(other.confidenceInterval) == Float.floatToRawIntBits(this.confidenceInterval)) {
+		} else if(dif < .00001) {
 			return 0;
 		} else {
 			return -1;

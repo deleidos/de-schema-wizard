@@ -31,12 +31,12 @@
         Export as Zip (*.zip)
     </a>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-href="{{ fileUrl }}" download="{{doc}}"
-       ng-click="cancel()">
-        <img src="assets/img/wordDocument-32x32.png">
-        Export as Document (*.doc)
-    </a>
+    <!--<a class="btn btn-primary btn-graphic-plus-text"-->
+       <!--ng-href="{{ fileUrl }}" download="{{doc}}"-->
+       <!--ng-click="cancel()">-->
+        <!--<img src="assets/img/wordDocument-32x32.png">-->
+        <!--Export as Document (*.doc)-->
+    <!--</a>-->
 
     <a class="btn btn-primary btn-graphic-plus-text"
        ng-click="zipExtractDigitalEdge(); cancel()">
@@ -49,6 +49,12 @@
        ng-click="cancel()">
         <img src="assets/img/ingest-data-export-32x32.png">
         Ingest Object (*.json)
+    </a>
+
+    <a class="btn btn-primary btn-graphic-plus-text"
+       ng-click="restModal(); cancel();">
+        <img src="assets/img/rest-endpoint-32x32.png">
+        Rest Endpoint
     </a>
 
 </div>

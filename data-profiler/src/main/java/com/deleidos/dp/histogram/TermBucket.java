@@ -2,6 +2,11 @@ package com.deleidos.dp.histogram;
 
 import java.math.BigInteger;
 
+/**
+ * Bucket to hold string/term values.
+ * @author leegc
+ *
+ */
 public class TermBucket extends AbstractBucket { 
 	private static final int TEMP_DEFAULT_TERM_BUCKET_CUTOFF = 12;
 	String lowerBound;

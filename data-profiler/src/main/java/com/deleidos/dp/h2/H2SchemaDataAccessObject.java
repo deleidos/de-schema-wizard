@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +17,7 @@ import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.SchemaMetaData;
-import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 
 /**
  * Data Access Object meant to communicate solely with schema tables in the
@@ -73,10 +74,10 @@ public class H2SchemaDataAccessObject {
 	 * @param schemaGuid
 	 *            the desired schema guid
 	 * @return a list of schema guids associated with the given schema
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public List<String> getSampleGuidsFromSchemaGuid(Connection dbConnection, String schemaGuid) throws DataAccessException, SQLException {
+	public List<String> getSampleGuidsFromSchemaGuid(Connection dbConnection, String schemaGuid) throws H2DataAccessException, SQLException {
 		List<String> dataSampleGuids = new ArrayList<String>();
 		PreparedStatement getMappingsStatement = null;
 
@@ -93,33 +94,30 @@ public class H2SchemaDataAccessObject {
 	}
 
 	/**
-	 * Adds a schema to the H2 database // TODO Add profile and data samples
+	 * Adds a schema to the H2 database
 	 * 
 	 * @param schemaBean
-	 * @return
-	 * @throws DataAccessException
+	 * @return the guid of the inserted schema
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public int addSchema(Connection dbConnection, Schema schemaBean) throws DataAccessException, SQLException {
-		dbConnection.setAutoCommit(false);
-		int generatedId = -1;
-		generatedId = addSchemaAndMapping(dbConnection, schemaBean.getSchemaModelId(), schemaBean.getsGuid(),
+	public String addSchema(Connection dbConnection, Schema schemaBean) throws H2DataAccessException, SQLException {
+		schemaBean = adjustSchemaBean(schemaBean);
+		return addSchemaAndMapping(dbConnection, 
+				schemaBean.getSchemaModelId(), schemaBean.getsGuid(),
 				schemaBean.getsName(), schemaBean.getsVersion(), schemaBean.getsLastUpdate(),
-				schemaBean.getsDescription(), schemaBean.getRecordsParsedCount(), schemaBean.getsDomainName(),
-				schemaBean.getsProfile(), schemaBean.getsDataSamples());
-		dbConnection.commit();
-		dbConnection.setAutoCommit(true);
-		return generatedId;
+				schemaBean.getsDescription(), schemaBean.getRecordsParsedCount(), 
+				schemaBean.getsDomainName(), schemaBean.getsProfile(), schemaBean.getsDataSamples());
 	}
 
 	/**
 	 * Returns all schema meta data
 	 * 
 	 * @return A list of SchemaMetaData beans
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public List<SchemaMetaData> getAllSchemaMetaData(Connection dbConnection) throws DataAccessException, SQLException {
+	public List<SchemaMetaData> getAllSchemaMetaData(Connection dbConnection) throws H2DataAccessException, SQLException {
 		List<SchemaMetaData> schemaList = new ArrayList<SchemaMetaData>();
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -142,11 +140,11 @@ public class H2SchemaDataAccessObject {
 	 * @param guid
 	 *            GUID of the schema
 	 * @return Schema bean or if the schema does not exist, returns null
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 * 
 	 */
-	public Schema getSchemaByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public Schema getSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		Schema schema = null;
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -173,10 +171,10 @@ public class H2SchemaDataAccessObject {
 	 * Returns all schema meta data
 	 * 
 	 * @return A list of SchemaMetaData beans
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public SchemaMetaData getSchemaMetaDataByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public SchemaMetaData getSchemaMetaDataByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		SchemaMetaData schemaMetaData = null;
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -199,10 +197,10 @@ public class H2SchemaDataAccessObject {
 	 * 
 	 * @param guid
 	 * @return
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public Map<String, Profile> getSchemaFieldByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public Map<String, Profile> getSchemaFieldByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		return h2.getH2Metrics().getFieldMappingBySchemaGuid(dbConnection, guid);
 	}
 
@@ -210,10 +208,10 @@ public class H2SchemaDataAccessObject {
 	 * Delete a schema from the database by its guid
 	 * 
 	 * @param guid
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public void deleteSchemaFromDeletionQueue(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public void deleteSchemaFromDeletionQueue(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 
 		ppst = dbConnection.prepareStatement(DELETE_SCHEMA_FROM_DELETION_QUEUE);
@@ -222,7 +220,7 @@ public class H2SchemaDataAccessObject {
 		ppst.close();
 	}
 
-	public void deleteSchemaByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public void deleteSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 
 		ppst = dbConnection.prepareStatement(DELETE_SCHEMA_BY_GUID);
@@ -238,11 +236,11 @@ public class H2SchemaDataAccessObject {
 	 * @param rs
 	 *            ResultSet from SQL query
 	 * @return SchemaMetaData bean
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 * 
 	 */
-	private SchemaMetaData populateSchemaMetaData(Connection dbConnection, ResultSet rs) throws DataAccessException, SQLException {
+	private SchemaMetaData populateSchemaMetaData(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
 		SchemaMetaData schemaMetaData = new SchemaMetaData();
 		List<String> dataSampleGuids = new ArrayList<String>();
 		String schemaGuid = rs.getString("s_guid");
@@ -275,10 +273,10 @@ public class H2SchemaDataAccessObject {
 	 * @param rs
 	 *            ResultSet from the database call
 	 * @return A built SchemaMetaData bean
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	private Schema populateSchema(Connection dbConnection, ResultSet rs) throws DataAccessException, SQLException {
+	private Schema populateSchema(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
 		Schema schema = new Schema();
 		List<DataSampleMetaData> dataSampleMetaData = new ArrayList<DataSampleMetaData>();
 
@@ -322,10 +320,10 @@ public class H2SchemaDataAccessObject {
 	 * @param rs
 	 *            Result set from PreparedStatement
 	 * @return DataSampleMetaData bean
-	 * @throws DataAccessException 
+	 * @throws H2DataAccessException 
 	 * @throws SQLException 
 	 */
-	private DataSampleMetaData populateDsMetaData(Connection dbConnection, ResultSet rs) throws DataAccessException, SQLException {
+	private DataSampleMetaData populateDsMetaData(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
 		DataSampleMetaData dsMetaData = new DataSampleMetaData();
 
 		if (rs.getInt("data_sample_id") == 0) {
@@ -356,12 +354,12 @@ public class H2SchemaDataAccessObject {
 	 * 
 	 * @return The key generated from executing the statement
 	 * 
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	private int addSchemaAndMapping(Connection dbConnection, int schemaModelId, String guid, String name, String version, Timestamp lastUpdate,
+	private String addSchemaAndMapping(Connection dbConnection, int schemaModelId, String guid, String name, String version, Timestamp lastUpdate,
 			String description, int sumOfSampleRecords, String domainName, Map<String, Profile> profiles,
-			List<DataSampleMetaData> dataSamples) throws DataAccessException, SQLException {
+			List<DataSampleMetaData> dataSamples) throws H2DataAccessException, SQLException {
 
 		PreparedStatement addSchemaStatement = dbConnection.prepareStatement(ADD_SCHEMA_MODEL);
 		addSchemaStatement.setString(1, guid);
@@ -372,7 +370,7 @@ public class H2SchemaDataAccessObject {
 		addSchemaStatement.setInt(6, sumOfSampleRecords);
 		addSchemaStatement.setString(7, domainName);
 		addSchemaStatement.execute();
-		int schemaModelGeneratedId = h2.getGeneratedKey(addSchemaStatement);
+		int schemaModelGeneratedId = H2DataAccessObject.getGeneratedKey(addSchemaStatement);
 		addSchemaStatement.close();
 
 		for (String fieldName : profiles.keySet()) {
@@ -405,7 +403,26 @@ public class H2SchemaDataAccessObject {
 			updateDataSampleName.close();
 		}
 
-		return schemaModelGeneratedId;
+		return guid;
 
+	}
+	
+	/**
+	 * Make necessary adjustments to the schema bean if certain properties are not set (e.g. an empty version)
+	 * @param schemaBean the bean to be adjusted
+	 * @return the adjusted bean
+	 */
+	private Schema adjustSchemaBean(Schema schemaBean) {
+		if (schemaBean.getsName() == null) {
+			schemaBean.setsName(schemaBean.getsGuid());
+		}
+		if (schemaBean.getsDescription() == null) {
+			schemaBean.setsDescription("This is a schema generated by the Schema Wizard.");
+		}
+		if (schemaBean.getsVersion() == null) {
+			schemaBean.setsVersion("1.0");
+		}
+		schemaBean.setsLastUpdate(Timestamp.from(Instant.now()));
+		return schemaBean;
 	}
 }

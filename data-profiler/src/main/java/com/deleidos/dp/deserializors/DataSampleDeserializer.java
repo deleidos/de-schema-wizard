@@ -15,6 +15,11 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * Deserializer for data samples.  This class should be added as a module to the ObjectMapper.
+ * @author leegc
+ *
+ */
 public class DataSampleDeserializer extends JsonDeserializer<DataSample> {
 
 	@Override

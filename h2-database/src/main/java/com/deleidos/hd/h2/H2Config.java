@@ -3,12 +3,15 @@ package com.deleidos.hd.h2;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
-public class H2Config {
+import com.deleidos.config.AbstractConfig;
+
+public class H2Config extends AbstractConfig {
 	public static String CONFIG_RESOURCE_NAME = "/build.properties";
 	public static final String SW_CONFIG_ENV_VAR = "SW_CONFIG_PROPERTIES";
 	private static final Logger logger = Logger.getLogger(H2Config.class);
@@ -27,14 +30,13 @@ public class H2Config {
 	private static final String ENV_H2_PORTNUM = "H2_DB_PORTNUM";
 	private static final String ENV_H2_PASSWORD = "H2_DB_PASSWD";
 	private static final String ENV_H2_PORT = "H2_DB_PORT";
-	private String driver;
-	private String host;
-	private String dir;
-	private String name;
-	private String tcpConnectionString;
-	private String port;
-	private String user;
-	private String passwd;
+	private static final String DEFAULT_DRIVER = H2Database.DB_DRIVER;
+	private static final String DEFAULT_HOST = "localhost";
+	private static final String DEFAULT_DIR = "~/h2";
+	private static final String DEFAULT_NAME = "data";
+	private static final Integer DEFAULT_PORT = 9123;
+	private static final String DEFAULT_USER = "sa";
+	private static final String DEFAULT_PW = "";
 	private String filePath = null;
 	
 	public H2Config() {
@@ -57,16 +59,19 @@ public class H2Config {
 			properties.load(fis);
 			fis.close();
 		}
-		driver = properties.getProperty(PROPERTIES_H2_DRIVER);
-		host = properties.getProperty(PROPERTIES_H2_HOST);
-		dir = properties.getProperty(PROPERTIES_H2_DIR);
-		name = properties.getProperty(PROPERTIES_H2_NAME);
-		user = properties.getProperty(PROPERTIES_H2_USER);
-		port = properties.getProperty(PROPERTIES_H2_PORTNUM);
-		passwd = properties.getProperty(PROPERTIES_H2_PASSWORD);
+		
+		Map<String, String> propMap = new HashMap<String, String>();
+		properties.forEach((k,v)->propMap.put(k.toString(), v.toString()));
+		setDriver(valueOrDefault(propMap, PROPERTIES_H2_DRIVER, DEFAULT_DRIVER).toString());
+		setHost(valueOrDefault(propMap, PROPERTIES_H2_HOST, DEFAULT_HOST).toString());
+		setDir(valueOrDefault(propMap, PROPERTIES_H2_DIR, DEFAULT_DIR).toString());
+		setName(valueOrDefault(propMap, PROPERTIES_H2_NAME, DEFAULT_NAME).toString());
+		setUser(valueOrDefault(propMap, PROPERTIES_H2_USER, DEFAULT_USER).toString());
+		setPortNum((Integer)valueOrDefault(propMap, PROPERTIES_H2_PORTNUM, DEFAULT_PORT));
+		setPasswd(valueOrDefault(propMap, PROPERTIES_H2_PASSWORD, DEFAULT_PW).toString());
+		
 		loadFromEnv();
-		tcpConnectionString = "tcp://" + host + ":" + port + "/";
-		printConfiguration();
+		logger.info(getConfigurationReport());
 		return this;
 	}
 	
@@ -74,31 +79,19 @@ public class H2Config {
 	 * The environment overloads any configuration file settings.
 	 * @return
 	 */
-	private void loadFromEnv() {
-		setDriver(System.getenv(ENV_H2_DRIVER) != null ? System.getenv(ENV_H2_DRIVER) : getDriver());
-		setDir(System.getenv(ENV_H2_DIR) != null ? System.getenv(ENV_H2_DIR) : getDir());
-		setName(System.getenv(ENV_H2_NAME) != null ? System.getenv(ENV_H2_NAME) : getName());
-		setHost(System.getenv(ENV_H2_HOST) != null ? System.getenv(ENV_H2_HOST) : getHost());
-		setPasswd(System.getenv(ENV_H2_PASSWORD) != null ? System.getenv(ENV_H2_PASSWORD) : getPasswd());
-		setPortNum(System.getenv(ENV_H2_PORTNUM) != null ? System.getenv(ENV_H2_PORTNUM) : getPortNum());
-		setUser(System.getenv(ENV_H2_USER) != null ? System.getenv(ENV_H2_USER) : getUser());
-		if(System.getenv(ENV_H2_PORT) != null) {
-			String tcpPort = System.getenv(ENV_H2_PORT);
-			tcpPort = tcpPort.substring(6, tcpPort.length());
-			String[] splits = tcpPort.split(":");
-			setHost(splits[0]);
-			setPortNum(splits[1]);
+	public AbstractConfig loadFromEnv() {
+		Map<String, String> envMap = System.getenv();
+		setDriver(valueOrDefault(envMap, ENV_H2_DRIVER, getDriver()).toString());
+		setHost(valueOrDefault(envMap, ENV_H2_HOST, getHost()).toString());
+		setDir(valueOrDefault(envMap, ENV_H2_DIR, getDir()).toString());
+		setName(valueOrDefault(envMap, ENV_H2_NAME, getName()).toString());
+		setUser(valueOrDefault(envMap, ENV_H2_USER, getUser()).toString());
+		setPortNum((Integer)valueOrDefault(envMap, ENV_H2_PORTNUM, getPortNum()));
+		setPasswd(valueOrDefault(envMap, ENV_H2_PASSWORD, getPasswd()).toString());
+		if (envMap.containsKey(ENV_H2_PORT)) {
+			setTcpConnectionString(envMap.get(ENV_H2_PORT));
 		}
-	}
-	
-	private void printConfiguration() {
-		logger.info("H2Configuration: "
-				+ "\n\tdriver = " + driver
-				+ "\n\thost = " + host
-				+ "\n\tdir = " + dir
-				+ "\n\tname = " + name
-				+ "\n\tuser = " + user
-				+ "\n\ttcpConnectionString = " + tcpConnectionString);
+		return this;
 	}
 	
 	public String getConnectionString() {
@@ -106,67 +99,77 @@ public class H2Config {
 	}
 
 	public String getDriver() {
-		return driver;
+		return configMapping.get(PROPERTIES_H2_DRIVER).toString();
 	}
 
 	public void setDriver(String driver) {
-		this.driver = driver;
+		this.configMapping.put(PROPERTIES_H2_DRIVER, driver);
 	}
 
 	public String getHost() {
-		return host;
+		return configMapping.get(PROPERTIES_H2_HOST).toString();
 	}
 
 	public void setHost(String host) {
-		this.host = host;
+		this.configMapping.put(PROPERTIES_H2_HOST, host);
 	}
 
 	public String getDir() {
-		return dir;
+		return configMapping.get(PROPERTIES_H2_DIR).toString();
 	}
 
 	public void setDir(String dir) {
-		this.dir = dir;
+		this.configMapping.put(PROPERTIES_H2_DIR, dir);
 	}
 
 	public String getName() {
-		return name;
+		return configMapping.get(PROPERTIES_H2_NAME).toString();
 	}
 
 	public void setName(String name) {
-		this.name = name;
+		this.configMapping.put(PROPERTIES_H2_NAME, name);
+	}
+	
+	public String connectionString(String host, String port) {
+		return "tcp://" + host + ":" + port + "/";
 	}
 
 	public String getTcpConnectionString() {
-		return tcpConnectionString;
+		return connectionString(getHost(), getPortNum().toString());
 	}
 
 	public void setTcpConnectionString(String tcpConnectionString) {
-		this.tcpConnectionString = tcpConnectionString;
+		String noPrefix = tcpConnectionString.substring(6);
+		String noHost = noPrefix.substring(noPrefix.indexOf(":") + 1);
+		if (noHost.endsWith("/")) {
+			noHost = noHost.substring(0, noHost.length() - 1);
+		}
+		setHost(noPrefix.substring(0, noPrefix.indexOf(":")));
+		setPortNum(Integer.valueOf(noHost));
 	}
 
-	public String getPortNum() {
-		return port;
+	public Integer getPortNum() {
+		return (Integer) configMapping.get(PROPERTIES_H2_PORTNUM);
 	}
 
-	public void setPortNum(String port) {
-		this.port = port;
+	public void setPortNum(Integer port) {
+		configMapping.put(PROPERTIES_H2_PORTNUM, port);
 	}
 
 	public String getUser() {
-		return user;
+		return configMapping.get(PROPERTIES_H2_USER).toString();
 	}
 
 	public void setUser(String user) {
-		this.user = user;
+		this.configMapping.put(PROPERTIES_H2_USER, user);
 	}
 
 	public String getPasswd() {
-		return passwd;
+		return configMapping.get(PROPERTIES_H2_PASSWORD).toString();
 	}
 
 	public void setPasswd(String passwd) {
-		this.passwd = passwd;
+		this.configMapping.put(PROPERTIES_H2_PASSWORD, passwd);
 	}
 	
 	/**
@@ -178,12 +181,17 @@ public class H2Config {
 			setHost("localhost");
 			setName("data");
 			setPasswd("");
-			setPortNum("9124");
+			setPortNum(9124);
 			setTcpConnectionString("tcp://localhost:9124/");
 			setUser("sa");
 			setDriver(H2Database.DB_DRIVER);
 		}
 	};
+
+	@Override
+	public String getConfigurationName() {
+		return "H2 Database Configuration";
+	}
 	
 	
 }

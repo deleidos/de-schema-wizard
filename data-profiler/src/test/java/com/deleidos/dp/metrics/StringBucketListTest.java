@@ -14,7 +14,7 @@ public class StringBucketListTest {
 	@Test
 	public void testCharacterBucketAdd() {
 		CharacterBucketList cbl = new CharacterBucketList();
-		cbl.putValue("åyroihljnflkjdnbljklksjnhfbiunselkjbnslekjrnblkjenbrlkbjnelkjrb");
+		cbl.putValue("ï¿½yroihljnflkjdnbljklksjnhfbiunselkjbnslekjrnblkjenbrlkbjnelkjrb");
 		logger.debug(cbl);
 	}
 	

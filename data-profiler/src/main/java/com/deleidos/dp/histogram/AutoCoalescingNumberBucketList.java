@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * redefined by (max value) - (min value) / <i>L</i>.  One additional bucket will be added at the time of this transformation
  * because the ranges are inclusive on the lower bound, but exclusive on the upper bound. 
  * @author leegc
+ * 
+ * No longer used in favor of better range definitions - 8/25/2016
  *
  * @param <T> The bucket type
  */

@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.hd.h2.H2Database;
 
 /**
@@ -49,7 +49,7 @@ public class H2SampleDataAccessObject {
 		this.h2 = h2;
 	}
 
-	public int getSampleFieldIdBySampleGuidAndName(Connection dbConnection, String sampleGuid, String fieldName) throws DataAccessException, SQLException {
+	public int getSampleFieldIdBySampleGuidAndName(Connection dbConnection, String sampleGuid, String fieldName) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
 		int id = -1;
@@ -75,10 +75,10 @@ public class H2SampleDataAccessObject {
 	 * 
 	 * @param guid
 	 * @return DataSampleMetaData
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public DataSample getSampleByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public DataSample getSampleByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		if(H2Database.getFailedAnalysisMapping().containsKey(guid)) {
 			return constructFailedAnalysisSample(dbConnection, guid);
 		}
@@ -113,11 +113,11 @@ public class H2SampleDataAccessObject {
 	 * @param guid
 	 *            the guid of the sample
 	 * @return the DataSampleMetaData object representing the sample
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 *             exception thrown to main H2DAO
 	 * @throws SQLException 
 	 */
-	public DataSampleMetaData getDataSampleMetaDataByGuid(Connection dbConnection, String guid) throws SQLException, DataAccessException {
+	public DataSampleMetaData getDataSampleMetaDataByGuid(Connection dbConnection, String guid) throws SQLException, H2DataAccessException {
 		DataSampleMetaData dsMeta = new DataSampleMetaData();
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -141,10 +141,10 @@ public class H2SampleDataAccessObject {
 	 * 
 	 * @param guid
 	 * @return
-	 * @throws DataAccessException 
+	 * @throws H2DataAccessException 
 	 * @throws SQLException 
 	 */
-	public Map<String, Profile> getSampleFieldByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public Map<String, Profile> getSampleFieldByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		return h2.getH2Metrics().getFieldMappingBySampleGuid(dbConnection, guid);
 	}
 
@@ -152,10 +152,10 @@ public class H2SampleDataAccessObject {
 	 * Gets a list of DataSampleMetaData for the catalog
 	 * 
 	 * @return List<DataSampleMetaData>
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public List<DataSampleMetaData> getAllSampleMetaData(Connection dbConnection) throws DataAccessException, SQLException {
+	public List<DataSampleMetaData> getAllSampleMetaData(Connection dbConnection) throws H2DataAccessException, SQLException {
 		List<DataSampleMetaData> dsList = new ArrayList<DataSampleMetaData>();
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -177,10 +177,10 @@ public class H2SampleDataAccessObject {
 	 * The a list of all existing sample names paired with their file type
 	 * 
 	 * @return a mapping of existing samples name with file types
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public Map<String, String> getExistingSampleNames(Connection dbConnection) throws DataAccessException, SQLException {
+	public Map<String, String> getExistingSampleNames(Connection dbConnection) throws H2DataAccessException, SQLException {
 		Map<String, String> existingSampleNames = new HashMap<String, String>();
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -205,14 +205,13 @@ public class H2SampleDataAccessObject {
 	 * @param sample
 	 *            the DataSample bean
 	 * @return the guid of the newly added data sample
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public String addSample(Connection dbConnection, DataSample sample) throws DataAccessException, SQLException {
+	public String addSample(Connection dbConnection, DataSample sample) throws H2DataAccessException, SQLException {
 		if(H2Database.getFailedAnalysisMapping().containsKey(sample.getDsGuid())) {
 			return sample.getDsGuid();
 		}
-		dbConnection.setAutoCommit(false);
 		DataSample updatedBean = adjustDataSampleBean(dbConnection, sample);
 		int dataSampleId = addSample(dbConnection, updatedBean.getDsGuid(), updatedBean.getDsName(), updatedBean.getDsVersion(),
 				updatedBean.getDsLastUpdate(), updatedBean.getDsDescription(), updatedBean.getDsFileName(),
@@ -222,8 +221,6 @@ public class H2SampleDataAccessObject {
 			Profile profile = sample.getDsProfile().get(fieldName);
 			h2.getH2Metrics().addSampleField(dbConnection, dataSampleId, fieldName, profile);
 		}
-
-		dbConnection.setAutoCommit(true);
 		return sample.getDsGuid();
 	}
 
@@ -231,10 +228,10 @@ public class H2SampleDataAccessObject {
 	 * Delete a Data Sample from the database by its GUID
 	 * 
 	 * @param guid
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public void deleteSchemaFromDeletionQueue(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public void deleteSchemaFromDeletionQueue(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 		ppst = dbConnection.prepareStatement(DELETE_SAMPLE_FROM_DELETION_QUEUE);
 		ppst.setString(1, guid);
@@ -247,10 +244,10 @@ public class H2SampleDataAccessObject {
 	 * 
 	 * @param guid
 	 *            The GUID of a Data Sample
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public void deleteSampleByGuid(Connection dbConnection, String guid) throws DataAccessException, SQLException {
+	public void deleteSampleByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 
 		ppst = dbConnection.prepareStatement(DELETE_SAMPLE_BY_GUID);
@@ -266,10 +263,10 @@ public class H2SampleDataAccessObject {
 	 * @param rs
 	 *            Result set from PreparedStatement
 	 * @return DataSampleMetaData bean
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	private DataSample populateDataSample(Connection dbConnection, ResultSet rs) throws DataAccessException, SQLException {
+	private DataSample populateDataSample(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
 		DataSample dataSample = new DataSample();
 
 		dataSample.setDataSampleId(rs.getInt("data_sample_id"));
@@ -295,10 +292,10 @@ public class H2SampleDataAccessObject {
 	 * @param rs
 	 *            Result set from PreparedStatement
 	 * @return DataSampleMetaData bean
-	 * @throws DataAccessException
+	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	private DataSampleMetaData populateDataSampleMetaData(Connection dbConnection, ResultSet rs) throws DataAccessException, SQLException {
+	private DataSampleMetaData populateDataSampleMetaData(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
 		DataSampleMetaData dsMetaData = new DataSampleMetaData();
 
 		dsMetaData = new DataSampleMetaData();
@@ -345,18 +342,18 @@ public class H2SampleDataAccessObject {
 		ppst.setInt(10, fileSize);
 		ppst.execute();
 
-		dataSampleId = h2.getGeneratedKey(ppst);
+		dataSampleId = H2DataAccessObject.getGeneratedKey(ppst);
 		ppst.close();
 
 		PreparedStatement ppst2 = dbConnection.prepareStatement(ADD_GUID);
 		ppst2.setString(1, guid);
 		ppst2.execute();
 		ppst.close();
-		
+
 		return dataSampleId;
 	}
 
-	private DataSample adjustDataSampleBean(Connection dbConnection, DataSample dataSample) throws DataAccessException {
+	private DataSample adjustDataSampleBean(Connection dbConnection, DataSample dataSample) throws H2DataAccessException {
 		String sourceNameNoPath = dataSample.getDsFileName();
 		if(sourceNameNoPath == null) {
 			return dataSample;

@@ -6,9 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.apache.pdfbox.io.IOUtils;
@@ -24,28 +22,42 @@ import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
+import com.deleidos.dmf.exception.AnalyticsEmbeddedContentException;
 import com.deleidos.dmf.exception.AnalyticsInitializationRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsRuntimeException;
-import com.deleidos.dmf.progressbar.ProgressBarManager;
-import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
-import com.deleidos.dp.beans.DataSampleMetaData;
-import com.deleidos.dp.profiler.api.Profiler;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 
+/**
+ * Extractor that can be injected into the Tika framework.  Pulls out embedded data from a given stream, and recursively
+ * attempts to pull out more data.  Writes this data a separate file on disk, so it can be retrieved later.
+ * @author leegc
+ *
+ */
 public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtractor {
+	public static final String EXTRACTED_CONTENT_KEY = "extracted-resource-dir-path";
 	public static final String RESOURCE_PATH_KEY = "resource-abs-path";
 	private static final Logger logger = Logger.getLogger(AnalyticsEmbeddedDocumentExtractor.class);
-	private TikaProfilerParameters parentParameters;
+	private final File extractedContentDirectory;
+	private final TikaAnalyzerParameters<?> parentParameters;
 	private boolean isAllContentExtracted;
+	private boolean shouldParse;
+	private static long EMBEDDED_FILE_LIMIT = 8 * 1024 * 1024 * 100;
 	private List<ExtractedContent> extractedContents;
 
-	public AnalyticsEmbeddedDocumentExtractor(TikaProfilerParameters params) {
+	public AnalyticsEmbeddedDocumentExtractor(TikaAnalyzerParameters<?> params) {
+		this(params, null);
+	}
+	
+	public AnalyticsEmbeddedDocumentExtractor(TikaAnalyzerParameters<?> params, File alternateExtractContentDirectory) {
 		this.parentParameters = params;
+		this.extractedContentDirectory = alternateExtractContentDirectory == null ?
+				new File(parentParameters.getExtractedContentDir()) : alternateExtractContentDirectory;
 		if(params instanceof TikaSchemaAnalyzerParameters) {
 			this.isAllContentExtracted = true;
 		} else {
 			this.isAllContentExtracted = false;
 		}
+		shouldParse = true;
 		this.extractedContents = new ArrayList<ExtractedContent>();
 	}
 
@@ -57,31 +69,29 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 	@Override
 	public void parseEmbedded(InputStream stream, ContentHandler handler, Metadata metadata, boolean outputHtml)
 			throws SAXException, IOException {	
-
 		try {
-
-			File extractedContentDirectory = getOrCreateExtractedContentDirectory();
-			parentParameters.setExtractedContentDir(extractedContentDirectory.getAbsolutePath());
-			String name = generateEmbeddedResourceName(metadata);
-
 			Detector detector = parentParameters.get(Detector.class, new AnalyticsDefaultDetector());
-
-
-			logger.info("Extracting embedded content: " + name + ".");
+			
+			File extractingFile = createSubdirectoriesAndFile(extractedContentDirectory, metadata);
+			logger.info("Extracting embedded content: " + extractingFile.getName() + ".");
 			TemporaryResources tmp = new TemporaryResources();
 			TikaInputStream tis = TikaInputStream.get(stream, tmp);
+			
 			try {
 				MediaType type = detector.detect(tis, metadata);
-				metadata.set(Metadata.CONTENT_TYPE, type == null ? MediaType.OCTET_STREAM.toString() : type.toString());
+				metadata.set(Metadata.CONTENT_TYPE, type.toString());
 
-				File embeddedDocumentFile = new File(parentParameters.getExtractedContentDir(), name);
-				embeddedDocumentFile = writeToFile(embeddedDocumentFile, tis, handler, metadata);
-
-				if(embeddedDocumentFile.length() == 0) {
-					throw new AnalyticsInitializationRuntimeException("Embedded document " + name + " is empty.");
+				// we are going to write embedded content to disk, so create the embedded content directory
+				if (!extractedContentDirectory.exists() && !extractedContentDirectory.mkdir()) {
+					throw new IOException("Could not create embedded document directory.");
 				}
-				metadata.set(Metadata.RESOURCE_NAME_KEY, name);
-				ExtractedContent content = new ExtractedContent(embeddedDocumentFile, metadata);
+				extractingFile = writeToFile(extractingFile, tis, handler, metadata, EMBEDDED_FILE_LIMIT);
+
+				if(extractingFile.length() == 0) {
+					throw new AnalyticsInitializationRuntimeException("Embedded document " + extractingFile.getName() + " is empty.");
+				}
+				metadata.set(Metadata.RESOURCE_NAME_KEY, extractingFile.getName());
+				ExtractedContent content = new ExtractedContent(extractingFile, metadata);
 				extractedContents.add(content);
 
 				Parser nestedParser = parentParameters.get(Parser.class);
@@ -94,18 +104,23 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 						return;
 					} else {
 						logger.info("Further extraction with " + nestedContentExtractionParser.getClass().getSimpleName() +".");
-						FileInputStream fis = new FileInputStream(embeddedDocumentFile);
+						FileInputStream fis = new FileInputStream(extractingFile);
 						TemporaryResources nestedTmp = new TemporaryResources();
 						TikaInputStream nestedTis = TikaInputStream.get(fis, nestedTmp);
 
-						AnalyticsEmbeddedDocumentExtractor nestedAnalyticsExtractor = new AnalyticsEmbeddedDocumentExtractor(parentParameters);
-						TikaProfilerParameters params = initializeTikaProfilingParameters(nestedTis, handler, metadata);
-						params.setExtractedContentDir(parentParameters.getExtractedContentDir());
+						File nestedExtractedContentDir = getOrCreateExtractedContentDirectory(
+								extractedContentDirectory.getAbsolutePath(), extractingFile.getName(), "-embedded");
+						AnalyticsEmbeddedDocumentExtractor nestedAnalyticsExtractor = 
+								new AnalyticsEmbeddedDocumentExtractor(parentParameters, nestedExtractedContentDir);
+						TikaAnalyzerParameters<?> params = initializeTikaProfilingParameters(nestedTis, handler, metadata);
+						params.setExtractedContentDir(nestedExtractedContentDir.getAbsolutePath());
 						params.set(EmbeddedDocumentExtractor.class, nestedAnalyticsExtractor);
 						nestedContentExtractionParser.parse(nestedTis, handler, metadata, params);
 						this.extractedContents.addAll(nestedAnalyticsExtractor.getExtractedContents());
 					}
-				}		
+				}
+			} catch (AnalyticsEmbeddedContentException e) {
+				throw new SAXException(e);
 			} catch (Exception e) {
 				logger.error(e);
 				throw new AnalyticsRuntimeException("Error extracting embedded document.", e);
@@ -121,10 +136,12 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 	public void initAlreadyExtractedContentFromDisk() throws IOException, TikaException {
 		// contents are already on disk
 		// don't extract, just detect metadata and add to extracted content list
-
-		Detector detector = parentParameters.get(Detector.class, new AnalyticsDefaultDetector());
-
-		if(parentParameters.getExtractedContentDir() == null) {
+		if (parentParameters.getExtractedContentDir() != null) {
+			Detector detector = parentParameters.get(Detector.class, new AnalyticsDefaultDetector());
+			File baseDir = new File(parentParameters.getExtractedContentDir());
+			extractedContents = recursiveInitExtractedContentFromDisk(detector, baseDir);
+		}
+		/*if(parentParameters.getExtractedContentDir() == null) {
 			logger.info("No extracted content found.");
 		} else {
 			File extractedDir = new File(parentParameters.getExtractedContentDir());
@@ -134,7 +151,8 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 				try {
 					Metadata reinitializedMetadata = new Metadata();
 					MediaType type = detector.detect(tis, reinitializedMetadata);
-					reinitializedMetadata.set(Metadata.CONTENT_TYPE, type.toString());
+					reinitializedMetadata.set(Metadata.CONTENT_TYPE, type == null 
+							? MediaType.OCTET_STREAM.toString() : type.toString());
 					reinitializedMetadata.set(Metadata.RESOURCE_NAME_KEY, extractedFile.getName());
 					ExtractedContent content = new ExtractedContent(extractedFile, reinitializedMetadata);
 					extractedContents.add(content);
@@ -142,13 +160,43 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 					tmp.dispose();
 				}
 			}
-		}
+		}*/
 	}
 
-	private String generateEmbeddedResourceName(Metadata metadata) {
+	private List<ExtractedContent> recursiveInitExtractedContentFromDisk(Detector detector, File directory) throws IOException, TikaException {
+		List<ExtractedContent> extractedContents = new ArrayList<ExtractedContent>();
+		if(directory == null) {
+			throw new IOException("Null directory passed.");
+		} else if(!directory.exists()) {
+			logger.debug("No embedded content directory found " + directory + " (does not exist).  " + 
+					"This is not necessarily an error, but could be if embedded content was expected.");
+		} else {
+			for(File extractedFile : directory.listFiles()) {
+				if (extractedFile.isFile()) {
+					TemporaryResources tmp = new TemporaryResources();
+					TikaInputStream tis = TikaInputStream.get(new FileInputStream(extractedFile), tmp);
+					try {
+						Metadata reinitializedMetadata = new Metadata();
+						MediaType type = detector.detect(tis, reinitializedMetadata);
+						reinitializedMetadata.set(Metadata.CONTENT_TYPE, type.toString());
+						reinitializedMetadata.set(Metadata.RESOURCE_NAME_KEY, extractedFile.getName());
+						ExtractedContent content = new ExtractedContent(extractedFile, reinitializedMetadata);
+						extractedContents.add(content);
+					} finally {
+						tmp.dispose();
+					}
+				} else {
+					extractedContents.addAll(recursiveInitExtractedContentFromDisk(detector, extractedFile));
+				}
+			}
+		}
+		return extractedContents;
+	}
+
+	private File createSubdirectoriesAndFile(File baseExtractDirectory, Metadata metadata) {
 		final String defaultName = "embedded-document";
 
-		String embeddedDocumentName = (metadata.get(Metadata.RESOURCE_NAME_KEY) != null) ? metadata.get(Metadata.RESOURCE_NAME_KEY) : defaultName;
+		/*String embeddedDocumentName = (metadata.get(Metadata.RESOURCE_NAME_KEY) != null) ? metadata.get(Metadata.RESOURCE_NAME_KEY) : defaultName;
 
 		File embeddedDocumentFile = new File(embeddedDocumentName);
 		embeddedDocumentName = embeddedDocumentFile.getName();
@@ -158,51 +206,34 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 		Set<String> files = new HashSet<String>();
 		for(String file : new File(parentParameters.getExtractedContentDir()).list()) {
 			files.add(file);
-		}
-		embeddedDocumentName = DataSampleMetaData.generateNewSampleName(embeddedDocumentName, files);
+		}*/
 
-		return embeddedDocumentName;
-	}
+		String embeddedDocumentName = (metadata.get(Metadata.RESOURCE_NAME_KEY) != null) ? 
+				metadata.get(Metadata.RESOURCE_NAME_KEY) : defaultName;
 
-	private File getOrCreateExtractedContentDirectory() throws IOException {
-		if(parentParameters.get(File.class) == null) {
-			logger.error("File not found in context.  Embedded document parsing requires a file in context.");
-			throw new IOException("Required file context not found for Embedded document parser.");
-		}
-		File fileLocation = parentParameters.get(File.class);
 
-		File extractedContentDirectory;
-		if(parentParameters.getExtractedContentDir() == null) {
-			extractedContentDirectory = new File(fileLocation.getParent(), fileLocation.getName().substring(0, fileLocation.getName().lastIndexOf('.')));
-			if(extractedContentDirectory.exists()) {
-				Set<String> existingSampleNames = new HashSet<String>();
-				for(String file : extractedContentDirectory.getParentFile().list()) {
-					existingSampleNames.add(file);
+				File embeddedDocumentFile = new File(baseExtractDirectory, embeddedDocumentName);
+				if (!embeddedDocumentFile.getParentFile().exists()) {
+					if (!embeddedDocumentFile.getParentFile().mkdirs()) {
+						throw new AnalyticsRuntimeException("IO Exception caused unsuccessful "
+								+ "package extraction", 
+								new IOException("Could not created zipped subdirectory."));
+					}
 				}
-				String extractedName = DataSampleMetaData.generateNewSampleName(extractedContentDirectory.getName(), existingSampleNames);
-				extractedContentDirectory = new File(fileLocation.getParent(), extractedName);
-			}
-			if(!extractedContentDirectory.mkdir()) {
-				throw new IOException("Embedded document extraction failed because " + extractedContentDirectory + " could not be created.");
-			} 
-			logger.info("Embedded documents being extracted into " + extractedContentDirectory.getAbsolutePath() + ".");
-		} else {
-			//logger.info("Using " + parentParameters.getExtractedContentDir() + ".");
-			extractedContentDirectory = new File(parentParameters.getExtractedContentDir());
-		}
-		return extractedContentDirectory;
+
+				return embeddedDocumentFile;
 	}
 
-	public TikaProfilerParameters getParentParameters() {
+	public TikaAnalyzerParameters<?> getParentParameters() {
 		return parentParameters;
 	}
 
-	public void setParentParameters(TikaProfilerParameters parentParameters) {
-		this.parentParameters = parentParameters;
-	}
-
-	private File writeToFile(File embeddedDocument, InputStream stream, ContentHandler handler, Metadata metadata) throws IOException {
-
+	private File writeToFile(File embeddedDocument, InputStream stream, ContentHandler handler, Metadata metadata, 
+			long sizeCutoff) throws AnalyticsEmbeddedContentException, IOException {
+		
+		if (embeddedDocument.length() > sizeCutoff) {
+			throw new AnalyticsEmbeddedContentException("Embedded content exceeds file size limit of " + sizeCutoff + ".");
+		}
 		FileOutputStream fos = new FileOutputStream(embeddedDocument);
 		IOUtils.copy(stream, fos);
 		fos.close();
@@ -210,17 +241,17 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 		return embeddedDocument;
 	}
 
-	public TikaProfilerParameters initializeTikaProfilingParameters(InputStream inputStream, ContentHandler handler, Metadata metadata) throws IOException {
-		TikaProfilerParameters parameters;
+	public TikaAnalyzerParameters<?> initializeTikaProfilingParameters(InputStream inputStream, ContentHandler handler, Metadata metadata) throws IOException {
+		TikaAnalyzerParameters<?> parameters;
 		if(parentParameters instanceof TikaSampleAnalyzerParameters) {
 			TikaSampleAnalyzerParameters sampleParams = (TikaSampleAnalyzerParameters) parentParameters; 
-			parameters = new TikaSampleAnalyzerParameters(sampleParams.get(Profiler.class), sampleParams.getProgressBar(),
+			parameters = new TikaSampleAnalyzerParameters(sampleParams.getProfiler(), sampleParams.getProgressBar(),
 					sampleParams.getUploadFileDir(), sampleParams.getGuid(), inputStream, handler, metadata);
 			parameters.set(ProfilingProgressUpdateHandler.class, sampleParams.get(ProfilingProgressUpdateHandler.class));
 			((TikaSampleAnalyzerParameters)parameters).setRecordsInSample(sampleParams.getRecordsInSample());
 		} else if(parentParameters instanceof TikaSchemaAnalyzerParameters) {
 			TikaSchemaAnalyzerParameters schemaParams = (TikaSchemaAnalyzerParameters) parentParameters;
-			parameters = new TikaSchemaAnalyzerParameters(schemaParams.get(Profiler.class), schemaParams.getProgressBar(),
+			parameters = new TikaSchemaAnalyzerParameters(schemaParams.getProfiler(), schemaParams.getProgressBar(),
 					schemaParams.getUploadFileDir(), schemaParams.getGuid(), schemaParams.getDomainName(), 
 					schemaParams.getUserModifiedSampleList());
 			parameters.set(ProfilingProgressUpdateHandler.class, schemaParams.get(ProfilingProgressUpdateHandler.class));
@@ -228,7 +259,6 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 			parameters.setHandler(handler);
 			parameters.setMetadata(metadata);
 		} else {
-			inputStream.close();
 			throw new AnalyticsRuntimeException("Parameters not defined as sample or schema parameters.");
 		}
 		parameters.setStreamLength(metadata.get(Metadata.CONTENT_LENGTH) != null ? Integer.valueOf(metadata.get(Metadata.CONTENT_LENGTH)) : 0);
@@ -244,6 +274,16 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 		//EmbeddedDocumentExtractor extractor= new ParsingEmbeddedDocumentExtractor(parameters);
 		//parameters.set(EmbeddedDocumentExtractor.class, extractor);
 		return parameters;
+	}
+	
+	public static File getOrCreateExtractedContentDirectory(String baseDir, String sampleName, String suffix) throws IOException {
+		int dotIndex = sampleName.lastIndexOf('.');
+		if (dotIndex > -1) {
+			sampleName = sampleName.substring(0, dotIndex);
+		}
+		String embeddedContentDirName = sampleName + suffix;
+		File extractedContentDirectory = new File(baseDir, embeddedContentDirName);
+		return extractedContentDirectory;
 	}
 
 	public class ExtractedContent {
@@ -283,6 +323,7 @@ public class AnalyticsEmbeddedDocumentExtractor implements EmbeddedDocumentExtra
 
 	public void setAreContentsExtracted(boolean extractedAllContents) {
 		this.isAllContentExtracted = extractedAllContents;
+		this.shouldParse = false;
 	}
 
 }

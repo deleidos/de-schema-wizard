@@ -84,17 +84,17 @@ public abstract class AbstractNumberBucketList extends AbstractCoalescingBucketL
 		// if histogram data is in unique bucket format, try to keep it that way until switching to ranges is necessary
 		List<BigDecimal> distinct = new ArrayList<BigDecimal>();
 		NumberDetail firstNonNullDetail = (schemaNumberDetail != null) ? schemaNumberDetail : sampleNumberDetails.get(0);
-		Optional<BigDecimal> maxOrNull = Optional.ofNullable(NumberBucket.parseLabel(firstNonNullDetail.getFreqHistogram().getLabels().get(0))[1]);
+		Optional<BigDecimal> maxOrNull = Optional.ofNullable(NumberBucket.parseLabel(firstNonNullDetail.getHistogram().getLabels().get(0))[1]);
 		boolean isRanged = maxOrNull.isPresent();
 
 		if(schemaNumberDetail != null && isRanged) {
-			return new DefinedRangesNumberBucketList(schemaNumberDetail.getFreqHistogram());
+			return new DefinedRangesNumberBucketList(schemaNumberDetail.getHistogram());
 		} 
 		BigDecimal min = firstNonNullDetail.getMin();
 		BigDecimal max = firstNonNullDetail.getMax();
 		if(schemaNumberDetail != null) {
 			// already know that schema freq histogram is not ranged, so add all the mins to distinct list
-			for(String label : schemaNumberDetail.getFreqHistogram().getLongLabels()) {
+			for(String label : schemaNumberDetail.getHistogram().getLongLabels()) {
 				BigDecimal[] minAndMax = NumberBucket.parseLabel(label);
 				if(!distinct.contains(minAndMax[0])) {
 					distinct.add(minAndMax[0]);
@@ -106,7 +106,7 @@ public abstract class AbstractNumberBucketList extends AbstractCoalescingBucketL
 			min = (min.compareTo(numberMetrics.getMin()) > 0) ? numberMetrics.getMin() : min;
 			max = (max.compareTo(numberMetrics.getMax()) < 0) ? numberMetrics.getMax() : max;
 			if(!isRanged) {
-				for(String label : numberMetrics.getFreqHistogram().getLongLabels()) {
+				for(String label : numberMetrics.getHistogram().getLongLabels()) {
 					BigDecimal[] minAndMax = NumberBucket.parseLabel(label);
 					if(minAndMax[1] != null) {
 						isRanged = true;
@@ -128,7 +128,7 @@ public abstract class AbstractNumberBucketList extends AbstractCoalescingBucketL
 		if(numBuckets >= 50) {
 			return new DefinedRangesNumberBucketList(min, max);
 		} else if(schemaNumberDetail != null) {
-			return new UniqueValuesNumberBucketList(schemaNumberDetail.getFreqHistogram());
+			return new UniqueValuesNumberBucketList(schemaNumberDetail.getHistogram());
 		} else {
 			return new UniqueValuesNumberBucketList();
 		}

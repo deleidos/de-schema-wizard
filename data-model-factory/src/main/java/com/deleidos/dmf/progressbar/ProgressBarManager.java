@@ -11,17 +11,8 @@ import com.deleidos.dmf.progressbar.ProgressState.STAGE;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
- * 	Each sample has 0 - 100 to show progress<br>
- *	0 - 24 are for detection (STAGE_1)<br>
- *	25 - 49 are for first parsing pass (STAGE_2)<br>
- *	50 - 100 are for second parsing pass (STAGE_3)<br>
- *	During STAGE_2, progress may be "LOCKED," which will not let the progress exceed 74% until it
- *	is explicitly "UNLOCKED"<br>
- *	Together, samples have 100 * <number of samples> as a denominator for progress.  So a progress of 
- *	200/400 means there a 4 data samples, and the second data sample analysis has been completed. 
- *		<br>
- *	Schemas use the same logic, but do not have a second pass, so they will progress much faster.   
- * @author leegc
+ * ProgressBarManager handles the appropriate updating of the progress bar.  It will prevents progress updates from going
+ * backwards, even with the recursive parsing functionality of the {@link com.deleidos.dmf.framework.AnalyticsDefaultParser}
  *
  */
 public class ProgressBarManager {
@@ -50,6 +41,12 @@ public class ProgressBarManager {
 		return true;
 	}
 	
+	/**
+	 * Split the current state into <i>numSplits</i> states.  This allows any subprogress updates to still report their progress
+	 * on a scale that is unaware of any parent progress.
+	 * @param numSplits the number of desired splits.
+	 * @return the number of states in the progressbarmanager after splitting
+	 */
 	public int split(int numSplits) {
 		List<ProgressState> newStates = new ArrayList<ProgressState>(states.subList(0, currentStateIndex));		
 		List<ProgressState> splitStates = ProgressState.split(numerator, 
@@ -163,7 +160,7 @@ public class ProgressBarManager {
 	
 	public static ProgressBarManager fullProgressBar(List<String> names, long totalUploadBytes) {
 		if(names.size() < 1) {
-			return null;
+			throw new AnalyticsRuntimeException("No sample provided.");
 		}
 		final float fileUploadMarkMax = 10;
 		final float matchingMarkMin = 90;

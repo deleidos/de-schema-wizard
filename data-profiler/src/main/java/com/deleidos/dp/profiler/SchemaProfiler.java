@@ -5,13 +5,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.accumulator.AbstractProfileAccumulator;
-import com.deleidos.dp.accumulator.BinaryProfileAccumulator;
 import com.deleidos.dp.beans.AliasNameDetails;
+import com.deleidos.dp.beans.Attributes;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Interpretation;
@@ -19,20 +20,30 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.RegionData;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
+import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
-import com.deleidos.dp.profiler.api.Profiler;
+import com.deleidos.dp.h2.H2MetricsDataAccessObject;
+import com.deleidos.dp.profiler.api.AbstractProfiler;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 import com.deleidos.dp.reversegeocoding.CoordinateProfile;
 
-public class SchemaProfiler implements Profiler {
+/**
+ * Profiler to generate a schema.  Requires at least one sample.  State based in the sense that it must process each
+ *  sample one at a time.  One possible optimization is maintaining an instance of a profiler for each sample and 
+ *  merging the results after accumulation.  This would allow for simultaneous processing of samples during the schema
+ *  generation phase.
+ * @author leegc
+ *
+ */
+public class SchemaProfiler extends AbstractProfiler<Schema> {
 	private GroupingBehavior groupingBehavior = GroupingBehavior.GROUP_ARRAY_VALUES;
 	private Logger logger = Logger.getLogger(SchemaProfiler.class);
 	private ProfilingProgressUpdateHandler progressUpdateListener;
 
-	private final Map<String, AbstractProfileAccumulator> fieldMapping;
+	private final Map<String, AbstractProfileAccumulator<?>> fieldMapping;
 	private final Map<String, Profile> staticProfiles;
 	private final Map<String, List<AliasNameDetails>> aliasMapping;
 	private final Map<String, RegionData> regionDataMapping;
@@ -40,17 +51,13 @@ public class SchemaProfiler implements Profiler {
 	private final List<DataSampleMetaData> dataSampleMetaDataList;
 	private final Schema existingSchema;
 	private String currentMergeLookupId;
-	private int recordsParsed;
-	private long recordsDropped;
 
 	public SchemaProfiler(Schema existingSchema, List<DataSample> samples) {
 		this.existingSchema = existingSchema;
-		fieldMapping = new HashMap<String, AbstractProfileAccumulator>();
+		fieldMapping = new HashMap<String, AbstractProfileAccumulator<?>>();
 		dataSampleMetaDataList = new ArrayList<DataSampleMetaData>();
 		aliasMapping = new HashMap<String, List<AliasNameDetails>>();
 		staticProfiles = new HashMap<String, Profile>();
-		recordsParsed = 0;
-		recordsDropped = 0;
 		mergeDataMapping = new HashMap<String, MergeData>();
 		regionDataMapping = new HashMap<String, RegionData>();
 		init(existingSchema, samples);
@@ -61,7 +68,7 @@ public class SchemaProfiler implements Profiler {
 			initExistingSchema(existingSchema);
 			analyzeDataSamples(samples);
 			for(String key : fieldMapping.keySet()) {
-				AbstractProfileAccumulator apa = initializeProfile(key, mergeDataMapping);
+				AbstractProfileAccumulator<?> apa = initializeProfile(key, mergeDataMapping);
 				if(apa == null) {
 					// make it static, don't handle it as a normal accumulator (manually created and field exclusively in existing schema)
 					staticProfiles.put(key, existingSchema.getsProfile().get(key));
@@ -79,7 +86,7 @@ public class SchemaProfiler implements Profiler {
 		}
 	}
 
-	private AbstractProfileAccumulator initializeProfile(String key, Map<String, MergeData> mergeDataMapping) throws MainTypeException {
+	private AbstractProfileAccumulator<?> initializeProfile(String key, Map<String, MergeData> mergeDataMapping) throws MainTypeException {
 		Profile existingSchemaProfile = null;
 		int existingSchemaRecordCount = -1;
 		List<Profile> mergedProfiles = new ArrayList<Profile>();
@@ -105,13 +112,43 @@ public class SchemaProfiler implements Profiler {
 				}
 			}
 		}
-		AbstractProfileAccumulator accumulator = AbstractProfileAccumulator.generateProfileAccumulator(
+		AbstractProfileAccumulator<?> accumulator = AbstractProfileAccumulator.generateProfileAccumulator(
 				key, existingSchemaProfile, existingSchemaRecordCount, mergedProfiles);
-		/*if(accumulator instanceof BinaryProfileAccumulator) {
-			((BinaryProfileAccumulator)accumulator)
-			.setMediaType(Profile.getBinaryDetail(mergedProfiles.get(0)).getMimeType());
-		}*/
+		
 		return accumulator;
+	}
+	
+	@Override
+	public void accumulateBinaryRecord(BinaryProfilerRecord binaryRecord) {
+		String key = binaryRecord.getBinaryName();
+		if (fieldMapping.containsKey(key)) {
+			List<Object> values = binaryRecord.normalizeRecord().get(key);
+			accumulateNormalizedValues(fieldMapping.get(key), key, values);
+		}
+	}
+
+	@Override
+	public void accumulateRecord(ProfilerRecord record) {
+		Map<String, List<Object>> normalizedRecord = record.normalizeRecord(groupingBehavior);
+		for(String key : normalizedRecord.keySet()) {
+			List<Object> values = normalizedRecord.get(key);
+
+			if(mergeDataMapping.get(currentMergeLookupId).getSkipKeyList().contains(key)) {
+				// key should be skipped because it was neither merged nor used in schema
+				continue;
+			} else {
+				String mergedAccumulatorKey = getCurrentMergedFieldsMapping().containsKey(key) 
+						? getCurrentMergedFieldsMapping().get(key) : key;
+				if(fieldMapping.containsKey(mergedAccumulatorKey)) {
+					accumulateNormalizedValues(
+							fieldMapping.get(mergedAccumulatorKey), mergedAccumulatorKey, values);
+				} else {
+					logger.warn("Key "+mergedAccumulatorKey+" not found in accumulator mapping.  Skipping.");
+					getCurrentSkipKeyList().add(mergedAccumulatorKey);
+				} 
+			}
+		}
+		recordsLoaded++;
 	}
 
 	private List<String> getCurrentSkipKeyList() {
@@ -145,60 +182,6 @@ public class SchemaProfiler implements Profiler {
 		return samples;
 	}
 
-	@Override
-	public int load(ProfilerRecord record) {
-		boolean isBinary = record instanceof BinaryProfilerRecord;
-		Map<String, List<Object>> normalizedRecord = record.normalizeRecord(groupingBehavior);
-		for(String key : normalizedRecord.keySet()) {
-			List<Object> values = normalizedRecord.get(key);
-
-			if(mergeDataMapping.get(currentMergeLookupId).getSkipKeyList().contains(key)) {
-				// key should be skipped because it was neither merged nor used in schema
-				continue;
-			} else {
-
-				String mergedAccumulatorKey = (getCurrentMergedFieldsMapping().containsKey(key)) 
-						? getCurrentMergedFieldsMapping().get(key) : key;
-
-						/*if(!getCurrentDataSample().getDsProfile().containsKey(mergedAccumulatorKey)) {
-					getCurrentSkipKeyList().add(mergedAccumulatorKey);
-					continue;
-				}*/
-
-						if(fieldMapping.containsKey(mergedAccumulatorKey)) {
-							int i = 0;
-							// only want to accumulate presence for the first non null value
-							for(; i < values.size(); i++) {
-								try {
-									fieldMapping.get(mergedAccumulatorKey).accumulate(values.get(i), true);
-									i++;
-									break;
-								} catch (MainTypeException e) {
-									recordsDropped++;
-								}
-							}
-							for(; i < normalizedRecord.get(key).size(); i++) {
-								try {
-									fieldMapping.get(mergedAccumulatorKey).accumulate(values.get(i), false);
-								} catch (MainTypeException e) {
-									recordsDropped++;
-								}
-							}
-						} else {
-							logger.warn("Key "+mergedAccumulatorKey+" not found in accumulator mapping.  Skipping.");
-							getCurrentSkipKeyList().add(mergedAccumulatorKey);
-						} 
-
-
-			}
-		}
-		if(!isBinary) {
-			recordsParsed++;
-		}
-
-		return recordsParsed;
-	}
-
 	public List<DataSampleMetaData> getDataSampleMetaDataList() {
 		return dataSampleMetaDataList;
 	}
@@ -210,7 +193,7 @@ public class SchemaProfiler implements Profiler {
 				existingSchema.getsProfile().get(existingField).setUsedInSchema(true);
 				aliasMapping.put(existingField, existingSchema.getsProfile().get(existingField).getAliasNames());
 			}
-			this.recordsParsed = existingSchema.getRecordsParsedCount();
+			this.recordsLoaded = existingSchema.getRecordsParsedCount();
 
 			Map<String, String> schemaMergeMap = new HashMap<String, String>();
 
@@ -328,7 +311,16 @@ public class SchemaProfiler implements Profiler {
 			} else {
 				aliasList = new ArrayList<AliasNameDetails>();
 			}
-			aliasList.add(aliasNameDetails);
+			boolean contains = false;
+			for (AliasNameDetails alias : aliasList) {
+				if (alias.equals(aliasNameDetails)) {
+					contains = true;
+					break;
+				}
+			}
+			if (!contains) {
+				aliasList.add(aliasNameDetails);
+			}
 			aliasMapping.put(mergedAccumulatorKey, aliasList);
 
 		}
@@ -355,7 +347,7 @@ public class SchemaProfiler implements Profiler {
 			}
 		}
 	}
-	
+
 	private boolean containsInterpretation(List<Interpretation> interpretations, Interpretation candidate) {
 		for(Interpretation i : interpretations) {
 			if(i.getiName().equals(candidate.getiName())) {
@@ -365,82 +357,12 @@ public class SchemaProfiler implements Profiler {
 		return false;
 	}
 
-	@Override
-	public Schema asBean() {
-		Schema schema = (existingSchema == null) ? new Schema() : existingSchema;
-		Map<String, Profile> sProfile = new HashMap<String, Profile>();
-		for(String key: fieldMapping.keySet()) {
-			AbstractProfileAccumulator accumulator = fieldMapping.get(key);
-			try {
-				accumulator.finish();
-				Profile profile = accumulator.getState();
-				profile.setPresence(((float)accumulator.getPresenceCount())/((float)recordsParsed));
-				if(aliasMapping.containsKey(key)) {
-					profile.setAliasNames(aliasMapping.get(key));
-				}
-				if(existingSchema != null && existingSchema.getsProfile().containsKey(key)) {
-					Integer existingNumDistinct = MetricsCalculationsFacade.stripNumDistinctValuesChars(
-							existingSchema.getsProfile().get(key).getDetail().getNumDistinctValues());
-					Integer newNumDistinct = MetricsCalculationsFacade.stripNumDistinctValuesChars(
-							profile.getDetail().getNumDistinctValues());
-					double m = Math.max(existingNumDistinct, newNumDistinct);
-					String numDistinctValues = String.valueOf(m); 
-					profile.getDetail().setNumDistinctValues(">=" + numDistinctValues);
-				}
-
-				for(String mergeDataKey : mergeDataMapping.keySet()) {
-					MergeData mergeData = mergeDataMapping.get(mergeDataKey);
-					if(mergeData.getSample() != null && mergeData.getSample().getDsProfile().containsKey(key)) {
-						DataSample sample = mergeData.getSample();
-						Interpretation i = sample.getDsProfile().get(key)
-								.getInterpretation();
-						if(!containsInterpretation(profile.getInterpretations(), i)) {
-							profile.getInterpretations().add(i);
-						}
-					} else if(schema != null && schema.getsProfile().containsKey(key)) {
-						Interpretation i = schema.getsProfile().get(key)
-								.getInterpretation();
-						if(!containsInterpretation(profile.getInterpretations(), i)) {
-							profile.getInterpretations().add(i);
-						}
-					}
-				}
-
-				Interpretation interpretation = profile.getInterpretation();
-				if(!Interpretation.isUnknown(interpretation)) {
-					logger.info("Interpretting field: " + key + " as " + interpretation.getiName());
-				}
-
-				sProfile.put(key, profile);
-			} catch (MainTypeException e) {
-				logger.error("Main type error with field " + key +".", e);
-				throw new MainTypeRuntimeException("Main type error with field " + key +".", e);
-			}
-
-		}
-		if(staticProfiles != null) {
-			sProfile.putAll(staticProfiles);
-		}
-		sProfile = DisplayNameHelper.determineDisplayNames(sProfile);
-		for(String key : regionDataMapping.keySet()) {
-			if(sProfile.containsKey(key)) {
-				sProfile.get(key).getDetail().setRegionDataIfApplicable(regionDataMapping.get(key));
-			} else {
-				logger.error("Error adding region data for key " + key + ".");
-			}
-		}
-		schema.setsProfile(sProfile);
-		schema.setRecordsParsedCount(recordsParsed);
-		schema.setsDataSamples(dataSampleMetaDataList);
-		return schema;
-	}
-
 	public int getRecordsParsed() {
-		return recordsParsed;
+		return recordsLoaded;
 	}
 
 	public void setRecordsParsed(int recordsParsed) {
-		this.recordsParsed = recordsParsed;
+		this.recordsLoaded = recordsParsed;
 	}
 
 	public ProfilingProgressUpdateHandler getProgressUpdateListener() {
@@ -517,15 +439,82 @@ public class SchemaProfiler implements Profiler {
 		for(DataSample sample : dataSamples) {
 			List<ProfilerRecord> records = sampleToRecordsMapping.get(sample.getDsGuid());
 			schemaProfiler.setCurrentDataSampleGuid(sample.getDsGuid());
-			records.forEach(record->schemaProfiler.load(record));
+			records.forEach(record->schemaProfiler.accumulate(record));
 		}
-		Schema schema = schemaProfiler.asBean();
+		Schema schema = schemaProfiler.finish();
 		schema.setsName(UUID.randomUUID().toString());
 		schema.setsGuid(schema.getsName());
 		return schema;
 	}
 
-	public Map<String, AbstractProfileAccumulator> getFieldMapping() {
+	public Map<String, AbstractProfileAccumulator<?>> getFieldMapping() {
 		return fieldMapping;
+	}
+
+	@Override
+	public Schema finish() {
+		Schema schema = (existingSchema == null) ? new Schema() : existingSchema;
+		Map<String, Profile> sProfile = new HashMap<String, Profile>();
+		for(String key: fieldMapping.keySet()) {
+			AbstractProfileAccumulator<?> accumulator = fieldMapping.get(key);
+			accumulator.finish();
+			Profile profile = accumulator.getState();
+			profile.setPresence(((float)accumulator.getPresenceCount())/((float)recordsLoaded));
+			if(aliasMapping.containsKey(key)) {
+				profile.setAliasNames(aliasMapping.get(key));
+			}
+			if(existingSchema != null && existingSchema.getsProfile().containsKey(key)) {
+				Integer existingNumDistinct = MetricsCalculationsFacade.stripNumDistinctValuesChars(
+						existingSchema.getsProfile().get(key).getDetail().getNumDistinctValues());
+				Integer newNumDistinct = MetricsCalculationsFacade.stripNumDistinctValuesChars(
+						profile.getDetail().getNumDistinctValues());
+				double m = Math.max(existingNumDistinct, newNumDistinct);
+				profile.getDetail().setNumDistinctValues(MetricsCalculationsFacade.stringifyNumDistinctValues((int)m, true));
+			}
+
+			for(String mergeDataKey : mergeDataMapping.keySet()) {
+				MergeData mergeData = mergeDataMapping.get(mergeDataKey);
+				if(mergeData.getSample() != null && mergeData.getSample().getDsProfile().containsKey(key)) {
+					DataSample sample = mergeData.getSample();
+					Interpretation i = sample.getDsProfile().get(key)
+							.getInterpretation();
+					if(!containsInterpretation(profile.getInterpretations(), i)) {
+						profile.getInterpretations().add(i);
+					}
+				} else if(schema != null && schema.getsProfile().containsKey(key)) {
+					Interpretation i = schema.getsProfile().get(key)
+							.getInterpretation();
+					if(!containsInterpretation(profile.getInterpretations(), i)) {
+						profile.getInterpretations().add(i);
+					}
+				}
+			}
+
+			Interpretation interpretation = profile.getInterpretation();
+			if(!Interpretation.isUnknown(interpretation)) {
+				logger.info("Interpretting field: " + key + " as " + interpretation.getiName());
+			}
+
+			sProfile.put(key, profile);
+
+		}
+		
+		for(String key : regionDataMapping.keySet()) {
+			if(sProfile.containsKey(key)) {
+				sProfile.get(key).getDetail().setRegionDataIfApplicable(regionDataMapping.get(key));
+			} else {
+				logger.error("Error adding region data for key " + key + ".");
+			}
+		}
+
+		sProfile.putAll(staticProfiles);
+		sProfile.forEach((k,v)->v.setAttributes(Attributes.generateUnknownAttributes()));
+		sProfile = DisplayNameHelper.replaceKeysWithDisplayNames(DisplayNameHelper.determineDisplayNames(sProfile));
+		
+		schema.setsProfile(sProfile);
+		
+		schema.setRecordsParsedCount(recordsLoaded);
+		schema.setsDataSamples(dataSampleMetaDataList);
+		return schema;
 	}
 }

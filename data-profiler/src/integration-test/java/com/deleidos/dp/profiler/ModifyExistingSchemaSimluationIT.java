@@ -91,7 +91,7 @@ public class ModifyExistingSchemaSimluationIT extends DataProfilerIntegrationEnv
 			loadSomeRecords(schemaProfiler, numRecords.get(i), randomSeeds.get(i));
 			i++;
 		}
-		Schema schema = schemaProfiler.asBean();
+		Schema schema = schemaProfiler.finish();
 		schema.setsGuid(UUID.randomUUID().toString());
 		return schema;
 	}
@@ -99,13 +99,13 @@ public class ModifyExistingSchemaSimluationIT extends DataProfilerIntegrationEnv
 	private DataSample samplePass(int numRecords, int randomSeed) throws MainTypeException {
 		SampleProfiler sampleProfiler = new SampleProfiler(Tolerance.STRICT);
 		loadSomeRecords(sampleProfiler, numRecords, randomSeed);
-		DataSample sample = sampleProfiler.asBean();
+		DataSample sample = sampleProfiler.finish();
 		sample.setDsGuid(UUID.randomUUID().toString());
 
 		SampleSecondPassProfiler srgProfiler = new SampleSecondPassProfiler(sample);
 		srgProfiler.setMinimumBatchSize(500);
 		loadSomeRecords(srgProfiler, numRecords, randomSeed);
-		return srgProfiler.asBean();
+		return srgProfiler.finish();
 	}
 
 	private void loadSomeRecords(Profiler profiler, int recordValue, int numRecords) {
@@ -115,7 +115,7 @@ public class ModifyExistingSchemaSimluationIT extends DataProfilerIntegrationEnv
 			numAs++;
 			profilerRecord.put("b", recordValue);
 
-			profiler.load(profilerRecord);
+			profiler.accumulate(profilerRecord);
 		}
 	}
 

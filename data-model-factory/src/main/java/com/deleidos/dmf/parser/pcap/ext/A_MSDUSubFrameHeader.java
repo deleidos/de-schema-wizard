@@ -14,6 +14,11 @@ import com.deleidos.dmf.parser.JNetPcapTikaParser;
 import org.jnetpcap.packet.annotate.Header.Characteristic;
 import org.jnetpcap.packet.annotate.Header.Layer;
 
+/**
+ * Extension on PCAP parser for A-MSDU Subframe headers.
+ * @author leegc
+ *
+ */
 @Header(nicname = "802.11 MAC", 
 suite = ProtocolSuite.WIRELESS, osi = Layer.DATALINK, length=14,
 characteristics = Characteristic.CSMA_CD, description = "A-MSDU Subframe")

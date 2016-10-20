@@ -181,7 +181,7 @@ public class H2Database {
 		String[] args = new String[3];
 		args[0] = "-tcpAllowOthers";
 		args[1] = "-tcpPort";
-		args[2] = config.getPortNum();
+		args[2] = config.getPortNum().toString();
 		Server server = Server.createTcpServer(args);
 		logger.info("Server started at " + server.getURL());
 		server.setOut(System.out);

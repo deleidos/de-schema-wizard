@@ -11,14 +11,11 @@
         data-tree-depth="0"                     // the depth of the tree at each level
         data-column-is-tree=""                  // render column as tree
         data-cell-min-width=""                  // the width of the collumn header
+        data-callback-method="callback"         // callback method
         data-tree-cell-directive="directive"    // directive for node (tree) cells
         data-other-tree-data="data"             // other data for the tree directive
-        data-tree-cell-method1="method1"        // method1 for tree-cell-directive
-        data-tree-cell-method2="method2"        // method2 for tree-cell-directive
         data-table-cell-directive="directive"   // directive for node (table) cells
-        data-other-table-data="data"            // other data for the table directive
-        data-table-cell-method1="method1"       // method1 for table-cell-directive
-        data-table-cell-method2="method2">      // method2 for table-cell-directive
+        data-other-table-data="data">           // other data for the table directive
      </div>
 */
 (function ( angular ) {
@@ -40,46 +37,42 @@
                     var depth = attrs.treeDepth;
                     var columnIsTree = attrs.columnIsTree;
                     var cellMinWidth = attrs.cellMinWidth;
+                    var callbackMethod = attrs.callbackMethod || '';
                     var treeCellDirective = attrs.treeCellDirective || 'treecell';
                     var otherTreeData = attrs.otherTreeData || '';
-                    var treeCellMethod1 = attrs.treeCellMethod1 || '';
-                    var treeCellMethod2 = attrs.treeCellMethod2 || '';
                     var tableCellDirective = attrs.tableCellDirective || 'tablecell';
                     var otherTableData = attrs.otherTableData || '';
-                    var tableCellMethod1 = attrs.tableCellMethod1 || '';
-                    var tableCellMethod2 = attrs.tableCellMethod2 || '';
                     var template =
                         '<div class="tree-table-row" style="display: block; width: 100%;" data-ng-repeat-start="node in ' + treeTableGrid + '">' +
                             '<div class="tree-table-cell" style="display: block; width: 100%;">' +
                                 '<span ng-show="' + columnIsTree + '" ' +
                                       'style="display: block; min-width: 200px; text-align: left;" ' +
-                                      'ng-style="node.' + nodeId + '% 2 == 1 && {\'background\': \'white\', \'padding-left\': \'' + (depth * 30) + 'px\'} || ' +
-                                                'node.' + nodeId + '% 2 == 0 && {\'background\': \'azure\', \'padding-left\': \'' + (depth * 30) + 'px\'}"> ' +
+                                      'ng-style="node.' + nodeId + ' % 2 == 1 && {\'padding-left\': \'' + (depth * 30) + 'px\'} || ' +
+                                                'node.' + nodeId + ' % 2 == 0 && {\'padding-left\': \'' + (depth * 30) + 'px\'}" ' +
+                                      'ng-class="{ \'stripe-even\': node.' + nodeId + ' % 2 == 0, \'stripe-odd\': node.' + nodeId + ' % 2 == 1 }"> ' +
                                     '<i class="tree-table-collapsed" ' +
                                        'data-ng-show="node.' + nodeChildren + '.length && node.collapsed" ' +
-                                       'data-ng-click="' + treeTableId + '.explandCollapse($event, node)"></i>' +
+                                       'data-ng-click="' + treeTableId + '.expandCollapse($event, node)"></i>' +
                                     '<i class="tree-table-expanded" ' +
                                        'data-ng-show="node.' + nodeChildren + '.length && !node.collapsed" ' +
-                                       'data-ng-click="' + treeTableId + '.explandCollapse($event, node)"></i>' +
+                                       'data-ng-click="' + treeTableId + '.expandCollapse($event, node)"></i>' +
                                     '<i class="tree-table-normal" data-ng-hide="node.' + nodeChildren + '.length"></i> ' +
                                     '<' + treeCellDirective + ' node="{{node}}" ' +
                                                                'node-id="{{node.' + nodeId + '}}" ' +
                                                                'node-label1="{{node.' + nodeLabel1 + '}}" ' +
                                                                'node-label2="{{node.' + nodeLabel2 + '}}" ' +
-                                                               'external-method1="' + treeCellMethod1 + '" ' +
-                                                               'external-method2="' + treeCellMethod2 + '" ' +
+                                                               'callback-method="' + callbackMethod + '" ' +
                                                                'data-link-data="' + linkData + '"/> ' +
                                 '</span>' +
                                 '<span ng-hide="' + columnIsTree + '" ' +
-                                      'style="display: block; width: ' + cellMinWidth + 'px; margin: 0px; padding-left: 4px; padding-right: 4px;" ' +
-                                      'ng-style="node.' + nodeId + '% 2 == 1 && {\'background\': \'white\'} || ' +
-                                                'node.' + nodeId + '% 2 == 0 && {\'background\': \'azure\'}"> ' +
+                                      'style="display: block; width: 100%; min-width:' + cellMinWidth + 'px; margin: 0px; padding-left: 4px; padding-right: 4px;" ' +
+                                      'ng-class="{ \'stripe-even\': node.' + nodeId + ' % 2 == 0, \'stripe-odd\': node.' + nodeId + ' % 2 == 1 }"> ' +
                                     '<i class="tree-table-collapsed" style="background-image: none;"' +
                                        'data-ng-show="node.' + nodeChildren + '.length && node.collapsed" ' +
-                                       'data-ng-click="' + treeTableId + '.explandCollapse($event, node)"></i>' +
+                                       'data-ng-click="' + treeTableId + '.expandCollapse($event, node)"></i>' +
                                     '<i class="tree-table-expanded" style="background-image: none;"' +
                                        'data-ng-show="node.' + nodeChildren + '.length && !node.collapsed" ' +
-                                       'data-ng-click="' + treeTableId + '.explandCollapse($event, node)"></i>' +
+                                       'data-ng-click="' + treeTableId + '.expandCollapse($event, node)"></i>' +
                                     '<i class="tree-table-normal" data-ng-hide="node.' + nodeChildren + '.length"></i> ' +
                                     '<' + tableCellDirective + ' node="{{node}}" ' +
                                                                 'node-id="{{node.' + nodeId + '}}" ' +
@@ -87,8 +80,7 @@
                                                                 'label2="' + nodeLabel2 + '" ' +
                                                                 'node-label1="{{node.' + nodeLabel1 + '}}" ' +
                                                                 'node-label2="{{node.' + nodeLabel2 + '}}" ' +
-                                                                'external-method1="' + tableCellMethod1 + '" ' +
-                                                                'external-method2="' + tableCellMethod2 + '" ' +
+                                                                'callback-method="' + callbackMethod + '" ' +
                                                                 'data-link-data="' + linkData + '" ' +
                                                                 'data="' + otherTableData + '" ' +
                                          'data-ng-hide="node.' + nodeChildren + '.length"/> ' +
@@ -109,22 +101,19 @@
                                  'data-node-children=' + nodeChildren + ' ' +
                                  'data-column-is-tree=' + columnIsTree + ' ' +
                                  'data-cell-min-width="' + cellMinWidth + 'px" ' +
+                                 'data-callback-method="' + callbackMethod + '" ' +
                                  'data-tree-cell-directive="' + treeCellDirective + '" ' +
                                  'data-other-tree-data="' + otherTreeData + '" ' +
-                                 'data-tree-cell-method1="' + treeCellMethod1 + '" ' +
-                                 'data-tree-cell-method2="' + treeCellMethod2 + '" ' +
                                  'data-table-cell-directive="' + tableCellDirective + '" ' +
-                                 'data-other-table-data="' + otherTableData + '" ' +
-                                 'data-table-cell-method1="' + tableCellMethod1 + '" ' +
-                                 'data-table-cell-method2="' + tableCellMethod2 + '">' +
+                                 'data-other-table-data="' + otherTableData + '"> ' +
                             '</div>' +
                         '</div>';
 
 					if( treeTableId && treeTableGrid ) {
 						if( attrs.angularTreeTable ) {
 							scope[treeTableId] = scope[treeTableId] || {};
-							scope[treeTableId].explandCollapse =
-								scope[treeTableId].explandCollapse || function( $event, selectedNode ) {
+							scope[treeTableId].expandCollapse =
+								scope[treeTableId].expandCollapse || function( $event, selectedNode ) {
                                     var expandCollapseAll = function(node, collapsed) {
                                         node.collapsed = collapsed;
                                         for (var i = 0, len = node.children.length; i < len; i++) {

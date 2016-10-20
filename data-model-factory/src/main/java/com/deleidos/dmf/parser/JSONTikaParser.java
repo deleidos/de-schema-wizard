@@ -20,7 +20,7 @@ import org.xml.sax.ContentHandler;
 import com.deleidos.dmf.detector.JSONDetector;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
-import com.deleidos.dmf.framework.TikaProfilerParameters;
+import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
@@ -36,7 +36,7 @@ import com.fasterxml.jackson.databind.node.ValueNode;
  * Parser for JSON Objects with a given InputStream. It is assumed that the
  * InputStream is giving JSON in a valid format. Returns a single JSON object.
  * 
- * @author yoonj1
+ * @author yoonj1, leegc
  */
 @SuppressWarnings("serial")
 public class JSONTikaParser extends AbstractAnalyticsParser {
@@ -45,7 +45,7 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 	private boolean arrayWrapped;
 
 	@Override
-	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		try {
 			if(metadata.get(JSONDetector.WRAPPED_IN_ARRAY) != null && metadata.get(JSONDetector.WRAPPED_IN_ARRAY).equals(Boolean.TRUE.toString())) {
 				arrayWrapped = true;
@@ -53,7 +53,7 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 				arrayWrapped = false;
 			}
 			reader = new InputStreamReader(inputStream, "UTF-8");
-			
+
 			// bReader = new BufferedReader(reader);
 		} catch (UnsupportedEncodingException e) {
 			logger.error("Unsupported encoding. " + e);
@@ -70,16 +70,16 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 	public Set<MediaType> getSupportedTypes(ParseContext context) {
 		return Collections.singleton(MediaType.application("json"));
 	}
-	
+
 	@Override
-	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaProfilerParameters context) throws AnalyticsTikaProfilingException {
+	public ProfilerRecord getNextProfilerRecord(InputStream inputStream, ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
 		try {
 			return mapped(context);
 		} catch (IOException e) {
 			throw new AnalyticsTikaProfilingException(e);
 		}
 	}
-	
+
 	private void readPassedNextComma(InputStreamReader isr) throws IOException {
 		final int comma = ',';
 		final int endArray = ']';
@@ -100,7 +100,7 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 	 * 
 	 * @return
 	 * @throws UnsupportedEncodingException
-	
+
 	@Override
 	public JSONObject parseSingleRecordAsJson(InputStream inputStream, ContentHandler handler, Metadata metadata, ParseContext context) {
 		JSONObject json = null;
@@ -158,19 +158,19 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 			// If a JSON Object is not found by the end of stream, returns null
 			try {
 				if (tempCharIntRepresentation == 125) {
-				jsonNode = new ObjectMapper().readTree(content);
+					jsonNode = new ObjectMapper().readTree(content);
 
-				if (!jsonNode.toString().equals("null")) {
-					
-					addKeys("", jsonNode, map);
-					
-					if (!map.isEmpty()) {
-						map.forEach((k, v) -> json.put(k, v));
-						contentBuilder = new StringBuffer();
-						return json;
+					if (!jsonNode.toString().equals("null")) {
+
+						addKeys("", jsonNode, map);
+
+						if (!map.isEmpty()) {
+							map.forEach((k, v) -> json.put(k, v));
+							contentBuilder = new StringBuffer();
+							return json;
+						}
 					}
 				}
-			}
 			} catch (JsonParseException e) {
 				// do nothing
 			} catch (JsonMappingException f) {
@@ -179,8 +179,8 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 		}
 		return null;
 	}
-	
-	private DefaultProfilerRecord mapped(TikaProfilerParameters context) throws IOException {
+
+	private DefaultProfilerRecord mapped(TikaAnalyzerParameters context) throws IOException {
 		String content;
 		String tempLine;
 		int tempCharIntRepresentation;
@@ -213,22 +213,23 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 			// If a JSON Object is not found by the end of stream, returns null
 			try {
 				if (tempCharIntRepresentation == 125) {
-					this.getParams().setCharsRead(getParams().getCharsRead()+content.length());
-				jsonNode = new ObjectMapper().readTree(content);
-				
-				if (!jsonNode.isNull()) {
-						//addKeys("", jsonNode, map);
-					profilerRecord = addKeyWithHierarchicalObjects(jsonNode);
-					break;
+					context.setCharsRead(context.getCharsRead()+content.length());
+					jsonNode = new ObjectMapper().readTree(content);
 
-				} else {
-					break;
+					if (!jsonNode.isNull()) {
+						//addKeys("", jsonNode, map);
+						profilerRecord = addKeyWithHierarchicalObjects(jsonNode);
+						break;
+
+					} else {
+						break;
+					}
 				}
-			}
 			} catch (JsonParseException e) {
-				// do nothing
+				// TODO this method could be improved - hiding these exceptions is dangerous
+				//logger.error(e);
 			} catch (JsonMappingException f) {
-				// do nothing
+				//logger.error(f);
 			}
 		}
 		if(arrayWrapped) {
@@ -270,7 +271,7 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 			map.put(currentPath, valueNode.asText());
 		}
 	}
-	
+
 	@SuppressWarnings({ "unchecked" })
 	private DefaultProfilerRecord addKeyWithHierarchicalObjects(JsonNode jsonNode) {
 		Map<String,Object> map = SerializationUtility.getObjectMapper().convertValue(jsonNode, Map.class);
@@ -278,5 +279,5 @@ public class JSONTikaParser extends AbstractAnalyticsParser {
 		profilerRecord.putAll(map);
 		return profilerRecord;
 	}
-	
+
 }

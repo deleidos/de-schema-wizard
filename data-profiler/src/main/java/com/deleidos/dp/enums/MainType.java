@@ -5,6 +5,11 @@ import java.nio.ByteBuffer;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.exceptions.MainTypeException;
 
+/**
+ * Enum for all the main types in Schema Wizard.
+ * @author leegc
+ *
+ */
 public enum MainType {
 	STRING, NUMBER, BINARY, OBJECT, ARRAY, NULL;
 	
@@ -57,7 +62,7 @@ public enum MainType {
 	 * @return
 	 * @throws MainTypeException thrown if the value if determined to be a certain main type, but encounters an error
 	 * when attempting to convert it to that main type.
-	 */
+	 
 	public Object createAppropriateObject(Object object) throws MainTypeException {
 		if(object == null) {
 			return null;
@@ -76,17 +81,26 @@ public enum MainType {
 			return null;
 		}
 		}
-	}
+	}*/
 	
-	private Number createNumber(Object object) throws MainTypeException {
+	public Number createNumber(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
 		return MetricsCalculationsFacade.createNumberWithDoublePrecisionOrLower(object);
 	}
 	
-	private String createString(Object object) throws MainTypeException {
+	public String createString(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
 		return object.toString();
 	}
 	
-	private ByteBuffer createBinary(Object object) throws MainTypeException {
+	public ByteBuffer createBinary(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
 		if(!(object instanceof ByteBuffer)) {
 			throw new MainTypeException("Value "+object.getClass().getName()+" is not a byte buffer.");
 		} else {

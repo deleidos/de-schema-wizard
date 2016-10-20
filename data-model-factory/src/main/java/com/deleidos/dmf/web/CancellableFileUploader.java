@@ -27,6 +27,14 @@ import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
 import com.google.common.io.Files;
 
+/**
+ * Callable that report progress updates for a file upload request.  Each instance should receive its own upload directory
+ * to prevent multiple threads from attempting to access the same locked file.
+ * It reports progress by receiveing the total expected upload size, watches the upload directory, and
+ * compares the current size to the expected size.
+ * @author leegc
+ *
+ */
 public class CancellableFileUploader implements Callable<List<File>> {
 	private static final Logger logger = Logger.getLogger(CancellableFileUploader.class);
 	private final HttpServletRequest httpRequest;

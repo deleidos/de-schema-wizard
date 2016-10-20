@@ -28,8 +28,8 @@
                          style="padding-left: 0px; height: 240px; overflow-y: scroll">
                         <table id="data-sources-table" class="table drag-drop">
                             <tbody ng-repeat="(field, profile) in currentSchema.sProfile track by $index">
-                            <tr ng-style="$index %2 === 0 && {'background-color': '#ffffff'} ||
-                                              $index %2 === 1 && {'background-color': '#f9f9f9'}">
+                            <tr ng-class="{ 'stripe-even': $index % 2 === 0,
+                                            'stripe-odd': $index % 2 === 1 }">
                                 <td style="width: 30%; padding-left: 4px;">
                                         <span class="btn-property">
                                             <b>{{field}}</b>

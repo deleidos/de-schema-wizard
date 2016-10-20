@@ -19,6 +19,7 @@ import org.apache.log4j.Logger;
 import org.apache.lucene.search.spell.JaroWinklerDistance;
 
 import com.deleidos.dp.beans.DataSample;
+import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.MatchingField;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
@@ -28,18 +29,21 @@ import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.MainTypeException;
+import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.DisplayNameHelper;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
+import com.deleidos.hd.h2.H2Database;
 
 /**
- * Utility class to drive most of the "thinking" that needs to be done for metrics
+ * Utility class to drive most of the calculations that need to be done for metrics.
  * @author leegc
  *
  */
 public class MetricsCalculationsFacade {
 	public static final MathContext DEFAULT_CONTEXT = MathContext.DECIMAL128;
 	public static final MathContext SIMILARITY_CONTEXT = MathContext.DECIMAL32;
+	public static String GREATER_THAN_EQUAL_TO = ">=";
 	private static final Logger logger = Logger.getLogger(MetricsCalculationsFacade.class);
 
 	public static DetailType getDetailTypeFromDistribution(String mainType, int[] distribution) throws MainTypeException {
@@ -257,7 +261,7 @@ public class MetricsCalculationsFacade {
 		}
 	}
 
-	public static DetailType determineNumberDetailType(Object object) {
+	/*public static DetailType determineNumberDetailType(Object object) {
 		DetailType type = DetailType.DECIMAL;
 		String stringValue = object.toString();
 		if(stringValue.contains("e") || stringValue.contains("E") || stringValue.contains("^")) {
@@ -268,7 +272,33 @@ public class MetricsCalculationsFacade {
 			type = DetailType.INTEGER;
 		} 
 		return type;
+	}*/
+
+	public static DetailType determineNumberDetailType(Object object) {
+		DetailType type = DetailType.DECIMAL;
+		String stringValue = object.toString();
+		if(stringValue.contains("e") || stringValue.contains("E") || stringValue.contains("^")) {
+			type = DetailType.EXPONENT;
+		} else {
+			int dotIndex = stringValue.indexOf(".");
+			if (dotIndex > -1) {
+				boolean allZeros = true;
+				for (int i = dotIndex + 1;i < stringValue.length(); i++) {
+					if (stringValue.charAt(i) != '0') {
+						allZeros = false;
+						break;
+					}
+				}
+				if (allZeros) {
+					type = DetailType.INTEGER;
+				} 
+			} else {
+				type = DetailType.INTEGER;
+			}
+		}
+		return type;
 	}
+
 
 	public static DetailType determineBinaryDetailType(Object object) {
 		DetailType type = null;
@@ -367,6 +397,11 @@ public class MetricsCalculationsFacade {
 		}
 	}
 
+	@Deprecated
+	public static double originalMatch(String name1, Profile profile1, String name2, Profile profile2, double nameWeight) {
+		return similarityAlgorithm1(name1, profile1, name2, profile2, nameWeight);
+	}
+
 	private static double similarityAlgorithm1(String name1, Profile profile1, String name2, Profile profile2, double nameWeight) {
 		final double statisticsWeight = 1 - nameWeight;
 		double nameSimilarity = jaroWinklerComparison(name1, name2);
@@ -375,11 +410,31 @@ public class MetricsCalculationsFacade {
 	}
 
 	private static double similarityAlgorithm2(String name1, Profile profile1, String name2, Profile profile2,
-			double disimilarityRate, double similarityArc, double nameWeight) {
+			double disimilarityRate, double similarityArc, double nameWeight, double sameInterpretationWeight) {
 		final double statisticsWeight = 1 - nameWeight;
 		double nameSimilarity = jaroWinklerComparison(name1, name2);
 		double newSimilarity = newSimilarity(name1, profile1, name2, profile2, disimilarityRate, similarityArc);
-		return (nameWeight * nameSimilarity) + (statisticsWeight * newSimilarity);
+		double normalMatch = (nameWeight * nameSimilarity) + (statisticsWeight * newSimilarity);
+		if (sameInterpretationWeight < 0) {
+			return normalMatch;
+		} else {
+			if (profile1.getInterpretations().size() < 1) {
+				throw new MainTypeRuntimeException("No interpretations in interpretation list for " + name1);
+			} else if (profile2.getInterpretations().size() < 1) {
+				throw new MainTypeRuntimeException("No interpretations in interpretation list for " + name2);
+			}
+			Interpretation profile1Interpretation = profile1.getInterpretations().get(0);
+			Interpretation profile2Interpretation = profile2.getInterpretations().get(0);
+			if (!Interpretation.isUnknown(profile1Interpretation)) {
+				// if the interpretations match and are not unknown
+				// make the minimum match 80
+				if (profile1Interpretation.getiName()
+						.equals(profile2Interpretation.getiName())) {
+					return sameInterpretationWeight + ((1 - sameInterpretationWeight) * normalMatch);
+				} 
+			} 
+			return normalMatch;
+		}
 	}
 
 	private static double newSimilarity(String name1, Profile profile1, String name2, Profile profile2,
@@ -495,8 +550,8 @@ public class MetricsCalculationsFacade {
 
 	public static Integer stripNumDistinctValuesChars(String numDistinctValues) {
 		try {
-			if(numDistinctValues.startsWith(">=")) {
-				return Double.valueOf(numDistinctValues.substring(2)).intValue();
+			if(numDistinctValues.startsWith(GREATER_THAN_EQUAL_TO)) {
+				return Double.valueOf(numDistinctValues.substring(GREATER_THAN_EQUAL_TO.length())).intValue();
 			} else {
 				return Double.valueOf(numDistinctValues).intValue();
 			}
@@ -506,14 +561,29 @@ public class MetricsCalculationsFacade {
 			return 0;
 		}
 	}
-
-	public static List<DataSample> matchFieldsAcrossSamplesAndSchema(Schema schema, List<DataSample> samples, 
-			ProfilingProgressUpdateHandler progressCallback) {
-		return matchFieldsAcrossSamplesAndSchema(schema, samples, new HashSet<String>(), progressCallback);
+	
+	public static String stringifyNumDistinctValues(Integer numDistinctValues, boolean exceedsMax) {
+		return exceedsMax ? GREATER_THAN_EQUAL_TO + String.valueOf(numDistinctValues) : String.valueOf(numDistinctValues);
+	}
+	
+	public static String stringifyNumDistinctValues(Integer numDistinctValues, Integer maxNumDistinctValues) {
+		return stringifyNumDistinctValues(numDistinctValues,  numDistinctValues >= maxNumDistinctValues);
 	}
 
 	public static List<DataSample> matchFieldsAcrossSamplesAndSchema(Schema schema, List<DataSample> samples, 
-			Set<String> ignoreGuids, ProfilingProgressUpdateHandler progressCallback) {
+			double matchCutoff, ProfilingProgressUpdateHandler progressCallback) {
+		Set<String> failedGuids = H2Database.getFailedAnalysisMapping().keySet();
+		return matchFieldsAcrossSamplesAndSchema(schema, samples, 
+				failedGuids, .8, progressCallback);
+	}
+
+	public static List<DataSample> matchFieldsAcrossSamplesAndSchema(Schema schema, List<DataSample> samples, 
+			ProfilingProgressUpdateHandler progressCallback) {
+		return matchFieldsAcrossSamplesAndSchema(schema, samples, .8, progressCallback);
+	}
+
+	public static List<DataSample> matchFieldsAcrossSamplesAndSchema(Schema schema, List<DataSample> samples, 
+			Set<String> ignoreGuids, double matchCutoff, ProfilingProgressUpdateHandler progressCallback) {
 		if(progressCallback == null) {
 			progressCallback = new ProfilingProgressUpdateHandler() {
 				@Override
@@ -536,8 +606,8 @@ public class MetricsCalculationsFacade {
 							String p2Name = otherKey;
 							Profile p2 = otherSample.getDsProfile().get(otherKey);
 
-							double similarity = match(p1Name, p1, p2Name, p2);
-							if(similarity > .8) {
+							double similarity = match(p1Name, p1, p2Name, p2, matchCutoff);
+							if(similarity > matchCutoff) {
 								logger.debug("Match detected between " + p1Name + " in " + otherSample.getDsFileName() + " and " + p2Name + " in schema " + schema.getsName() + " with " + similarity + " confidence.");
 								MatchingField altName = new MatchingField();
 								List<MatchingField> altNames = p2.getMatchingFields();
@@ -576,9 +646,9 @@ public class MetricsCalculationsFacade {
 								String p2Name = otherKey;
 								Profile p2 = otherSample.getDsProfile().get(otherKey);
 
-								double similarity = match(p1Name, p1, p2Name, p2);
+								double similarity = match(p1Name, p1, p2Name, p2, matchCutoff);
 
-								if(similarity > .8) {
+								if(similarity > matchCutoff) {
 									logger.debug("Match detected between " + p1Name + " in " + sample.getDsFileName() + " and " + p2Name + " in " + otherSample.getDsFileName() + " with " + similarity + " confidence.");
 									MatchingField altName = new MatchingField();
 									List<MatchingField> altNames = p2.getMatchingFields();
@@ -599,14 +669,50 @@ public class MetricsCalculationsFacade {
 		return samples;
 	}
 
+	/**
+	 * Perform a default match.  This will <b>not</b> take interpretations into account.
+	 * To boost matching confidence with interpretations, use the same method with an additional
+	 * decimal parameter.
+	 * @param name1
+	 * @param p1
+	 * @param name2
+	 * @param p2
+	 * @return
+	 */
 	public static double match(String name1, Profile p1, String name2, Profile p2) {
+		return match(name1, p1, name2, p2, -1);
+	}
+
+	/**
+	 * Get the match confidence of the two profiles.  If the sameInterpretationWeight parameter is
+	 * above 0, an interpretation match will boost the confidence.  The confidence is affected by an
+	 * interpretation match like so:
+	 * 
+	 * normalConfidence = match(name1, p1, name2, p2)
+	 * boostedConfidence = sameInterpretationWeight + ((1 sameInterpretationWeight) * normalConfidence)
+	 * 
+	 * 
+	 * @param name1
+	 * @param p1
+	 * @param name2
+	 * @param p2
+	 * @param sameInterpretationWeight the decimal boost (0-1) that an interpretation match should provide
+	 * @return
+	 */
+	public static double match(String name1, Profile p1, 
+			String name2, Profile p2, double sameInterpretationWeight) {
+		if (sameInterpretationWeight > 1) {
+			throw new ArithmeticException("Cannot provide an interpretation boost above 1");
+		}
 		String algId = System.getenv("SCHWIZ_MATCHING_ALG");
 		// temporarily allow environment to specify matching algorithm
 		if(p1.getPresence() < 0.0f || p2.getPresence() < 0.0f) {
+			// could add some manually created matching logic
 			return 0.0;
 		}
 
-		if(name1.equals(DefaultProfilerRecord.EMPTY_FIELD_NAME_INDICATOR) || name2.equals(DefaultProfilerRecord.EMPTY_FIELD_NAME_INDICATOR)) {
+		if(name1.equals(DefaultProfilerRecord.EMPTY_FIELD_NAME_INDICATOR) 
+				|| name2.equals(DefaultProfilerRecord.EMPTY_FIELD_NAME_INDICATOR)) {
 			if(!name1.equals(name2)) {
 				return 0.0; 
 			}
@@ -620,26 +726,18 @@ public class MetricsCalculationsFacade {
 
 
 		final double nameWeight = .20;
+		final double defaultDisimilarityRate = 1.25;
+		final double defaultSimilarityArc = 6.0;
 		if("1".equals(algId)) {
-			return match(name1, p1, name2, p2, nameWeight);
+			return similarityAlgorithm1(name1, p1, name2, p2, nameWeight);
 		} else if("2".equals(algId)) {
 			// default is algorithm 2
-			final double defaultDisimilarityRate = 1.25;
-			final double defaultSimilarityArc = 6.0;
-			return match(name1, p1, name2, p2, defaultDisimilarityRate, defaultSimilarityArc, nameWeight);
+			return similarityAlgorithm2(name1, p1, name2, p2, 
+					defaultDisimilarityRate, defaultSimilarityArc, nameWeight, sameInterpretationWeight);
 		} else {
-			final double defaultDisimilarityRate = 1.25;
-			final double defaultSimilarityArc = 6.0;
-			return match(name1, p1, name2, p2, defaultDisimilarityRate, defaultSimilarityArc, nameWeight);
+			return similarityAlgorithm2(name1, p1, name2, p2, 
+					defaultDisimilarityRate, defaultSimilarityArc, nameWeight, sameInterpretationWeight);
 		}
-	}
-
-	public static double match(String name1, Profile p1, String name2, Profile p2, double nameWeight) {
-		return MetricsCalculationsFacade.similarityAlgorithm1(name1, p1, name2, p2, nameWeight);
-	}
-
-	public static double match(String name1, Profile p1, String name2, Profile p2, double disimilarityRate, double similarityArc, double nameWeight) {
-		return MetricsCalculationsFacade.similarityAlgorithm2(name1, p1, name2, p2, disimilarityRate, similarityArc, nameWeight);
 	}
 
 }

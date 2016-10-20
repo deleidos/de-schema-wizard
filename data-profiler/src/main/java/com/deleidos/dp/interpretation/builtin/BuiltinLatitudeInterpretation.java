@@ -43,7 +43,7 @@ public class BuiltinLatitudeInterpretation extends AbstractBuiltinInterpretation
 		baseComparisonMetrics.setMin(new BigDecimal(-90));
 		baseComparisonMetrics.setMax(new BigDecimal(90));
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.match(numberProfileName, finalNumberMetrics, "Latitude", baseProfile, nameWeight);
+		return MetricsCalculationsFacade.originalMatch(numberProfileName, finalNumberMetrics, "Latitude", baseProfile, nameWeight);
 	}
 
 	@Override
@@ -140,7 +140,7 @@ public class BuiltinLatitudeInterpretation extends AbstractBuiltinInterpretation
 		baseComparisonMetrics.setStdDevLength(.1);
 		baseComparisonMetrics.setNumDistinctValues(finalStringDetails.getNumDistinctValues());
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.match(stringProfileName, finalStringMetrics, "Latitude", baseProfile, nameWeight);
+		return MetricsCalculationsFacade.originalMatch(stringProfileName, finalStringMetrics, "Latitude", baseProfile, nameWeight);
 	}
 
 	@Override

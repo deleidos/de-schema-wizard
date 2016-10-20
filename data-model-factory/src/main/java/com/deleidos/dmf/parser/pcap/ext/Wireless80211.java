@@ -20,6 +20,11 @@ import org.jnetpcap.packet.annotate.ProtocolSuite;
 
 import com.deleidos.dmf.parser.JNetPcapTikaParser;
 
+/**
+ * Extension on PCAP parser for Wireless packets
+ * @author leegc
+ *
+ */
 @Header(nicname = "802.11 MAC", dlt = {
 		PcapDLT.IEEE802_11
 }, suite = ProtocolSuite.WIRELESS, osi = Layer.DATALINK, characteristics = Characteristic.CSMA_CD, description = "Wifi")

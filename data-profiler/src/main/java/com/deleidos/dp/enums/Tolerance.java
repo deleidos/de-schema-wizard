@@ -1,5 +1,10 @@
 package com.deleidos.dp.enums;
 
+/**
+ * Enum for the possible tolerance measures in Schema Wizard.
+ * @author leegc
+ *
+ */
 public enum Tolerance {
 	STRICT, MODERATE, RELAXED;
 	public float getAcceptableErrorsPercentage() {

@@ -60,8 +60,8 @@
                          style="padding-left: 0px; height: 346px; overflow-y: scroll">
                         <table id="data-sources-table" class="table drag-drop">
                             <tbody ng-repeat="(field, profile) in currentSchema.sProfile track by $index">
-                            <tr ng-style="$index % 2 === 0 && {'background-color': '#ffffff'} ||
-                                          $index % 2 === 1 && {'background-color': '#f9f9f9'}">
+                            <tr ng-class="{ 'stripe-even': $index % 2 === 0,
+                                            'stripe-odd': $index % 2 === 1 }">
                                 <td style="width: 30%; padding-left: 4px;">
                                     <span class="btn-property">
                                         <form id="{{'fieldNameForm' + $index}}">
@@ -86,9 +86,9 @@
                                 </td>
                                 <td style="width: 21%; padding-left: 14px;">
                                     <span ng-repeat="alias in currentSchema.sProfile[field]['alias-names'] as aliases track by $index"
-                                          ng-hide="alias['alias-name'] === field"
+                                          ng-if="alias['alias-name'] !== field"
                                           style="margin-left: 2px;">
-                                        {{alias['alias-name']}}{{$index + 2 < aliases.length ? ', ' : ''}}
+                                        {{alias['alias-name']}}<br ng-if="$index < aliases.length"/>
                                     </span>
                                 </td>
                                 <td style="width: 3%; text-align: center;" ng-hide="profile['manually-added']">
@@ -210,7 +210,7 @@
             </div>
         </div>
         <button class="btn btn-primary" style="float: right; margin-top: 5px; margin-left: 4px;"
-                ng-click="navigateTo('/startup')">
+                ng-click="navigateTo('/catalog')">
             Cancel
         </button>
         <button class="btn btn-primary" style="float: right; margin-top: 5px; margin-left: 4px;"
