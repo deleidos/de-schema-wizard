@@ -57,7 +57,7 @@ job "schema-wizard" {
         task "sw-h2" {
             driver = "docker"
             config {
-                image = "deleidos/de-schema-wizard-h2:3.0.0-beta1"
+                image = "deleidos/de-schema-wizard-h2:3.0.0-beta3"
 
             }
             service {
@@ -88,7 +88,7 @@ job "schema-wizard" {
         task "sw-mongodb" {
             driver = "docker"
             config {
-                image = "deleidos/de-schema-wizard-mongodb:3.0.0-beta1"
+                image = "deleidos/de-schema-wizard-mongodb:3.0.0-beta3"
                 
             }
             service {
@@ -120,12 +120,12 @@ job "schema-wizard" {
         task "sw-ie-sidekick" {
             driver = "docker"
             config {
-                image = "deleidos/de-schema-wizard-sidekick:3.0.0-beta1"
+                image = "deleidos/de-schema-wizard-sidekick:3.0.0-beta3"
                 
             }
             env {
                 U_PROFILE = "docker-untrusted"
-				U_IMAGE = "deleidos/de-schema-wizard-untrusted:3.0.0-beta1"
+				U_IMAGE = "deleidos/de-schema-wizard-untrusted:3.0.0-beta3"
 				PULL_TAG = "142"
 				REDIS_PORT = "tcp://r-cache:6379"
             }
@@ -151,7 +151,7 @@ job "schema-wizard" {
         task "sw-webapp" {
             driver = "docker"
             config {
-                image = "deleidos/de-schema-wizard-webapp:3.0.0-beta1"
+                image = "deleidos/de-schema-wizard-webapp:3.0.0-beta3"
 
             }
             service {
