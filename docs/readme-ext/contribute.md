@@ -19,14 +19,6 @@ Linux Developer Requirements
 * Pip 8 for Python 3 (pip3)
 * Docker (docker)
 
-## One-time setup
-
-On each platform, you must install third party dependencies before you can compile.  These dependencies are packaged in the "third-party-repo" project.  All of these dependencies are open source, but they are packaged for convenience.  In the "third-party-repo" project, run:
-
-	mvn clean install
-
-This is a one time install as long as you do not delete your local Maven repository.  Now that that's over, let's get to the fun part.
-
 ## Project Structure
 Schema Wizard is composed of eight projects: three Java, one Java/JavaScript, and four Python projects. 
 
