@@ -16,4 +16,4 @@ Schema Wizard is not configured to use SSL by default.  Sensitive material shoul
 | D-02676 | Refresh button breaks the schema creation screen. | Only use buttons that are displayed as part of the application. |
 | D-02674 | Some graphs have labels that overlap each other. | N/A |
 | D-02713 | Long names throw off field header/data alignment | N/A |
-| N/A     | Sample columns are not shown on matching screen. | Maximize the size of your screen.  Decrease font size until they are displayed.  With a large number of samples, leverage the "Modify Existing" feature" | 
+| B-07197 | Sample columns are not shown on matching screen. | Maximize the size of your screen.  Decrease font size until they are displayed.  With a large number of samples, leverage the "Modify Existing" feature" | 
