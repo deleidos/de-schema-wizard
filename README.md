@@ -1,6 +1,6 @@
 # Schema Wizard
 
-[Detailed User Guide](docs/readme-ext/detailed.md)
+[User Guide](docs/readme-ext/detailed.md)
 
 [Developer Documentation](docs/readme-ext/contribute.md)
 
