@@ -81,6 +81,8 @@ third-party-repo/gdal/windows/gdal-1.11.1.win64
 third-party-repo/bin
 
 dev/*
+!dev/build
+dev/build/*
 !dev/build/build.properties
 !dev/build.py
 !dev/commons.py
