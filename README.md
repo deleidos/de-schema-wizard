@@ -54,7 +54,7 @@ Compressed Formats:
 If Schema Wizard finds a content type that could contain other content types (e.g. a zip of CSV's or a PDF containing XML), it will recursively extract embedded content until it finds numeric or string fields.  For more information on Schema Wizard's parsing strategy, see [Parsing Details](docs/readme-ext/detailed.md#data-samples).
 
 ## Supported Browsers
-![Chrome](/docs/readme-ext/chrome-icon.jpg "Chrome 51") ![Firefox](/docs/readme-ext/firefox-icon.jpg "Firefox 47") ![Opera](/docs/readme-ext/opera-icon.jpg "Opera 38") ![Internet Explorer](/docs/readme-ext/ie-icon.jpg "IE 11+") ![Safari](/docs/readme-ext/safari-icon.jpg "Safari 9.1")
+![Chrome](/docs/readme-ext/chrome-icon.jpg "Chrome 51") ![Firefox](/docs/readme-ext/firefox-icon.jpg "Firefox 47") ![Opera](/docs/readme-ext/opera-icon.jpg "Opera 38") ![Safari](/docs/readme-ext/safari-icon.jpg "Safari 9.1")
 
 ## Technologies
 Schema Wizard uses the following open sourced technologies:
