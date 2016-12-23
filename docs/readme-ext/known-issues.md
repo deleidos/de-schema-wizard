@@ -20,4 +20,4 @@ Schema Wizard is not configured to use SSL by default.  Sensitive material shoul
 | B-07197 | Data samples should be deletable in matching dialog | Use the "Discard" feature instead |
 | B-07197 | Restore matching that requires interpretation | N/A |
 | B-07197 | Duplicate rows are created on manual merge | N/A |
-| B-07197 | Schema fields are sometimes not saved properly | N/A |
+| B-07197 | Schema fields are sometimes not saved/displayed properly | N/A |
