@@ -14,3 +14,10 @@ Schema Wizard is not configured to use SSL by default.  Sensitive material shoul
 | Defect_ID | Description | Work Around (If Applicable) |
 |:-------------:|:-------------:|:-----------:|
 | B-07197 | Sample columns are not shown on matching screen. | Maximize the size of your screen.  Decrease font size until they are displayed.  With a large number of samples, leverage the "Modify Existing" feature" | 
+| B-07197 | Manually added properties should have a visual cue that they are not available in details pane | N/A |
+| B-07197 | Schema property details should be availabe in matching dialog | N/A |
+| B-07197 | Data samples should scroll horizontally | *see first row* |
+| B-07197 | Data samples should be deletable in matching dialog | Use the "Discard" feature instead |
+| B-07197 | Restore matching that requires interpretation | N/A |
+| B-07197 | Duplicate rows are created on manual merge | N/A |
+| B-07197 | Schema fields are sometimes not saved properly | N/A |
