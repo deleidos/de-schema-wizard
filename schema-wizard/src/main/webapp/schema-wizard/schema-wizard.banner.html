@@ -1,7 +1,7 @@
 <div id="banner" class="banner">
     <a href="#" id="titleRef" class="titleStyle" onclick="return false;blur();"
        ng-click="navigateTo('/catalog')">Schema Wizard</a>
-    <span style="position: absolute; top: 2px; right: 50px;">
+    <span style="position: absolute; top: 2px; right: 90px;">
         <img id="mainBusIconOnBanner" class="btn btn-primary" style="border: none; margin-top: 0px;"
              src="assets/img/white-tour-bus-22x22.png"
              uib-tooltip="Take a tour of this page" tooltip-placement="bottom"
@@ -44,6 +44,16 @@
             <ul class="dropdown-menu" uib-dropdown-menu role="menu"
                 style="border: none; font: normal normal 10pt sans-serif;"
                 aria-labelledby="btn-append-to-single-button">
+                <li ng-show="userRole =='admin'" role="menuitem">
+                    <a href="#" class="dropdown-item" onclick="return false;" ng-click="navigateTo('/userPage');">
+                        User Management
+                    </a>
+                </li>
+                <li ng-show="userRole =='user'" role="menuitem">
+                    <a href="#" class="dropdown-item" onclick="return false;" ng-click="navigateTo('/userPage');">
+                        My Account
+                    </a>
+                </li>
                 <li role="menuitem">
                     <a href="#" class="dropdown-item" ng-click="setTheme($event, 'de3')">
                         Digital Edge 3 Theme

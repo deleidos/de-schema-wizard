@@ -9,8 +9,6 @@ import org.apache.log4j.Logger;
 import org.junit.Test;
 
 import com.deleidos.dp.accumulator.BundleProfileAccumulator;
-import com.deleidos.dp.accumulator.NumberProfileAccumulator;
-import com.deleidos.dp.accumulator.StringProfileAccumulator;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -55,5 +53,28 @@ public class ProfileBeanTest {
 
 		assertTrue(s != null);
 		logger.info("String profile serialized.");
+	}
+	
+	@Test
+	public void testDeserializeInterpretations() throws MainTypeException {
+		List<Object> values = new ArrayList<Object>();
+		//StringProfileAccumulator sma = new StringProfileAccumulator("test-field", "hey");
+		values.add("hey");
+		values.add("hey");
+		values.add("hi");
+		values.add("hello");
+		values.add("what's up");
+
+		Profile profile = BundleProfileAccumulator.generateProfile("testField", values);
+		Interpretation i1 = new Interpretation();
+		i1.setiName("testI1");
+		Interpretation i2 = new Interpretation();
+		i2.setiName("testI2");
+		profile.setInterpretations(Interpretations.newInstance(i1,i2));
+		String serialized = SerializationUtility.serialize(profile);
+		logger.info(serialized);
+		Profile deserialized = SerializationUtility.deserialize(serialized, Profile.class);
+		assertTrue(deserialized.getInterpretations().containsInterpretation(Interpretation.UNKNOWN));
+		assertTrue(deserialized.getInterpretations().getAvailableOptions().size() == 3);
 	}
 }

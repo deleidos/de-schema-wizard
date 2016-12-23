@@ -22,7 +22,7 @@ public class H2TestDatabase extends H2Database {
 	 * @throws ClassNotFoundException 
 	 * @throws InterruptedException 
 	 */
-	public H2TestDatabase() throws ClassNotFoundException, SQLException {
+	public H2TestDatabase() throws SQLException {
 		super(H2Config.TEST_CONFIG, true);
 	}
 
@@ -32,7 +32,7 @@ public class H2TestDatabase extends H2Database {
 	 * @throws InterruptedException 
 	 * @throws ClassNotFoundException 
 	 */
-	public H2TestDatabase startTestServer(H2Config config) throws SQLException, ClassNotFoundException, InterruptedException {
+	public H2TestDatabase startTestServer(H2Config config) throws SQLException, InterruptedException {
 		final Server server = startServer(config);
 		try {
 			Thread.sleep(1000);

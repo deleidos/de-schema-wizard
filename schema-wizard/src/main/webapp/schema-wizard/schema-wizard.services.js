@@ -28,6 +28,26 @@
         this.getUserId = function () {
             return userId;
         };
+        this.setRole = function (roles) {
+            userRole = roles;
+            $rootScope.$broadcast("userRoleChanged", {
+                userRole: userRole
+            });
+            return userRole;
+        };
+        this.getRole = function () {
+            return userRole;
+        };
+        this.setName = function (name) {
+            userName = name;
+            $rootScope.$broadcast("use name has changed", {
+                userName: name
+            });
+            return userName;
+        };
+        this.getName = function () {
+            return userName;
+        };
         this.setDefaultUserId = function () {
             userId = defaultUserId;
             $rootScope.$broadcast("userIdChanged", {
@@ -56,7 +76,7 @@
                 detailModels.detailPanels.panel1[0].viz = "example";
             } else {
                 detailModels.detailPanels.panel1[0].viz = "hbc";
-            };
+            }
             Globals.setDetailModels(detailModels);
         }; // showInGenericDetails
 
@@ -64,7 +84,44 @@
             console.log("clearGenericDetails");
             var detailModels = Globals.getDetailModels();
             detailModels.detailPanels.panel1 = [];
-        } // clearGenericDetails
-    }); // Utilities
+        }; // clearGenericDetails
 
+        var dataSamples;
+        this.setDataSamples = function (ds) {
+            dataSamples = ds;
+        };
+        this.getDataSamples = function () {
+            return dataSamples;
+        };
+        this.getDataSample = function (index) {
+            return dataSamples[index];
+        };
+
+        var dataSamplesBackup;
+        this.setDataSamplesBackup = function (ds) {
+            dataSamplesBackup = angular.copy(ds);
+        };
+        this.getDataSamplesBackup = function () {
+            return angular.copy(dataSamplesBackup);
+        };
+        this.getDataSampleBackup = function (index) {
+            return dataSamplesBackup[index];
+        };
+
+        var schema;
+        this.setSchema = function (s) {
+            schema = s;
+        };
+        this.getSchema = function () {
+            return schema;
+        };
+
+        var modifySchemaMode = false;
+        this.setModifySchemaMode = function (msm) {
+            modifySchemaMode = msm;
+        };
+        this.getModifySchemaMode = function () {
+            return modifySchemaMode;
+        };
+    }); // Utilities
 })();

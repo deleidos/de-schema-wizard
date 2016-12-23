@@ -152,3 +152,20 @@ td
 	margin: 8px;
 	vertical-align: top;
 }
+
+table
+{
+	border-left-style: solid;
+	border-left-width: 1px;
+	border-left-color: ;
+	border-right-style: solid;
+	border-right-width: 1px;
+	border-right-color: ;
+	border-top-style: solid;
+	border-top-width: 1px;
+	border-top-color: ;
+	border-bottom-style: solid;
+	border-bottom-width: 1px;
+	border-bottom-color: ;
+}
+

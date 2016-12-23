@@ -1,0 +1,58 @@
+<ul id="{{'ul' + nodeId}}"
+    style="display: inline; margin-bottom: 0px; list-style-type: none; padding: 0px;
+           line-height: 14px; font-size: 10pt; font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<!-- don't allow dnd in match dialog
+    dnd-list="list"
+    dnd-drop="dndMethod('dragDrop', { 'index': index, 'item': item })">
+-->
+    <!-- The dnd-list directive allows elements to be dropped onto it. -->
+    <!-- The dnd-draggable directive makes an element draggable and will
+         transfer the object that was assigned to it. -->
+    <li id="{{'li' + nodeId}}" style="display: inline;">
+<!-- don't allow dnd in match dialog
+        dnd-draggable="item"
+        dnd-effect-allowed="move"
+        dnd-moved="dragEnd(nodeId, node, type)"
+        dnd-dragstart="dndMethod('dragStart', { 'index': nodeId, 'item': nodeLabel1 })">
+-->
+<!-- ref to editField removed from the span that follows; field editing won't be available
+        ng-dblclick="editField = true"
+        ng-hide="editField == true"
+-->
+        <span id="{{'span' + nodeId}}"
+              single-click="cbMethod($event, 'externalTreeMethod', { 'nodeLabel1': nodeLabel1 })"
+              ng-style="existingSchemaProperty === true && { 'color': 'blue' }">
+            <b>{{(nodeLabel1 == "~" ? "&nbsp;" : nodeLabel1)}}</b>
+        </span>
+    </li>
+    <!-- sync line-height with tree-table-directive tree-table-row min-height (approx line 44) -->
+    <span style="float: right; margin-right: 4px; line-height: 27px;"
+          ng-style="nodeId == 0 && { 'cursor': 'not-allowed' } || { 'cursor': 'pointer' }"
+          ng-dblclick="cbMethod($event, 'changeNodeStruc', { 'index': nodeId, 'currentStruc': nodeLabel2, 'hasChildren': hasChildren })">
+            &nbsp;&nbsp;&nbsp;{{(nodeLabel2 == 'object' ? '{}' : (nodeLabel2 == 'array' ? '[]' : '&#8212;&#8201;&#8201;'))}}
+    </span>
+<!-- field editing won't be available in the matching dialog
+    <input type="text"
+           ng-model="nodeLabel1"
+           ng-hide="editField != true"
+           ng-focus="nodeLabel1 = (nodeLabel1 == '???' ?  '' : nodeLabel1)"
+           ng-blur="cbMethod($event, 'changeNodeLabel', { 'index': nodeId, 'newName': nodeLabel1 })"
+           onkeypress="if (event.keyCode === 13) blur();">
+-->
+    <span style="display: none;">
+        {{nodeId}}
+    </span>
+    <div ng-if="modifySchemaMode === true && !hasChildren">
+        <!--keep the following on the same line to prevent spaces between values-->
+        {{properties[property]["main-type"]}}<span
+            ng-show="properties[property]['main-type']">:{{properties[property]["detail"]["detail-type"]}}</span>
+    </div>
+    <div ng-show="properties[property].interpretations.length == 1">
+        &laquo;{{properties[property].interpretations[0].iName}}&raquo;
+    </div>
+    <div ng-show="properties[property].interpretations.length > 1"
+         ng-repeat="interpretation in properties[property].interpretations">
+        &laquo;{{interpretation.iName}}&raquo;
+    </div>
+    <div style="line-height: 4px;">&nbsp;</div>
+</ul>

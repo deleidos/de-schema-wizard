@@ -7,16 +7,21 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.DataSampleMetaData;
+import com.deleidos.dp.beans.Detail;
+import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.SchemaMetaData;
+import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.exceptions.H2DataAccessException;
 
 /**
@@ -53,7 +58,6 @@ public class H2SchemaDataAccessObject {
 	 * " INNER JOIN schema_field ON (schema_model.schema_model_id = schema_field.schema_model_id);"
 	 * ;
 	 */
-	private final String DELETE_SCHEMA_FROM_DELETION_QUEUE = "DELETE FROM deletion_queue WHERE guid = ?;";
 	private final String GET_SCHEMA_DATA_SAMPLES_MAPPING = "SELECT * FROM schema_data_samples_mapping "
 			+ "INNER JOIN schema_model ON (schema_model.schema_model_id = schema_data_samples_mapping.schema_model_id "
 			+ "AND schema_model.s_guid = ?) "
@@ -63,6 +67,12 @@ public class H2SchemaDataAccessObject {
 
 	// For testing
 	private final String GET_ALL_SCHEMA = "SELECT * FROM schema_model;";
+	
+	private final String GET_PREVIOUS_VERSION = "SELECT * FROM schema_model "
+			+ "WHERE s_name = ? "
+			+ "AND s_version < ? "
+			+ "ORDER BY s_version DESC "
+			+ "LIMIT 1;";
 
 	public H2SchemaDataAccessObject(H2DataAccessObject h2) {
 		this.h2 = h2;
@@ -127,13 +137,32 @@ public class H2SchemaDataAccessObject {
 		rs = ppst.executeQuery();
 
 		while (rs.next()) {
-			schemaList.add(populateSchemaMetaData(dbConnection, rs));
+			schemaList.add(populateSchemaMetaData(rs));
 		}
 
 		ppst.close();
 		return schemaList;
 	}
+	
+	public List<Schema> getSchemaAndPreviousVersion(Connection dbConnection, String schemaGuid) 
+			throws H2DataAccessException, SQLException {
+		Schema current = getSchemaByGuid(dbConnection, schemaGuid);
+		Schema previous = getPreviousVersion(dbConnection, current);
+		return Arrays.asList(current, previous);
+	}
+	
+	public Schema getPreviousVersion(Connection dbConnection, Schema currentSchema) throws H2DataAccessException, SQLException {
+		PreparedStatement ppst = dbConnection.prepareStatement(GET_PREVIOUS_VERSION);
+		ppst.setString(1, currentSchema.getsName());
+		ppst.setString(2, currentSchema.getsVersion());
+		ResultSet resultSet = ppst.executeQuery();
+		return resultSet.next() ? getSchemaByGuid(dbConnection, resultSet.getString("s_guid")) : null;
+	}
 
+	public Schema getSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
+		return getSchemaByGuid(dbConnection, guid, true);
+	}
+		
 	/**
 	 * Queries the schema_model table for a schema based on its GUID
 	 * 
@@ -144,7 +173,10 @@ public class H2SchemaDataAccessObject {
 	 * @throws SQLException 
 	 * 
 	 */
-	public Schema getSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
+	public Schema getSchemaByGuid(Connection dbConnection, String guid, boolean withHistogram) throws H2DataAccessException, SQLException {
+		if (guid == null) {
+			return null;
+		}
 		Schema schema = null;
 		PreparedStatement ppst = null;
 		ResultSet rs = null;
@@ -156,6 +188,22 @@ public class H2SchemaDataAccessObject {
 
 		if (rs.next()) {
 			schema = populateSchema(dbConnection, rs);
+			if (!withHistogram) {
+				for (String key : schema.getsProfile().keySet()) {
+					Profile profile = schema.getsProfile().get(key);
+					Detail detail = profile.getDetail();
+					if (detail instanceof NumberDetail) {
+						NumberDetail nm = ((NumberDetail) Profile.getNumberDetail(profile));
+						nm.setFreqHistogram(null);
+					} else if (detail instanceof StringDetail) {
+						StringDetail sm = ((StringDetail) Profile.getStringDetail(profile));
+						sm.setTermFreqHistogram(null);
+					} else if (detail instanceof BinaryDetail) {
+						logger.error("Detected as binary in " + getClass().getName() + ".");
+					}
+					profile.setDetail(detail);
+				}
+			}
 		} else if (guid != null) {
 			logger.debug("No schema found with guid " + guid + ".");
 		} else {
@@ -185,7 +233,7 @@ public class H2SchemaDataAccessObject {
 		rs = ppst.executeQuery();
 
 		if (rs.next()) {
-			schemaMetaData = populateSchemaMetaData(dbConnection, rs);
+			schemaMetaData = populateSchemaMetaData(rs);
 		}
 		ppst.close();
 
@@ -200,33 +248,48 @@ public class H2SchemaDataAccessObject {
 	 * @throws H2DataAccessException
 	 * @throws SQLException 
 	 */
-	public Map<String, Profile> getSchemaFieldByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
-		return h2.getH2Metrics().getFieldMappingBySchemaGuid(dbConnection, guid);
+	public Map<String, Profile> getSchemaFieldByGuid(Connection dbConnection, String guid, boolean showHistogram) throws H2DataAccessException, SQLException {
+		Map<String, Profile> fieldMapping = h2.getH2Metrics().getFieldMappingBySchemaGuid(dbConnection, guid);
+		if (!showHistogram) {
+			for (String key : fieldMapping.keySet()) {
+				Profile profile = fieldMapping.get(key);
+				Detail detail = profile.getDetail();
+				if (detail instanceof NumberDetail) {
+					NumberDetail nm = ((NumberDetail) Profile.getNumberDetail(profile));
+					nm.setFreqHistogram(null);
+				} else if (detail instanceof StringDetail) {
+					StringDetail sm = ((StringDetail) Profile.getStringDetail(profile));
+					sm.setTermFreqHistogram(null);
+				} else if (detail instanceof BinaryDetail) {
+					logger.error("Detected as binary in " + getClass().getName() + ".");
+				}
+				profile.setDetail(detail);
+			}
+		}
+		return fieldMapping;
 	}
 
-	/**
-	 * Delete a schema from the database by its guid
-	 * 
-	 * @param guid
-	 * @throws H2DataAccessException
-	 * @throws SQLException 
-	 */
-	public void deleteSchemaFromDeletionQueue(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
+	public boolean deleteSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
 		PreparedStatement ppst = null;
 
-		ppst = dbConnection.prepareStatement(DELETE_SCHEMA_FROM_DELETION_QUEUE);
-		ppst.setString(1, guid);
-		ppst.execute();
-		ppst.close();
-	}
-
-	public void deleteSchemaByGuid(Connection dbConnection, String guid) throws H2DataAccessException, SQLException {
-		PreparedStatement ppst = null;
-
+		logger.debug("Deleting schema: " + guid);
+		List<String> sampleGuids = getSampleGuidsFromSchemaGuid(dbConnection, guid);
+		logger.debug("Number of associated data samples: " + sampleGuids.size());
+		
 		ppst = dbConnection.prepareStatement(DELETE_SCHEMA_BY_GUID);
 		ppst.setString(1, guid);
 		ppst.execute();
 		ppst.close();
+		
+		dbConnection.commit();
+		
+		logger.debug("Deleting associated data samples now.");
+		for (String sampleGuid : sampleGuids) {
+			logger.debug("Deleting associated sample: " + sampleGuid);
+			h2.deleteSampleByGuid(sampleGuid);
+		}
+		
+		return true;
 	}
 
 	// Private Methods
@@ -240,7 +303,7 @@ public class H2SchemaDataAccessObject {
 	 * @throws SQLException 
 	 * 
 	 */
-	private SchemaMetaData populateSchemaMetaData(Connection dbConnection, ResultSet rs) throws H2DataAccessException, SQLException {
+	private SchemaMetaData populateSchemaMetaData(ResultSet rs) throws H2DataAccessException, SQLException {
 		SchemaMetaData schemaMetaData = new SchemaMetaData();
 		List<String> dataSampleGuids = new ArrayList<String>();
 		String schemaGuid = rs.getString("s_guid");
@@ -406,7 +469,7 @@ public class H2SchemaDataAccessObject {
 		return guid;
 
 	}
-	
+
 	/**
 	 * Make necessary adjustments to the schema bean if certain properties are not set (e.g. an empty version)
 	 * @param schemaBean the bean to be adjusted

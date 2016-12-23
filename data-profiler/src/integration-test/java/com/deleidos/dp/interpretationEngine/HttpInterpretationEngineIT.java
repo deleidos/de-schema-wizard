@@ -3,24 +3,19 @@
  */
 package com.deleidos.dp.interpretationEngine;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import javax.ws.rs.core.Response;
 
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.integration.DataProfilerIntegrationEnvironment;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
-import com.sun.jersey.api.client.ClientResponse.Status;
 
 /**
  * @author yoonj1

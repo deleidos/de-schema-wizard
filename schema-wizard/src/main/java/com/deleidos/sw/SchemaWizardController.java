@@ -4,8 +4,14 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
+import javax.annotation.security.RolesAllowed;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -20,13 +26,23 @@ import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.log4j.Logger;
 import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.authc.AuthenticationException;
+import org.apache.shiro.authc.IncorrectCredentialsException;
+import org.apache.shiro.authc.LockedAccountException;
+import org.apache.shiro.authc.UnknownAccountException;
+import org.apache.shiro.authc.UsernamePasswordToken;
+import org.apache.shiro.crypto.hash.Sha256Hash;
+import org.apache.shiro.mgt.DefaultSecurityManager;
+import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.subject.Subject;
+import org.apache.shiro.util.SimpleByteSource;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,8 +50,11 @@ import com.deleidos.dmf.accessor.ServiceLayerAccessor;
 import com.deleidos.dmf.analyzer.TikaAnalyzer;
 import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
-import com.deleidos.dp.exceptions.H2DataAccessException;
-import com.deleidos.dp.exceptions.IEDataAccessException;
+import com.deleidos.dp.beans.User;
+import com.deleidos.dp.deserializors.SerializationUtility;
+import com.deleidos.dp.enums.Roles;
+import com.deleidos.sw.realms.H2Realm;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Path("/")
 public class SchemaWizardController implements ISchemaWizardController {
@@ -46,9 +65,21 @@ public class SchemaWizardController implements ISchemaWizardController {
 
 	private ResourceBundle bundle = ResourceBundle.getBundle("error-messages");
 
-	private TikaAnalyzer analyzerService;
+	private final TikaAnalyzer analyzerService;
 
-	ServiceLayerAccessor dataService;
+	private final ServiceLayerAccessor dataService;
+
+	private final SchemaWizardSessionUtility sessionUtil;
+
+	private static final String ADMIN_USER_NAME = "admin";
+
+	private static final String ADMIN_PASSWORD = "admin";
+
+	private static final String ADMIN = Roles.ADMIN;
+
+	private static final String USER = Roles.USER;
+
+	private static final String NOT_FOUND = "NOT_FOUND";
 
 	/**
 	 * Constructor
@@ -56,13 +87,25 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 * @param service
 	 */
 	public SchemaWizardController(TikaAnalyzer analyzerService, ServiceLayerAccessor dataService,
-			String uploadDirectory) {
-		super();
+			SchemaWizardSessionUtility sessionUtil, String uploadDirectory) {
+		SecurityManager securityManager = new DefaultSecurityManager(new H2Realm());
+		SecurityUtils.setSecurityManager(securityManager);
+		this.sessionUtil = sessionUtil;
 		this.analyzerService = analyzerService;
 		this.dataService = dataService;
 		this.uploadDirectory = uploadDirectory;
 
-		SchemaWizardSessionUtility.register();
+		if (dataService.initializeDefaultUser(this.defaultUser())) {
+			logger.debug("No users detected therefore a default user was created.");
+		} else {
+			logger.debug("User(s) in the application exist. Not initializing any new users.");
+		}
+
+		if (dataService.initializeDefaultSecurityQuestions()) {
+			logger.debug("No security questions detected. Populating the question bank with defaults.");
+		} else {
+			logger.debug("Security questions detected. Not initializing any new questions.");
+		}
 	} // constructor
 
 	/**
@@ -74,6 +117,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/sessionId")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSessionId(@Context HttpServletRequest request) {
 		String sessionId = request.getSession().getId();
 		logger.debug("");
@@ -100,6 +144,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/catalog")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getCatalog() {
 		Response response;
 		logger.debug("");
@@ -124,6 +169,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/schema")
+	@RolesAllowed({ ADMIN, USER })
 	public Response saveSchema(String schema) {
 		logger.debug("");
 		logger.debug("saveSchema request received");
@@ -148,6 +194,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/schema/{schemaId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSchema(@PathParam("schemaId") String schemaId) {
 		logger.debug("");
 		logger.debug("getSchema request received: " + schemaId);
@@ -170,6 +217,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/schema/{schemaId}/{nohistogram}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSchema(@PathParam("schemaId") String schemaId, @PathParam("nohistogram") String nohistogram) {
 		logger.debug("");
 		logger.debug("getSchema request received: " + schemaId + "   " + nohistogram);
@@ -193,6 +241,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/schema/{schemaId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteSchema(@PathParam("schemaId") String schemaId) {
 		logger.debug("");
 		logger.debug("deleteSchema request received: " + schemaId);
@@ -214,6 +263,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/schemaMetaData/{schemaId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSchemaMetaData(@PathParam("schemaId") String schemaId) {
 		logger.debug("");
 		logger.debug("getSchemaMetaData request received: " + schemaId);
@@ -238,6 +288,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/schemaField/{schemaId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response addSchemaField(@PathParam("schemaId") String schemaId) {
 		logger.debug("");
 		logger.debug("addSchemaField request received: " + schemaId);
@@ -259,6 +310,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/schemaField/{schemaId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSchemaField(@PathParam("schemaId") String schemaId, @PathParam("fieldId") String fieldId) {
 		logger.debug("");
 		logger.debug("getSchemaField request received: " + schemaId + "   " + fieldId);
@@ -282,6 +334,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/schemaField/{schemaId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteSchemaField(@PathParam("schemaId") String schemaId, @PathParam("fieldId") String fieldId) {
 		logger.debug("");
 		logger.debug("deleteSchemaField request received: " + schemaId + "   " + fieldId);
@@ -304,6 +357,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/schemaFieldMetaData/{schemaId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSchemaFieldMetaData(@PathParam("schemaId") String schemaId,
 			@PathParam("fieldId") String fieldId) {
 		logger.debug("");
@@ -328,6 +382,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/sampleData/{sampleDataId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response saveSampleData(@PathParam("sampleDataId") String sampleDataId) {
 		logger.debug("");
 		logger.debug("saveSampleData request received: " + sampleDataId);
@@ -350,6 +405,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/sampleData/{sampleDataId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSampleData(@PathParam("sampleDataId") String sampleDataId) {
 		logger.debug("");
 		logger.debug("getSampleData request received: " + sampleDataId);
@@ -372,6 +428,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/sampleData/{sampleDataId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteSampleData(@PathParam("sampleDataId") String sampleDataId) {
 		logger.debug("");
 		logger.debug("deleteSampleData request received: " + sampleDataId);
@@ -395,6 +452,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/sampleDataMetaData/{sampleDataId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSampleDataMetaData(@PathParam("sampleDataId") String sampleDataId) {
 		logger.debug("");
 		logger.debug("getSampleDataMetaData request received: " + sampleDataId);
@@ -418,6 +476,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/sampleDataField/{sampleDataId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSampleDataField(@PathParam("sampleDataId") String sampleDataId,
 			@PathParam("fieldId") String fieldId) {
 		logger.debug("");
@@ -442,6 +501,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/sampleDataField/{sampleDataId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteSampleDataField(@PathParam("sampleDataId") String sampleDataId,
 			@PathParam("fieldId") String fieldId) {
 		logger.debug("");
@@ -467,6 +527,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/sampleDataFieldMetaData/{sampleDataId}/{fieldId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getSampleDataMetaData(@PathParam("sampleDataId") String sampleDataId,
 			@PathParam("fieldId") String fieldId) {
 		logger.debug("");
@@ -488,6 +549,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/uploadModifiedSamples")
+	@RolesAllowed({ ADMIN, USER })
 	public void uploadModifiedSamples(@Suspended final AsyncResponse asyncResponse,
 			@Context final HttpServletRequest request, final String schemaAnalysisData) {
 		new Thread(new Runnable() {
@@ -532,6 +594,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/upload")
+	@RolesAllowed({ ADMIN, USER })
 	public void uploadSamples(@Suspended final AsyncResponse asyncResponse, @Context final HttpServletRequest request) {
 		new Thread(new Runnable() {
 			public void run() {
@@ -550,8 +613,6 @@ public class SchemaWizardController implements ISchemaWizardController {
 				logger.debug("numberOfFiles: " + numberOfFiles);
 				logger.debug("filesTotalSize: " + totalFilesSize);
 				logger.debug("");
-				// String fileFormatType = null;
-				// JSONObject jObject = new JSONObject();
 				JSONArray jArray = new JSONArray();
 
 				if (ServletFileUpload.isMultipartContent(request)) {
@@ -609,6 +670,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/domain")
+	@RolesAllowed({ ADMIN, USER })
 	public Response createDomain(@Context HttpServletRequest request) {
 		Response response;
 		logger.debug("");
@@ -634,6 +696,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/domain/{domainId}")
+	@RolesAllowed({ ADMIN, USER })
 	public void updateDomain(@PathParam("domainId") String domainId) {
 		logger.debug("");
 		logger.debug("updateDomain request received");
@@ -651,6 +714,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/domain")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteDomain(@Context HttpServletRequest request) {
 		String returnValue = null;
 		logger.debug("");
@@ -676,6 +740,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/{domainId}/interpretation")
+	@RolesAllowed({ ADMIN, USER })
 	public Response getInterpretations(@PathParam("domainId") String domainId) {
 		Response response;
 		logger.debug("");
@@ -704,6 +769,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@PUT
 	@Path("/{domainId}/interpretation")
+	@RolesAllowed({ ADMIN, USER })
 	public Response updateInterpretation(@PathParam("domainId") String domainId, @Context HttpServletRequest request) {
 		Response response;
 		logger.debug("");
@@ -731,6 +797,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@POST
 	@Path("/{domainId}/interpretation")
+	@RolesAllowed({ ADMIN, USER })
 	public Response createInterpretation(@PathParam("domainId") String domainId, @Context HttpServletRequest request) {
 		Response response;
 		logger.debug("");
@@ -758,6 +825,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@DELETE
 	@Path("/{domainId}/interpretation/{interpretationId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response deleteInterpretation(@PathParam("domainId") String domainId,
 			@PathParam("interpretationId") String interpretationId) {
 		Response response;
@@ -791,6 +859,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/python/validate/{interpretationId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response validatePythonScript(@PathParam("interpretationId") String interpretationId) {
 		Response response;
 		logger.debug("");
@@ -800,18 +869,10 @@ public class SchemaWizardController implements ISchemaWizardController {
 		response = dataService.validatePythonScript(interpretationId);
 		logger.debug("");
 		logger.debug("Status code: " + response.getStatus());
-		// logger.debug(response.toString());
-		// logger.debug("entity");
-		// logger.debug(response.getEntity().toString());
 		JSONObject entity = new JSONObject(response.getEntity().toString());
-		// logger.debug("entity");
-		// logger.debug(entity);
 		JSONArray annotations = new JSONArray(entity.get("returnValue").toString());
-		// logger.debug("annotations");
-		// logger.debug(annotations);
 		JSONObject jObject = new JSONObject();
 		jObject.put("annotations", annotations);
-		// logger.debug("");
 		logger.debug("annotations: " + jObject.toString());
 		response = Response.status(response.getStatus()).entity(jObject.toString()).build();
 		return response;
@@ -828,6 +889,7 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 */
 	@GET
 	@Path("/python/test/{interpretationId}")
+	@RolesAllowed({ ADMIN, USER })
 	public Response testPythonScript(@PathParam("interpretationId") String interpretationId) {
 		Response response;
 		logger.debug("");
@@ -861,8 +923,10 @@ public class SchemaWizardController implements ISchemaWizardController {
 	 *
 	 * 		Only available to Schema Wizard
 	 */
+	@Override
 	@GET
 	@Path("/test")
+	@RolesAllowed({ ADMIN, USER })
 	public String test() {
 		logger.debug("");
 		logger.debug("Testing the Schema Wizard REST endpoint connection.");
@@ -876,31 +940,411 @@ public class SchemaWizardController implements ISchemaWizardController {
 		return jObject.toString();
 	} // test
 
+	/**
+	 * Login for Shiro
+	 *
+	 * @param request
+	 */
+	@POST
+	@Path("/login")
+	public Response login(@Context HttpServletRequest request, String loginCredentials) {
+		Response response = null;
+		Subject currentUser = SecurityUtils.getSubject();
+		@SuppressWarnings("unused")
+		Session session = currentUser.getSession();
+
+		JSONObject loginCredentialsJson = new JSONObject(loginCredentials);
+
+		String username = loginCredentialsJson.getString("username");
+		String password = loginCredentialsJson.getString("password");
+
+		if (!currentUser.isAuthenticated()) {
+			UsernamePasswordToken token = new UsernamePasswordToken(username, password);
+			token.setRememberMe(false);
+
+			try {
+				currentUser.login(token);
+				response = dataService.getUser(username);
+				logger.debug("Logging in " + currentUser.getPrincipal() + " successful of Session ID: "
+						+ request.getSession().getId());
+			} catch (UnknownAccountException uae) {
+				response = Response.status(401).entity("Login unsuccessful.").build();
+				logger.debug("There is no user with username of " + token.getPrincipal());
+			} catch (IncorrectCredentialsException ice) {
+				response = Response.status(401).entity("Login unsuccessful.").build();
+				logger.debug("Password for account " + token.getPrincipal() + " was incorrect.");
+			} catch (LockedAccountException lae) {
+				response = Response.status(401).entity("Login unsuccessful.").build();
+				logger.debug("The account for username " + token.getPrincipal() + " is locked.  "
+						+ "Please contact your administrator to unlock it.");
+			} catch (AuthenticationException ae) {
+				response = Response.status(401).entity("Login unsuccessful.").build();
+				logger.debug("Error authenticating user.");
+			} catch (Exception e) {
+				response = Response.status(401).entity("Login unsuccessful.").build();
+				logger.debug("An unknown error has occured trying to login with the given credentials.");
+			}
+		} else {
+			response = Response.status(200).entity("User " + currentUserString(currentUser) + " is already logged in.")
+					.build();
+			logger.debug("User " + currentUserString(currentUser) + " is already logged in.");
+		}
+
+		return response;
+	}
+
+	@GET
+	@Path("/whoami")
+	@RolesAllowed({ ADMIN })
+	public String whoami() {
+		try {
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+			String currentUserString = currentUserString(currentUser);
+			logger.debug(currentUserString + " is logged in.");
+			return currentUserString;
+
+		} catch (UnknownSessionException e) {
+			logger.error("The session has expired.");
+			return "The session has expired.";
+		}
+	}
+
+	@POST
+	@Path("/logout")
+	public Response logout() {
+		Response response;
+
+		try {
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+
+			currentUser.logout();
+			response = Response.status(200).entity("Logout successful.").build();
+			logger.debug("User sucessfully logged out.");
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@POST
+	@Path("/createUser")
+	@RolesAllowed({ ADMIN })
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response createUser(@Context HttpServletRequest request, String userJson) {
+		Response response;
+		logger.debug("Create user request received.");
+		try {
+			User user = SerializationUtility.deserialize(userJson, User.class);
+
+			// set the role to all lowercase to better match the Roles enum
+			user.setUserRole(user.getUserRole().toLowerCase());
+			user.setUserName(user.getUserName().toLowerCase());
+			user.setFirstName(user.getFirstName().toLowerCase());
+
+			String salt = new BigInteger(250, new SecureRandom()).toString(32);
+			Sha256Hash hashedPassword = new Sha256Hash(user.getPassword(), (new SimpleByteSource(salt)).getBytes());
+			user.setPassword(hashedPassword.toHex());
+			user.setSalt(salt);
+
+			response = dataService.createUser(user);
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@GET
+	@Path("/users")
+	@RolesAllowed({ ADMIN })
+	public Response getAllUsers() {
+		Response response;
+
+		try {
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+
+			response = dataService.getAllUsers();
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@POST
+	@Path("/updateUser")
+	@RolesAllowed({ ADMIN, USER })
+	public Response updateUser(@Context HttpServletRequest request, String userJson) {
+		Response response = null;
+		User user = SerializationUtility.deserialize(userJson, User.class);
+		user.setUserName(user.getUserName().toLowerCase());
+		
+		try {
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+
+			JSONObject requestingUser = dataService.getUserJson(currentUserString(currentUser));
+			logger.debug("Shiro identified the current user as: " + currentUserString(currentUser));
+			logger.debug("The current user has the role: " + requestingUser.getString("userRole"));
+			logger.debug("The client is requesting to modify user: " + requestingUser.toString());
+
+			if (requestingUser.getString("userRole").equals(ADMIN)) {
+				if (user.getPassword() != null) {
+					String salt = new BigInteger(250, new SecureRandom()).toString(32);
+					Sha256Hash hashedPassword = new Sha256Hash(user.getPassword(),
+							(new SimpleByteSource(salt)).getBytes());
+					user.setPassword(hashedPassword.toHex());
+					user.setSalt(salt);
+				}
+
+				response = dataService.updateUser(user);
+			} else if (requestingUser.getString("userRole").equals(USER)
+					&& currentUserString(currentUser).equals(user.getUserName())) {
+				// the USER role is only allowed to modify their own
+				// password - not the password of others
+				if (user.getPassword() != null) {
+					String salt = new BigInteger(250, new SecureRandom()).toString(32);
+					Sha256Hash hashedPassword = new Sha256Hash(user.getPassword(),
+							(new SimpleByteSource(salt)).getBytes());
+					user.setPassword(hashedPassword.toHex());
+					user.setSalt(salt);
+				}
+
+				response = dataService.updateUser(user);
+			} else if (requestingUser.getString("userRole").equals(USER)
+					&& !currentUserString(currentUser).equals(user.getUserName())) {
+				return Response.status(401)
+						.entity("You are not allowed to perform this function. You may only modify your own password as a "
+								+ requestingUser.getString("userRole"))
+						.build();
+			} else if (requestingUser.getString("userRole").equals(NOT_FOUND)) {
+				return Response.status(503).entity("Could not find current user's role.").build();
+			} else {
+				return Response.status(503).entity("Unable to match current user's role to a defined role.").build();
+			}
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@DELETE
+	@Path("/deleteUser")
+	@RolesAllowed({ ADMIN })
+	public Response deleteUser(@Context HttpServletRequest request, String username) {
+		Response response;
+
+		try {
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+
+			response = dataService.deleteUser(username.toLowerCase());
+
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@POST
+	@Path("/modify/user/questions")
+	@RolesAllowed({ ADMIN, USER })
+	public Response addSecurityQuestionsForUser(@Context HttpServletRequest request, String sqJson) {
+		Response response;
+		logger.debug("Add security questions for user request received.");
+		try {
+			JSONObject securityQuestions = new JSONObject(sqJson);
+			JSONObject questions = securityQuestions.getJSONObject("questions");
+			JSONObject answers = securityQuestions.getJSONObject("answers");
+			String username = securityQuestions.getString("userName").toLowerCase();
+
+			User user = new User();
+			user.setUserName(username);
+			user.setSecurityQuestion1(questions.getString("securityQuestion1"));
+			user.setSecurityQuestion2(questions.getString("securityQuestion2"));
+			user.setSecurityQuestion3(questions.getString("securityQuestion3"));
+
+			user.setSecurityQuestion1Answer(answers.getString("securityQuestion1Answer"));
+			user.setSecurityQuestion2Answer(answers.getString("securityQuestion2Answer"));
+			user.setSecurityQuestion3Answer(answers.getString("securityQuestion3Answer"));
+
+			Subject currentUser = SecurityUtils.getSubject();
+			@SuppressWarnings("unused")
+			Session session = currentUser.getSession();
+
+			JSONObject requestingUser = dataService.getUserJson(currentUserString(currentUser));
+			logger.debug("Shiro identified the current user as: " + currentUserString(currentUser));
+			logger.debug("The current user has the role: " + requestingUser.getString("userRole"));
+			logger.debug("The client is requesting to modify user: " + requestingUser.toString());
+
+			if (currentUserString(currentUser).equals(user.getUserName())) {
+				response = dataService.addSecurityQuestionsForUser(user);
+			} else if (requestingUser.getString("userRole").equals(NOT_FOUND)) {
+				return Response.status(503).entity("Could not find current user's role.").build();
+			} else {
+				return Response.status(503).entity("Unable to match current user's role to a defined role.").build();
+			}
+		} catch (UnknownSessionException e) {
+			response = Response.status(403).entity("The session has expired.").build();
+			logger.error("The session has expired.");
+		}
+
+		return response;
+	}
+
+	@POST
+	@Path("/recover/username")
+	public Response getUsernameFromFirstName(@Context HttpServletRequest request, String receivedObject) {
+		JSONObject receivedJObject = new JSONObject(receivedObject);
+
+		logger.debug("Request Object: " + receivedJObject.toString());
+		logger.debug("");
+
+		return dataService.getUsernameFromFirstName(receivedJObject.getString("firstName").toLowerCase());
+	}
+
+	@POST
+	@Path("/security/questions")
+	public Response getAllSecurityQuestions(@Context HttpServletRequest request) {
+		logger.debug("Received request to retrieve all security questions.");
+		return dataService.getAllSecurityQuestions();
+	}
+
+	@POST
+	@Path("/recover/questions")
+	public Response getSecurityQuestionsForUser(@Context HttpServletRequest request, String receivedObject) {
+		JSONObject receivedJObject = new JSONObject(receivedObject);
+
+		logger.debug("Request Object: " + receivedJObject.toString());
+		logger.debug("");
+
+		return dataService.getSecurityQuestionsForUser(receivedJObject.getString("userName").toLowerCase());
+	}
+
+	@POST
+	@Path("/submit/questions")
+	public Response submitSecurityQuestions(@Context HttpServletRequest request, String sqJson) {
+
+		logger.debug("Request Object: " + sqJson.toString());
+		logger.debug("");
+
+		JSONObject securityQuestions = new JSONObject(sqJson);
+		JSONObject questions = securityQuestions.getJSONObject("questions");
+		JSONObject answers = securityQuestions.getJSONObject("answers");
+		String username = securityQuestions.getString("userName");
+
+		User user = new User();
+		user.setUserName(username.toLowerCase());
+		user.setSecurityQuestion1(questions.getString("securityQuestion1"));
+		user.setSecurityQuestion2(questions.getString("securityQuestion2"));
+		user.setSecurityQuestion3(questions.getString("securityQuestion3"));
+
+		user.setSecurityQuestion1Answer(answers.getString("securityQuestion1Answer"));
+		user.setSecurityQuestion2Answer(answers.getString("securityQuestion2Answer"));
+		user.setSecurityQuestion3Answer(answers.getString("securityQuestion3Answer"));
+
+		String uuid = UUID.randomUUID().toString();
+		uuid = uuid.replace("-", "");
+		uuid = uuid.substring(0, 12);
+
+		// system generated password that is only used if the question/answer
+		// combo matches
+		String salt = new BigInteger(250, new SecureRandom()).toString(32);
+		Sha256Hash hashedPassword = new Sha256Hash(uuid, (new SimpleByteSource(salt)).getBytes());
+		user.setPassword(hashedPassword.toHex());
+		user.setSalt(salt);
+
+		return dataService.verifySecurityQuestionsForUser(user, uuid);
+	}
+
+	@POST
+	@Path("/keepAlive")
+	public Response keepAlive(@Context HttpServletRequest request) {
+		return Response.status(200).entity("Keep alive received.").build();
+	}
+
 	@GET
 	@Path("/health")
-	public String health() {
-		return dataService.healthCheck();
-	} // test
+	public String health(@Context SecurityContext sc) {
+		if (sc.isUserInRole("admin")) {
+			return dataService.healthCheck(true);
+		} else {
+			return dataService.healthCheck();
+		}
+	}
 
 	/**
-	 * Upload a Schema Wizard Export and print the contents to the console
+	 * Upload a Schema Wizard Export and print the contents to the console. This
+	 * is a testing method.
 	 *
 	 * @param request
 	 */
 	@POST
 	@Path("/uploadExport")
+	@RolesAllowed({ ADMIN })
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response uploadExport(@Context final HttpServletRequest request) {
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
 			String sCurrentLine;
 			while ((sCurrentLine = br.readLine()) != null) {
-				logger.info(sCurrentLine);
+				logger.debug(sCurrentLine);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 		return null;
+	}
+
+	private String currentUserString(Subject currentUser) {
+		return Optional.of(currentUser.getPrincipal()).orElse("Unknown").toString();
+	}
+
+	private User defaultUser() {
+		User user = new User();
+		user.setUserName(ADMIN_USER_NAME);
+		user.setPassword(ADMIN_PASSWORD);
+		user.setFirstName("Default");
+		user.setLastName("System Generated");
+		user.setUserRole(ADMIN);
+
+		String salt = new BigInteger(250, new SecureRandom()).toString(32);
+		Sha256Hash hashedPassword = new Sha256Hash(user.getPassword(), (new SimpleByteSource(salt)).getBytes());
+		user.setPassword(hashedPassword.toHex());
+		user.setSalt(salt);
+
+		return user;
+	}
+
+	@RolesAllowed({ ADMIN, USER })
+	@Override
+	@POST
+	@Path("/export")
+	public Response export(@Context HttpServletRequest request, String parameterMapping) {
+		try {
+			Map<String, Object> parameters = SerializationUtility.deserialize(parameterMapping,
+					new TypeReference<Map<String, Object>>() {
+					});
+			return dataService.exportSchema(parameters);
+		} catch (Exception e) {
+			return Response.serverError().build();
+		}
 	}
 } // SchemaWizardController

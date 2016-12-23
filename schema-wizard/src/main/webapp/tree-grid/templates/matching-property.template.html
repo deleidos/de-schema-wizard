@@ -1,0 +1,52 @@
+<div class="btn-property"
+     style="line-height: 14px; padding: 2px;
+            font-size: 10pt; font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;"
+     ng-class="{ 'details1': ds.dsProfile[property]['shown-in-details1'] == true, 'details2': ds.dsProfile[property]['shown-in-details2'] == true }">
+    <label class="btn-property"
+           style="-webkit-user-select: none; -moz-user-select: none;
+                  -ms-user-select: none;"
+           unselectable="on"
+           single-click="cbMethod($event, 'showInDetails1', { 'dataSource': ds, 'property': property, 'schemaProperty': false })"
+           ng-dblclick="cbMethod($event, 'showInDetails2', { 'dataSource': ds, 'property': property })">
+        <div ng-show="ds.dsProfile[property]['display-name']"
+             style="cursor: pointer;">
+            <label style="cursor: pointer; font-size: 10pt;"
+                   uib-tooltip="{{(ds.dsProfile[property]['original-name'] ? ds.dsProfile[property]['original-name'] : property)}}"
+                   tooltip-placement="right">
+                {{ds.dsProfile[property]['display-name']}}
+            </label>
+        </div>
+        <div style="font-weight: normal; white-space: nowrap;">
+            <!--keep the following on the same line to prevent spaces between values-->
+            {{ds.dsProfile[property]["main-type"]}}<span
+                ng-show="ds.dsProfile[property]['main-type']">:{{ds.dsProfile[property]["detail"]["detail-type"]}}</span>
+            <span class="btn-use-check"
+                  ng-show="ds.dsProfile[property]['used-in-schema']">
+                &nbsp;&nbsp;&nbsp;
+            </span>
+            <span class="btn-merge-indicator"
+                  ng-show="ds.dsProfile[property]['merged-into-schema']">
+                &nbsp;&nbsp;&nbsp;
+            </span>
+        </div>
+    </label>
+    <div ng-if="ds.dsProfile[property].interpretations.availableOptions.length == 1"
+         style="height: 17px; margin-top: 2px;">
+        &laquo;{{ds.dsProfile[property].interpretations.availableOptions[0].iName}}&raquo;
+    </div>
+    <div ng-if="ds.dsProfile[property].interpretations.availableOptions.length > 1"
+         style="height: 17px; margin-top: 2px;">
+        <select name="altInterpretationSelected" id="altInterpretationSelected" ng-style="{ 'width' : cellMinWidth - 8 }"
+                ng-options="'&laquo;' + option.iName + '&raquo;' for option in ds.dsProfile[property].interpretations.availableOptions track by option.id"
+                ng-model="ds.dsProfile[property].interpretations.selectedOption"
+                ng-change="cbMethod($event, 'changeInterpretation', { 'dataSource': ds, 'property': property })">
+        </select>
+    </div>
+    <select name="altNameSelected" id="altNameSelected" style="margin-top: 4px;" ng-style="{ 'width' : cellMinWidth - 8 }"
+        ng-options="option.name for option in ds.dsProfile[property]['matching-names'].availableOptions track by option.id"
+        ng-model="ds.dsProfile[property]['matching-names'].selectedOption"
+        ng-show="ds.dsProfile[property]['matching-names'].availableOptions.length > 0"
+        ng-style="{ 'width': '300px' }"
+        ng-change="cbMethod($event, 'changeMatchedProperty', { 'dataSource': ds, 'property': property })">
+    </select>
+</div>

@@ -6,4 +6,8 @@ public class H2DataAccessException extends DataAccessException {
 		super(message);
 	}
 
+	public H2DataAccessException(String string, Exception e) {
+		super(string, e);
+	}
+
 }

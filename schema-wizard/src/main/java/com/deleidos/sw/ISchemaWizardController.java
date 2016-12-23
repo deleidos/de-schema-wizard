@@ -8,15 +8,13 @@ import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-/*import javax.ws.rs.QueryParam;*/
+import javax.ws.rs.core.SecurityContext;
 
 /**
  * Schema Wizard Controller interface.
@@ -258,13 +256,14 @@ public interface ISchemaWizardController {
 	/**
 	 * Upload one or more user modified data samples. Return a JSON Array of the
 	 * proposed schema.
+	 * 
 	 * @param request
 	 * @param dataSources
 	 */
 	@POST
 	@Path("/uploadModifiedSamples")
-	public void uploadModifiedSamples(@Suspended final AsyncResponse asyncResponse, 
-			@Context HttpServletRequest request, String schemaAnalysisData);
+	public void uploadModifiedSamples(@Suspended final AsyncResponse asyncResponse, @Context HttpServletRequest request,
+			String schemaAnalysisData);
 
 	/**
 	 * Upload one or more files for analysis. Return a JSON Array of the Data
@@ -274,8 +273,7 @@ public interface ISchemaWizardController {
 	 */
 	@POST
 	@Path("/upload")
-	public void uploadSamples(@Suspended final AsyncResponse asyncResponse, 
-			@Context HttpServletRequest request);
+	public void uploadSamples(@Suspended final AsyncResponse asyncResponse, @Context HttpServletRequest request);
 
 	/**
 	 * Create a new domain object
@@ -393,5 +391,81 @@ public interface ISchemaWizardController {
 	@GET
 	@Path("/test")
 	public String test();
+
+	/**
+	 * Login for Shiro
+	 *
+	 * @param request
+	 */
+	@POST
+	@Path("/login")
+	public Response login(@Context HttpServletRequest request, String loginCredentials);
+
+	/**
+	 * Returns the currently logged in user
+	 * 
+	 * @return The name of the user
+	 */
+	@GET
+	@Path("/whoami")
+	public String whoami();
+
+	/**
+	 * Logout for Shiro
+	 * 
+	 * @return a Response callback
+	 */
+	@POST
+	@Path("/logout")
+	public Response logout();
+
+	/**
+	 * Create a user for Shiro
+	 * 
+	 * @param request
+	 * @param userJson
+	 * @return
+	 */
+	@POST
+	@Path("/createUser")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response createUser(@Context HttpServletRequest request, String userJson);
+
+	/**
+	 * Gets a list of users from Shiro
+	 * 
+	 * @return
+	 */
+	@GET
+	@Path("/users")
+	public Response getAllUsers();
+
+	/**
+	 * Updates a given user
+	 * 
+	 * @return
+	 */
+	@POST
+	@Path("/updateUser")
+	public Response updateUser(@Context HttpServletRequest request, String userJson);
+	
+	@POST
+	@Path("/deleteUser")
+	public Response deleteUser(@Context HttpServletRequest request, String username);
+
+	/**
+	 * A health check function that returns the status of H2, MongoDB, and the
+	 * Interpretation Engine
+	 * 
+	 * @param sc
+	 * @return
+	 */
+	@GET
+	@Path("/health")
+	public String health(@Context SecurityContext sc);
+	
+	@POST
+	@Path("/export")
+	public Response export(@Context HttpServletRequest request, String parameterMapping);
 
 } // ISchemaWizardController

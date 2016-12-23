@@ -22,6 +22,7 @@ public class Interpretation {
 	
 	private Interpretation(String name) {
 		this.iName = name;
+		this.iId = "unknown";
 	}
 	
 	public String getInterpretation() {
@@ -107,4 +108,17 @@ public class Interpretation {
 	public void setiMatchingNames(List<String> iMatchingNames) {
 		this.iMatchingNames = iMatchingNames;
 	}	
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Interpretation) {
+			return ((Interpretation)obj).getiName().equals(this.getiName());
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return this.getiName().hashCode();
+	}
 }

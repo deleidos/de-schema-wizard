@@ -11,6 +11,7 @@ import com.deleidos.dmf.framework.AbstractAnalyticsParser.ProgressUpdatingBehavi
 import com.deleidos.dmf.framework.TikaAnalyzerParameters.MostCommonFieldWithWalking;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dp.beans.DataSample;
+import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.profiler.api.Profiler;
 
 /**
@@ -48,6 +49,7 @@ public class TikaSampleAnalyzerParameters extends TikaAnalyzerParameters<DataSam
 	@Override
 	public DataSample getProfilerBean() {
 		DataSample bean = profiler.finish();
+		bean.setDsProfile(ConversionUtility.addObjectProfiles(bean.getDsProfile()));
 		DataSample dataSampleBean = (DataSample) bean;
 		dataSampleBean.setDsGuid(getGuid());
 		dataSampleBean.setDsFileType(getMediaType());

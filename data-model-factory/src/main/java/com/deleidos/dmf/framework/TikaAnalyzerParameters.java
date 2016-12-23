@@ -252,5 +252,5 @@ public abstract class TikaAnalyzerParameters<T> extends ParseContext implements 
 	public void setProfiler(Profiler<T> profiler) {
 		this.profiler = profiler;
 	}
-
+	
 }

@@ -1,40 +1,48 @@
+/**
+ * @ngdoc controller
+ * @name schemaWizardApp
+ * @description This is the only module used throughout the schema wizard app, under it lies every controller, etc..
+ *
+ **/
+
 (function () {
     //For IE
     try {
         var resizeInterpretationEvent = new Event('resizeInterpretation');
     }
-    catch(e){
+    catch (e) {
         console.log(e)
     }
 
     var schemaWizardApp =
         angular.module('schemaWizardApp', [
-                'ngAnimate',
-                'ngCookies',
-                'ngResource',
-                'ngRoute',
-                'ngSanitize',
-                'ngWebSocket',
-                'googlechart',
-                'chart.js',
-                'ngCsv',
-                'ui.bootstrap',
-                'dndLists',
-                'angular-confirm',
-                'anguFixedHeaderTable',
-                'bm.uiTour',
-                'shagstrom.angular-split-pane'
-            ])
+            'ui.bootstrap',
+            'ngAnimate',
+            'ngCookies',
+            'ngResource',
+            'ngRoute',
+            'ngSanitize',
+            'ngWebSocket',
+            'googlechart',
+            'chart.js',
+            'ngCsv',
+            'dndLists',
+            'angular-confirm',
+            'anguFixedHeaderTable',
+            'bm.uiTour',
+            'shagstrom.angular-split-pane',
+            'ngIdle'
+        ])
             .constant("baseUrl", "/schwiz/")
-            .constant("version", "3.0.0-beta3")
+            .constant("version", "3.0.0")
 
-            .service('authInterceptor', function($location, $window, $q) {
+            .service('authInterceptor', function ($location, $window, $q) {
                 var service = this;
-                service.responseError = function(response) {
-/*                    if (response.status == 401 || response.status == 403){*/
-                    if (response.status == 403){
+                service.responseError = function (response) {
+                    /*                    if (response.status == 401 || response.status == 403){*/
+                    if (response.status == 403) {
                         console.log("############### Not Logged On or Session Timed Out ###############");
-                        $location.path("/logon");
+                        $location.path("/log0n");
                         $window.location.reload();
                     } else {
                         return $q.reject(response);
@@ -42,8 +50,22 @@
                 };
             })
 
-            .config(['$httpProvider', function($httpProvider) {
+            .config(['$httpProvider', function ($httpProvider) {
                 $httpProvider.interceptors.push('authInterceptor');
+            }])
+            // these two configs are for ng-idle
+            .config(['KeepaliveProvider', 'IdleProvider', function (KeepaliveProvider, IdleProvider) {
+                //time before idle in seconds
+                //60 minutes
+                IdleProvider.idle(3600);
+                //amount of time for countdown  before timeout
+                //10 minutes
+                IdleProvider.timeout(600);
+                //This specifies how often the Keepalive event is triggered and the request is issued.
+                KeepaliveProvider.interval(1);
+            }])
+            .config(['TitleProvider', function (TitleProvider) {
+                TitleProvider.enabled(false); // it is enabled by default
             }])
 
             .factory("LogoPage", function () {
@@ -161,7 +183,7 @@
                     },
                     {update: {method: "PUT"}}
                 )
-           })
+            })
 
             .factory("interpretationResource", function ($resource, baseUrl) {
                 return $resource(baseUrl + "rest/:domainId/interpretation/:interpretationId",
@@ -213,8 +235,12 @@
             })
 
             .config(['ChartJsProvider', function (ChartJsProvider) {
-                // Configure all charts
                 ChartJsProvider.setOptions({
+                    scale : {
+                        ticks : {
+                            beginAtZero : true
+                        }
+                    }
                 });
             }])
 
@@ -228,9 +254,9 @@
                         console.log('Started Tour');
                     });
 
-                    $routeProvider.when("/login",{
-                            templateUrl: "login/login.html",
-                            controller: "loginCtrl"
+                    $routeProvider.when("/login", {
+                        templateUrl: "login/login.html",
+                        controller: "loginCtrl"
                     })
 
                     .when("/catalog", {
@@ -247,8 +273,8 @@
                     })
 
                     .when("/schema/:schemaId", {
-                        templateUrl: "catalog/catalog.schema.details.html",
-                        controller: "schemaDetailsCtrl",
+                        templateUrl: "catalog/catalog.hierarchical.schema.details.html",
+                        controller: "hierarchicalSchemaDetailsCtrl",
                         resolve: {
                             schemaData: function ($route, schemaResource) {
                                 return schemaResource.getSchema(
@@ -258,8 +284,8 @@
                     })
 
                     .when("/sampleData/:sampleId", {
-                        templateUrl: "catalog/catalog.sample.details.html",
-                        controller: "sampleDetailsCtrl",
+                        templateUrl: "catalog/catalog.hierarchical.sample.details.html",
+                        controller: "hierarchicalSampleDetailsCtrl",
                         resolve: {
                             sampleData: function ($route, sampleDataResource) {
                                 return sampleDataResource.getSampleData(
@@ -270,7 +296,7 @@
 
                     .when("/:domainName/:domainId/interpretations", {
                         templateUrl: "catalog/catalog.domains.interpretations.html",
-                        controller: "interpretationController",
+                        controller: "interpretationCtrl",
                         resolve: {
                             interpretationData: function ($route, interpretationResource) {
                                 return interpretationResource.get(
@@ -290,15 +316,18 @@
                     })
 
                     .when("/wizardInspectSamples", {
-                        templateUrl: "wizard/wizard.inspect.samples.html",
+                        templateUrl: "wizard/wizard.hierarchical.inspect.samples.html",
+                        controller: "hierarchicalGenericCtrl"
                     })
 
                     .when("/wizardMatchFields", {
-                        templateUrl: "wizard/wizard.match.fields.html"
+                        templateUrl: "wizard/wizard.hierarchical.match.fields.html",
+                        controller: "hierarchicalMatchingCtrl"
                     })
 
                     .when("/wizardFinalizeSchema", {
-                        templateUrl: "wizard/wizard.finalize.schema.html"
+                        templateUrl: "wizard/wizard.hierarchical.finalize.schema.html",
+                        controller: "hierarchicalFinalizeCtrl"
                     })
 
                     .when("/wizardSave", {
@@ -309,11 +338,14 @@
                         templateUrl: "schema-wizard/schema-wizard.blank.html"
                     })
 
+                    .when("/userPage", {
+                        templateUrl: "login/user.page.html"
+                    })
+
                     .otherwise({
                         redirectTo: "/login"
                     })
                 }])
-            //TODO: this came from angular-ui-tour demo; not sure what it is?
             .run(['uiTourService', function (TourService) {
                 TourService.createDetachedTour('myDetachedTour', {backdrop: true});
                 //TourService.createDetachedTour('interpretationsTour');

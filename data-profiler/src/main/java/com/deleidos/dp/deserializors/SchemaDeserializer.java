@@ -11,6 +11,7 @@ import java.util.Map;
 import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
+import com.deleidos.dp.enums.MainType;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -40,7 +41,9 @@ public class SchemaDeserializer extends JsonDeserializer<Schema> {
 			if(profile.getDisplayName() == null) {
 				profile.setDisplayName(nextKey);
 			}
-			newProfiles.put(nextKey, profile);
+			if (!profile.getMainTypeClass().equals(MainType.OBJECT)) {
+				newProfiles.put(nextKey, profile);
+			}
 		}
 		schema.setsProfile(newProfiles);
 

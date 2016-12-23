@@ -1,6 +1,7 @@
 /*global module:false*/
 module.exports = function (grunt) {
 
+
     require('jit-grunt')(grunt, {
         useminPrepare: 'grunt-usemin'
     });
@@ -173,9 +174,17 @@ module.exports = function (grunt) {
             options: {
                 beautify: true
             }
+        },
+        ngdocs: {
+            all: ['src/main/webapp/**/*.js','!src/main/webapp/bower_components/**/*.js','!src/main/webapp/js/**/*.js']
         }
     });
 
+    //npm tasks
+
+    grunt.loadNpmTasks('grunt-ngdocs');
+
+    //tasks
     grunt.registerTask('serve', function (target) {
         if (target === 'dist') {
             return grunt.task.run('connect:dist:keepalive');
@@ -200,7 +209,8 @@ module.exports = function (grunt) {
         'cssmin',
         'uglify',
         'usemin',
-        'clean:temp'
+        'clean:temp',
+        'ngdocs'
     ]);
 
     grunt.registerTask('default', [

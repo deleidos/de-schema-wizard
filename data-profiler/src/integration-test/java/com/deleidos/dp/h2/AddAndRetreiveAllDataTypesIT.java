@@ -27,7 +27,9 @@ import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.Tolerance;
+import com.deleidos.dp.environ.TestUtils;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.integration.DataProfilerIntegrationEnvironment;
 import com.deleidos.dp.profiler.BinaryProfilerRecord;
@@ -124,7 +126,7 @@ public class AddAndRetreiveAllDataTypesIT extends DataProfilerIntegrationEnviron
 		String schemaGuid = H2DataAccessObject.getInstance().addSchema(schema);
 		Schema schema = H2DataAccessObject.getInstance().getSchemaByGuid(schemaGuid, true);
 		
-		String imageKey = imageResource.substring(imageResource.lastIndexOf(".") + 1);
+		String imageKey = "Hopstarter-Soft-Scraps-Image-JPEG.ico";//imageResource.substring(imageResource.lastIndexOf(".") + 1);
 		assertTrue(Profile.getBinaryDetail(schema.getsProfile().get(imageKey)).getHistogram().getLabels().size() == 256);
 
 
@@ -138,6 +140,29 @@ public class AddAndRetreiveAllDataTypesIT extends DataProfilerIntegrationEnviron
 		}
 
 
+	}
+	
+	@Test
+	public void addInterpretationAndEnsureItPersistsTest() throws H2DataAccessException {
+		TestUtils.SampleIngestionUtility sampleUtility = new TestUtils.SampleIngestionUtility();
+		sampleUtility.addSampleIngestion(100, new TestUtils.RandomizedRecordGenerator(1L) {
+			
+			@Override
+			public ProfilerRecord randomizedGenerate(int value, double randomValue) {
+				DefaultProfilerRecord record = new DefaultProfilerRecord();
+				record.put("lat", (randomValue*180)-90);
+				record.put("lng", (randomValue*360)-180);
+				return record;
+			}
+			
+		});
+		List<DataSample> samples = TestUtils.processSamples(sampleUtility, false);
+		assertTrue(samples.get(0).getDsProfile().get("lat").getInterpretation().getiName().contains("Lat"));
+		assertTrue(samples.get(0).getDsProfile().get("lng").getInterpretation().getiName().contains("Long"));
+		Schema schema = TestUtils.schemaPass(null, samples, sampleUtility);
+		assertTrue(schema.getsProfile().get("lat").getInterpretation().getiName().contains("Lat"));
+		assertTrue(schema.getsProfile().get("lng").getInterpretation().getiName().contains("Long"));
+		
 	}
 	
 }

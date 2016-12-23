@@ -13,6 +13,7 @@ import org.apache.log4j.Logger;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
+import com.deleidos.dp.exceptions.SerializationException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,42 +52,27 @@ public class SerializationUtility {
 	public static <T> T deserialize(Object json, TypeReference<T> object) {
 		try {
 			return objectMapper.readValue(json.toString(), object);
-		} catch (JsonParseException e) {
-			logger.error(e);
-			logger.error("Json Parse exception handling deserialization of " + object.getClass().getName());
-		} catch (JsonMappingException e) {
-			logger.error(e);
-			logger.error("Json Mapping exception handling deserialization of " + object.getClass().getName());
 		} catch (IOException e) {
 			logger.error(e);
-			logger.error("IOException handling deserialization of " + object.getClass().getName());
+			throw new SerializationException(e);
 		}
-		return null;
 	}
 
 	public static <T> T deserialize(Object json, Class<T> clazz) {
 		try {
 			return objectMapper.readValue(json.toString(), clazz);
-		} catch (JsonParseException e) {
-			logger.error(e);
-			logger.error("Json Parse exception handling deserialization of " + clazz.getName());
-		} catch (JsonMappingException e) {
-			logger.error(e);
-			logger.error("Json Mapping exception handling deserialization of " + clazz.getName());
 		} catch (IOException e) {
 			logger.error(e);
-			logger.error("IOException handling deserialization of " + clazz.getName());
+			throw new SerializationException(e);
 		}
-		return null;
 	}
 
 	public static String serialize(Object bean) {
 		try {
 			return objectMapper.writeValueAsString(bean);
-		} catch (JsonProcessingException e) {
+		} catch (IOException e) {
 			logger.error(e);
-			logger.error("Json Processing Exception while serializiing " + bean.getClass().getName());
+			throw new SerializationException(e);
 		}
-		return null;
 	}
 }

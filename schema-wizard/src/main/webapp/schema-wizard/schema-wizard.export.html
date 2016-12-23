@@ -2,62 +2,67 @@
     Export Schema
 </div>
 <div class="modal-body-button button-area" style="margin: 0 auto;"
-     ng-controller="exportController">
+     ng-controller="exportCtrl">
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-href="{{ fileUrl }}" download="{{txt}}"
-       ng-click="cancel()">
-        <img src="assets/img/blankDocument-32x32.png">
-        Export as Text (*.txt)
-    </a>
+    <form class="exportModal" style="width: 99%;">
+        <fieldset class="form-group">
+            <legend style="font-size: 12pt; margin-bottom: 0px;border-bottom:0;">File Format</legend>
+            <label style="margin-right: 10px;" ng-repeat="file in selectFileContentType | orderBy">
+                <input ng-click="setFileContentType(file);$event.stopPropagation();" type="radio" name="test"
+                       value="other"> {{file}}
+            </label>
+        </fieldset>
+    </form>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-href="{{ fileUrl }}" download="{{json}}"
-       ng-click="cancel()">
-        <img src="assets/img/jsonDocument-32x32.png">
-        Export as JSON (*.json)
-    </a>
+    <form class="exportModal"  style="width: 99%;">
+        <fieldset style="margin-top: 20px;">
+            <legend style="font-size: 12pt; margin-bottom: 0px;border-bottom:0;">File Type</legend>
+            <label style="margin-right: 10px;" ng-repeat="file in selectFileType | orderBy">
+                <input ng-disabled="fileContentButton =='DigitalEdge Format'"
+                       ng-checked="fileContentButton =='DigitalEdge Format' && file=='.zip'"
+                       ng-click="setFileFormatType(file);$event.stopPropagation();" type="radio" name="test"
+                       value="other"> {{file}}
+            </label>
+        </fieldset>
+    </form>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-href="{{ fileUrlWiz }}" download="{{vizWizDataObject}}"
-       ng-click="cancel()">
-        <img src="assets/img/digitalEdge.png">
-        VizWizard Object (*.json)
-    </a>
+    <form class="exportModal"  style="width: 99%; margin-bottom: 10px;">
+        <fieldset style="margin-top: 20px;">
+            <legend style="font-size: 12pt; margin-bottom: 0px; border-bottom:0;">Download</legend>
+            <label style="margin-right: 10px;" ng-repeat="file in selectDestination | orderBy">
+                <input
+                    ng-checked="fileContentButton =='DigitalEdge Format' && file=='Download' || fileTypeButton !='.json' && file=='Download' "
+                    ng-disabled="file =='REST' && fileTypeButton !='.json'"
+                    ng-click="setFileDestination(file);$event.stopPropagation();" type="radio" name="test"
+                    value="other"> {{file}}
+            </label>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-click="zipExtract(); cancel()">
-        <img src="assets/img/zipDocument-32x32.png">
-        Export as Zip (*.zip)
-    </a>
+        </fieldset>
 
-    <!--<a class="btn btn-primary btn-graphic-plus-text"-->
-       <!--ng-href="{{ fileUrl }}" download="{{doc}}"-->
-       <!--ng-click="cancel()">-->
-        <!--<img src="assets/img/wordDocument-32x32.png">-->
-        <!--Export as Document (*.doc)-->
-    <!--</a>-->
+    </form>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-click="zipExtractDigitalEdge(); cancel()">
-        <img src="assets/img/writeToDatabase-32x32.png">
-        DigitalEdge Object (*.json)
-    </a>
+    <input ng-show="fileDestinationButton=='REST'" style="width: 95%; margin-top: 10px; margin-bottom:15px; "
+           type="text" id="restInput" placeholder="Enter REST Endpoint" autofocus><br>
 
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-href="{{fileUrlIngest}}" download="{{ingestDataObject}}"
-       ng-click="cancel()">
-        <img src="assets/img/ingest-data-export-32x32.png">
-        Ingest Object (*.json)
-    </a>
-
-    <a class="btn btn-primary btn-graphic-plus-text"
-       ng-click="restModal(); cancel();">
-        <img src="assets/img/rest-endpoint-32x32.png">
-        Rest Endpoint
-    </a>
 
 </div>
-<div class="modal-footer btn-group-xs">
+<div ng-controller="exportCtrl" class="modal-footer btn-group-xs">
     <button class="btn btn-primary" type="button" ng-click="cancel()">Cancel</button>
+
+    <a ng-hide="fileTypeButton == '.zip'|| fileDestinationButton == 'REST'  " id="exportDownload"
+       class="btn btn-primary"
+       ng-href="{{ fileTypeToDownload }}" download="{{name+fileTypeButton}}"
+       ng-click="cancel();">
+        Export
+    </a>
+
+    <a ng-show="fileDestinationButton == 'REST'" id="restLink" class="btn btn-primary"
+       ng-click="restModal(); cancel();">
+        Export
+    </a>
+
+    <a ng-show="fileTypeButton == '.zip'" id="zip" class="btn btn-primary"
+       ng-click="genericZipDownload(); cancel();">
+        Export
+    </a>
 </div>

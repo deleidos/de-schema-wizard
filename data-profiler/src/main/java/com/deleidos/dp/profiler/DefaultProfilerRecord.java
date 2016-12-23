@@ -52,6 +52,11 @@ public class DefaultProfilerRecord extends HashMap<String, Object> implements Pr
 	@SuppressWarnings("unchecked")
 	protected static void flattenMap(String currentPath, Object baseObject, 
 			Map<String, List<Object>> flattenedMap, GroupingBehavior behavior) {
+		String modCurrentPath = (currentPath.isEmpty()) ? EMPTY_FIELD_NAME_INDICATOR : currentPath;
+		if (!flattenedMap.containsKey(modCurrentPath)) {
+			List<Object> valuesList = new ArrayList<Object>();
+			flattenedMap.put(modCurrentPath, valuesList);
+		}
 		if (baseObject instanceof Map) {
 			Map<String, Object> map = (Map<String, Object>) baseObject;
 			String pathPrefix = currentPath.isEmpty() ? "" : currentPath + STRUCTURED_OBJECT_APPENDER;
@@ -73,14 +78,7 @@ public class DefaultProfilerRecord extends HashMap<String, Object> implements Pr
 			if(baseObject instanceof String) {
 				baseObject = ((String)baseObject).isEmpty() ? EMPTY_FIELD_VALUE_INDICATOR : baseObject; 
 			}
-			if(flattenedMap.containsKey(currentPath)) {
-				flattenedMap.get(currentPath).add(baseObject);
-			} else {
-				List<Object> valuesList = new ArrayList<Object>();
-				valuesList.add(baseObject);
-				currentPath = (currentPath.isEmpty()) ? EMPTY_FIELD_NAME_INDICATOR : currentPath;
-				flattenedMap.put(currentPath, valuesList);
-			}
+			flattenedMap.get(modCurrentPath).add(baseObject);
 		}
 
 	}
@@ -88,8 +86,10 @@ public class DefaultProfilerRecord extends HashMap<String, Object> implements Pr
 	@Override
 	public Map<String, List<Object>> normalizeRecord(GroupingBehavior groupingBehavior) {
 		Map<String, List<Object>> normalizedMap = new HashMap<String, List<Object>>();
-		String startingString = "";
-		flattenMap(startingString, this, normalizedMap, groupingBehavior);
+		for (String key : this.keySet()) {
+			String startingString = key.isEmpty() ? EMPTY_FIELD_NAME_INDICATOR : key;
+			flattenMap(startingString, this.get(key), normalizedMap, groupingBehavior);
+		}
 		return normalizedMap;
 	}
 

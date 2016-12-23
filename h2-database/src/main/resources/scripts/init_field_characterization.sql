@@ -242,3 +242,46 @@ CREATE TABLE IF NOT EXISTS schema_field_attributes
 		ordinal varchar(24),
 		FOREIGN KEY (sf_id) REFERENCES schema_field(schema_field_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS users
+(
+		user_name varchar(16) PRIMARY KEY,
+		first_name varchar(16),
+		last_name varchar(16),
+		password varchar(64),
+		salt varchar(60)
+);
+
+CREATE TABLE IF NOT EXISTS user_roles
+(
+		user_role_mapping_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		user_role varchar(32),
+		user_name varchar(32),
+		FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS roles_permissions
+(
+		roles_permission_mapping_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		role_name varchar(32),
+		permission varchar(64)
+);
+
+CREATE TABLE IF NOT EXISTS user_security_questions
+(
+		user_question_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		question_1 varchar(255),
+		answer_1 varchar(255),
+		question_2 varchar(255),
+		answer_2 varchar(255),
+		question_3 varchar(255),
+		answer_3 varchar(255),
+		user_name varchar(16),
+		FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS security_questions
+(
+		question_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		question varchar(255)
+);

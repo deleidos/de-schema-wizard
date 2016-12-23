@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
@@ -84,8 +83,7 @@ public abstract class AbstractNumberBucketList extends AbstractCoalescingBucketL
 		// if histogram data is in unique bucket format, try to keep it that way until switching to ranges is necessary
 		List<BigDecimal> distinct = new ArrayList<BigDecimal>();
 		NumberDetail firstNonNullDetail = (schemaNumberDetail != null) ? schemaNumberDetail : sampleNumberDetails.get(0);
-		Optional<BigDecimal> maxOrNull = Optional.ofNullable(NumberBucket.parseLabel(firstNonNullDetail.getHistogram().getLabels().get(0))[1]);
-		boolean isRanged = maxOrNull.isPresent();
+		boolean isRanged = NumberBucket.parseLabel(firstNonNullDetail.getHistogram().getLabels().get(0))[1] != null;
 
 		if(schemaNumberDetail != null && isRanged) {
 			return new DefinedRangesNumberBucketList(schemaNumberDetail.getHistogram());

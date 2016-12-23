@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 
 import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.Profile;
+import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractBucket;
@@ -162,6 +163,15 @@ public class BinaryProfileAccumulator extends AbstractProfileAccumulator<ByteBuf
 	@Override
 	protected ByteBuffer createAppropriateObject(Object object) throws MainTypeException {
 		return MainType.BINARY.createBinary(object);
+	}
+
+	@Override
+	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
+		if (existingSchemaProfile != null) {
+			return existingSchemaProfile.getDetail().getDetailTypeClass();
+		} else {
+			return sampleProfiles.get(0).getDetail().getDetailTypeClass();
+		}
 	}
 
 }

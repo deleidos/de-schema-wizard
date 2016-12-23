@@ -1,0 +1,207 @@
+<div style="margin: 6px; width: 100%;">
+    <h4 style="margin: 2px 0px;">Schema Wizard: Match Fields Step</h4>
+    <div class="panel-primary"
+         style="width: 604px; margin: 0 auto; margin-top: -25px; margin-bottom: 2px; padding: 1px;">
+        <img style="border: none;" src="assets/img/wizard-match.png"/>
+    </div>
+    <div id="wizardMatchFieldsContainer"
+         class="panel-primary container" style="width:99%; padding:6px;">
+        <div class="row">
+            <div id="resizePanelDiv" class="col-xs-4 panel-group" style="margin-bottom: 0px;">
+                <div class="panel panel-info" style="padding: 0px 3px;">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"
+                            tour-step
+                            tour-step-title={{matchFieldsTour.step2.title}}
+                            tour-step-content={{matchFieldsTour.step2.message}}
+                            tour-step-order="410"
+                            tour-step-placement="bottom"
+                            tour-step-orphan="false"
+                            tour-step-backdrop="false">
+                            Data Source Profiles
+                            <img id="collapseImage" ng-click="collapseDetailsPanels()"
+                                 style="border: none; float: right;"
+                                 src="assets/img/expand-panel-16x16.png"
+                                 uib-tooltip="Maximize/Restore this panel. Maximizing hides details panels."
+                                 tooltip-placement="bottom"
+                                 tour-step
+                                 tour-step-title={{matchFieldsTour.step3.title}}
+                                 tour-step-content={{matchFieldsTour.step3.message}}
+                                 tour-step-order="415"
+                                 tour-step-placement="right"
+                                 tour-step-orphan="false"
+                                 tour-step-backdrop="false">
+                            <img style="border: none; float: right; margin-right: 10px;"
+                                 src="assets/img/blueQuestionMark_whiteCalloutBg-16x16.png"
+                                 uib-tooltip="Single click on a data sample property
+                                          to display its details in details panel 1. Double-click on
+                                          a data sample property to display its details in details
+                                          panel 2."
+                                 tooltip-placement="bottom">
+                            <img
+                                style="border: none; float: right; margin-right: 10px;"
+                                src="assets/img/blue-tour-bus-16x16.png"
+                                uib-tooltip="Take a tour of the Match Fields Page"
+                                tooltip-placement="bottom"
+                                ng-click="tour.startAt('400')"
+                                tour-step-template-url="'schema-wizard/schema-wizard.tour-first-step.template.html'"
+                                tour-step="400"
+                                tour-step-title={{matchFieldsTour.step1.title}}
+                                tour-step-order="400"
+                                tour-step-content={{matchFieldsTour.step1.message}}
+                                tour-step-orphan="true"
+                                tour-step-backdrop="false">
+                        </h3>
+                    </div>
+                    <div class="panel-body" style="width: 100%; height: 30px; margin: 0 auto;">
+                        <span style="margin-left: 20px; font-style: normal; font-size: 10pt;">
+                        Matching Confidence
+                        <select id="selectedConfidence" name="selectedConfidence"
+                                style="margin-top: -6px;"
+                                ng-model="confidenceValues.selectedConfidenceValue"
+                                ng-change="repeatMatching()">
+                            <option style="font-size: 9pt;"
+                                    ng-repeat="confidence in confidenceValues.availableValues"
+                                    value="{{confidence.value}}">{{confidence.value}}
+                            </option>
+                        </select>
+                        </span>
+                        <!--TODO: rename when interpretation match is work-->
+                        <span style="cursor: not-allowed; margin-left: 20px; font-style: normal; font-size: 10pt;">
+                            Require Interpretation Match
+                            <input disabled style="cursor: not-allowed;" id="interpretationMatch" type="checkbox" ng-model="interpretationMatch"
+                                   ng-change="repeatMatching(interpretationMatch)"/>
+                        </span>
+                        <button class="btn btn-primary btn-xs"
+                                style="margin-left: 20px;"
+                                ng-click="resetMatches()">
+                            Reset Matches
+                        </button>
+                    </div>
+                    <div id="wizardMatchFieldsProfilesPanelBody"
+                         class="panel-body" style="height: 222px; overflow: hidden;"> <!--height dynamicaly set in resizeWizard-->
+                        <div id="tree-view"
+                             style="height: 100%; min-width: 600px; overflow-y: hidden; border: thin solid gray; border-bottom: none;">
+                            <div ng-repeat="col in model.columns track by $index"
+                                 ng-style="model.columns.length > 3 && { 'min-height': '100%', 'padding-bottom': '1px' }"
+                                 class="tree-table-grid" style="float: left; border-bottom: thin solid gray;">
+                                <div class="tree-table-heading">
+                                    <div class="tree-table-cell" ng-if="$first">
+                                        <p uib-tooltip="{{col.name}}" tooltip-placement="bottom">{{col.name}}</p>
+                                    </div>
+                                    <div class="tree-table-cell" ng-if="$middle || $last">
+                                        <p uib-tooltip="{{col.name}}" tooltip-placement="bottom">
+                                            {{col.name.substr(0, 12)}}
+<!-- TODO: the grids don't rebuild properly after deleting a ds
+                                            <button class="btn-graphic-only btn-remove" type="button"
+                                                    ng-model="singleModel"
+                                                    uib-tooltip="Discard data sample"
+                                                    tooltip-placement="left"
+                                                    ng-click="removeDs($index)">
+                                            </button>
+                                            <span ng-if="$index == 1"
+                                                  tour-step
+                                                  tour-step-title={{matchFieldsTour.step4.title}}
+                                                  tour-step-content={{matchFieldsTour.step4.message}}
+                                                  tour-step-order="420"
+                                                  tour-step-placement="right"
+                                                  tour-step-orphan="false"
+                                                  tour-step-backdrop="false">&thinsp;
+                                            </span>
+-->
+                                        </p>
+                                    </div>
+                                </div>
+                                <div id="{{getColumnId($index, $last)}}"
+                                     style="height: 600px; overflow-x: hidden; overflow-y: hidden;}"
+                                     ng-style="$last && { 'overflow-y': 'scroll' }">
+                                    <div class="tree-table-row">
+                                        <div class="tree-table-cell" style="border-bottom: 2px solid lightgrey;"
+                                             ng-switch on="col.complexCell">
+                                            <div ng-switch-when="true"
+                                                 style="display: inline-block;"
+                                                 ng-style="($middle || $last) && { 'display': 'inline-block', 'text-align': 'left' }"
+                                                 data-angular-matching-tree-grid="true"
+                                                 data-matching-tree-grid=model.treeTable.data
+                                                 data-matching-tree-data-id="treeTable"
+                                                 data-node-id="id"
+                                                 data-node-label1="{{col.property1}}"
+                                                 data-node-label2="{{col.property2}}"
+                                                 data-node-children="children"
+                                                 data-tree-depth="0"
+                                                 data-column-is-tree="{{$first}}"
+                                                 data-cell-min-width="{{col.name.substr(0,12).length * 11}}"
+                                                 data-cell-min-height="84"
+                                                 data-callback-method="{{col.callback}}"
+                                                 data-tree-cell-directive="{{col.tree.directive}}"
+                                                 data-other-tree-data="{{col.tree.data}}"
+                                                 data-table-cell-directive="{{col.table.directive}}"
+                                                 data-other-table-data={{col.table.data}}>
+                                            </div>
+                                            <div ng-switch-default
+                                                 style="display: inline-block;"
+                                                 ng-style="($middle || $last) && { 'display': 'inline-block', 'text-align': 'left' }"
+                                                 data-angular-simple-tree-grid="true"
+                                                 data-simple-tree-grid=model.treeTable.data
+                                                 data-simple-tree-data-id="treeTable"
+                                                 data-node-label1="{{col.property1}}"
+                                                 data-node-label2="{{col.property2}}"
+                                                 data-node-children="children"
+                                                 data-tree-depth="0"
+                                                 data-column-is-tree="{{$first}}"
+                                                 data-cell-min-width="{{col.name.substr(0,12).length * 11}}"
+                                                 data-cell-min-height="84">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div ng-hide="hidePanel" class="col-xs-4 panel-group" style="padding: 0px 5px; margin-bottom: 0px; margin-left: -14px;"
+                 tour-step
+                 tour-step-title={{matchFieldsTour.step7.title}}
+                 tour-step-content={{matchFieldsTour.step7.message}}
+                 tour-step-order="440"
+                 tour-step-placement="left"
+                 tour-step-orphan="false"
+                 tour-step-backdrop="false">
+                <div details-panel panel-index="1" detail-models-panel="detailModels.detailPanels.panel1"></div>
+            </div>
+            <div ng-hide="hidePanel" class="col-xs-4 panel-group" style="padding: 0px; margin-bottom: 0px;"
+                 tour-step
+                 tour-step-title={{matchFieldsTour.step8.title}}
+                 tour-step-content={{matchFieldsTour.step8.message}}
+                 tour-step-order="450"
+                 tour-step-placement="left"
+                 tour-step-orphan="false"
+                 tour-step-backdrop="false">
+                <div details-panel panel-index="2" detail-models-panel="detailModels.detailPanels.panel2"></div>
+            </div>
+        </div>
+        <ng-include src="'wizard/wizard.match.legend.html'"
+                    style="position: absolute; left: 24px; bottom: 42px;"></ng-include>
+    </div>
+
+    <button class="btn btn-primary"
+            style="position: absolute; bottom: 36px; right: 26px;"
+            ng-click="navigateTo('/catalog')">
+        Cancel
+    </button>
+    <button class="btn btn-primary"
+            style="position: absolute; bottom: 36px; right: 100px;"
+            uib-tooltip="Create the schema"
+            tooltip-placement="left"
+            ng-click="wizardStateControl('wizard-finalize-schema')"
+            tour-step
+            tour-step-title={{matchFieldsTour.step10.title}}
+            tour-step-content={{matchFieldsTour.step10.message}}
+            tour-step-order="490"
+            tour-step-placement="top"
+            tour-step-orphan="false"
+            tour-step-backdrop="false">
+        Next
+    </button>
+</div>

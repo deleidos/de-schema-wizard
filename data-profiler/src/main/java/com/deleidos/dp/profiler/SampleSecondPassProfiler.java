@@ -19,7 +19,9 @@ import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.RegionData;
 import com.deleidos.dp.beans.RowEntry;
+import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
+import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
@@ -84,8 +86,7 @@ public class SampleSecondPassProfiler extends AbstractReverseGeocodingProfiler<D
 			double highestConfidence = 0;
 			for(String lngProfileKey : lngProfiles.keySet()) {
 				double stringMatchConfidence = 
-						MetricsCalculationsFacade
-							.jaroWinklerComparison(latProfileKey, lngProfileKey);
+						MatchingAlgorithm.jaroWinklerComparison(latProfileKey, lngProfileKey);
 				// do string comparison
 				// track the highestConfidenceMatch
 				// later, maybe implement some sort of position indicator in the profile
@@ -150,6 +151,9 @@ public class SampleSecondPassProfiler extends AbstractReverseGeocodingProfiler<D
 				profile.setDetail(detail);
 			}
 		}
+		
+		dataSample.setDsProfile(
+				ConversionUtility.addObjectProfiles(dataSample.getDsProfile()));
 
 		return dataSample; 
 	}
@@ -167,6 +171,7 @@ public class SampleSecondPassProfiler extends AbstractReverseGeocodingProfiler<D
 	public void accumulateRecord(ProfilerRecord record) {
 		Map<String, List<Object>> normalizedRecord = record.normalizeRecord(groupingBehavior);
 		normalizedRecord.forEach((key, values) ->
+			// must do a null check because empty (all nulls in samples) fields will not have an accumulator
 			Optional.ofNullable(accumulatorMapping.get(key)).ifPresent(
 					accumulator->accumulateNormalizedValues(accumulator, key, values)));
 

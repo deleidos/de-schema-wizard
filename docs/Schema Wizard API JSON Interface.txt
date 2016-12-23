@@ -344,3 +344,12 @@
         "errorTitle" : <string>,
         "errorMsg"   : <string>
     }
+
+<user> ::= 
+	{
+		"userName"  : <string>,
+		"password"   : <string>,
+		"userRole"  : <string>,
+		"firstName" : <string>,
+		"lastName" : <string>
+	}

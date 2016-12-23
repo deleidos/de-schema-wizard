@@ -6,11 +6,16 @@
         '$location', '$route', '$routeParams', '$timeout', '$confirm', '$cookies', '$sce',
         'LogoPage', 'DomainInformation', 'UploadParameters', 'Server', 'domainResource', 'version',
         'session', 'catalogData', 'tabHistoryFactory', 'statusCodesFactory', 'myModals', 'uiTourService',
-        'schemaResource','sampleDataResource',
+        'schemaResource','sampleDataResource','Idle','$http',
         function ($rootScope, $scope, $resource, $location, $route, $routeParams, $timeout,
                   $confirm, $cookies, $sce, LogoPage, DomainInformation, UploadParameters, Server,
                   domainResource, version, session, catalogData, tabHistoryFactory, statusCodesFactory,
-                  myModals, TourService, schemaResource, sampleDataResource) {
+                  myModals, TourService, schemaResource, sampleDataResource,Idle,$http) {
+
+
+
+        // starts the idle service
+            Idle.watch();
 
             if (tabHistoryFactory.getPrevTab() == 2) {
                 tabHistoryFactory.setPrevTab(2);
@@ -19,6 +24,8 @@
             } else {
                 tabHistoryFactory.setPrevTab(1);
             }
+
+
             $scope.logoPageOpacity = 1.0;
             $scope.fadeLogoPage = function () {
                 $rootScope.$broadcast("transformTable", {});
@@ -99,6 +106,20 @@
                             schemaId:  schema.sId
                         }
                     ).$promise.then(function (response) {
+                        var restURL =
+                            $location.protocol() + "://" +
+                            $location.host() + ":" +
+                            $location.port() +
+                            "/schwiz/rest/catalog";
+                        messageDisplayed = false;
+                        $http({
+                            method: 'GET',
+                            url: restURL,
+                            data: ""
+                        }).then(function successCallback(response) {
+                            console.log(response)
+                            $scope.catalog.dataSamplesCatalog = response.data.dataSamplesCatalog;
+                        })
                             console.log("removeSchema response");
                             console.log(response);
                             for (var i = 0; i < $scope.catalog.schemaCatalog.length; i++) {
@@ -139,6 +160,7 @@
                             sampleId:  sample.dsId
                         }
                     ).$promise.then(function (response) {
+                        if (response.deleted == true) {
                             console.log("removeDataSample response");
                             console.log(response);
                             for (var i = 0; i < $scope.catalog.dataSamplesCatalog.length; i++) {
@@ -147,6 +169,20 @@
                                     break;
                                 }
                             }
+                        }
+                        else {
+                            $confirm({
+                                    title: 'Could Not Delete Data Sample',
+                                    text: "This data sample has been linked to a schema and cannot be deleted.",
+                                    ok: 'OK'
+
+                                },
+                                {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'}
+                            ).then(function () {
+
+                            })
+
+                        }
                         }, function (error) {
                             console.log("error.status: " + error.status);
                             statusCodesFactory.get()
@@ -272,7 +308,61 @@
                     )
                 })
             };// delete domain
-        }]); // catalogCtrl
+
+            var messageDisplayed = false;
+            //idle starting, user has gone away
+            $rootScope.$on('IdleStart', function() {
+
+                if(messageDisplayed == false) {
+                    messageDisplayed = true;
+                    $confirm({
+                            title: 'Session is about to expire',
+                            text: "This session is about to expire, press 'OK' to continue session.",
+                            ok: 'OK'
+                        },
+                        {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'}
+                    ).then(function () {
+
+                        var restURL =
+                            $location.protocol() + "://" +
+                            $location.host() + ":" +
+                            $location.port() +
+                            "/schwiz/rest/keepAlive";
+                        messageDisplayed = false;
+                        $http({
+                            method: 'POST',
+                            url: restURL,
+                            data: ""
+                        }).then(function successCallback(response) {
+                            console.log("idle stopped")
+
+                        }, function errorCallback(response) {
+
+                        });
+
+                    })
+                }
+            });
+            // when the user returns
+            $scope.$on('IdleEnd', function() {
+
+
+            });
+            // on timeout
+            $rootScope.$on('IdleTimeout', function() {
+                $rootScope.$broadcast("dismissModal", {});
+                    $confirm({
+                            title: 'Timed Out',
+                            text: "This session has timed out.",
+                            ok: 'OK'
+                        },
+                        {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'}
+                    ).then(function () {
+                        $scope.logout();
+                    })
+
+            });
+        }]) // catalogCtrl
 
     schemaWizardApp.controller('tabCtrl',
         function ($rootScope, $scope, $location, tabHistoryFactory) {

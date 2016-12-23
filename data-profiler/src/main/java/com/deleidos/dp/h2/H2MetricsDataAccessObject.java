@@ -196,7 +196,10 @@ public class H2MetricsDataAccessObject {
 		int fieldId = -1;
 		PreparedStatement ppst = null;
 
-		if (fieldProfile.getDetail().isNumberDetail()) {
+		if (fieldProfile.getStructType() != null) {
+			logger.debug("Got a structured type.  Not adding to database.");
+			return -1;
+		} else if (fieldProfile.getDetail().isNumberDetail()) {
 			ppst = dbConnection.prepareStatement(ADD_SAMPLE_NUMBER_FIELD);
 			fieldId = addNumberField(dbConnection, ppst, data_sample_id, fieldName, fieldProfile, false);
 		} else if (fieldProfile.getDetail().isStringDetail()) {
@@ -335,7 +338,13 @@ public class H2MetricsDataAccessObject {
 		rs = ppst.executeQuery();
 		if (rs.next()) {
 			do {
-				putResultSetProfileInFieldMapping(dbConnection, fieldMapping, rs, schema_field, false);
+				String fieldName = rs.getString(field_name_key);
+				try {
+					putResultSetProfileInFieldMapping(dbConnection, fieldMapping, rs, schema_field, false);
+				} catch (Exception e) {
+					logger.error("Error adding field " + fieldName + ".");
+					logger.error(e);
+				}
 			} while (rs.next());
 		} else {
 			logger.warn("Empty result set from schema guid: " + schemaGuid);
@@ -605,7 +614,6 @@ public class H2MetricsDataAccessObject {
 		String fieldName = rs.getString(field_name_key);
 		String displayName = rs.getString(display_name_key);
 		Profile profile = new Profile();
-
 		profile.setPresence(presence);
 		profile.setMainType(mainType.toString());
 		profile.setDisplayName(displayName);

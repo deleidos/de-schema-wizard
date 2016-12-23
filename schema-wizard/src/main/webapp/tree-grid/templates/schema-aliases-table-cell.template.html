@@ -1,0 +1,7 @@
+<span style="display: inline-block; width: 100%;"
+      ng-style="justify == 'left' && { 'text-align': 'left' } ||
+                justify == 'center' && { 'text-align': 'center' } ||
+                justify == 'right' && { 'text-align': 'right' }">
+    <select ng-show="aliases.length > 0" style="width: 100%;" size="aliases.length" ng-model="firstAlias" ng-options="alias for alias in aliases"></select>
+    <span ng-show="aliases.length == 0">&nbsp;</span>
+</span>

@@ -122,7 +122,7 @@ public class ProgressBarManager {
 			switch(state.getStage()) {
 			case DETECT: state.setDescription(names.get(nameIndex)+": Detecting type."); break;
 			case FIRST_PASS: state.setDescription(names.get(nameIndex)+": Parsing fields."); break;
-			case INTERPRET: state.setDescription(names.get(nameIndex)+": Interpretting fields."); break;
+			case INTERPRET: state.setDescription(names.get(nameIndex)+": Interpreting fields."); break;
 			case SECOND_PASS: state.setDescription(names.get(nameIndex)+": Building data visualizations."); break;
 			case SAMPLE_COMPLETE: {
 				state.setDescription(names.get(nameIndex)+": Analysis completed.");
@@ -215,6 +215,7 @@ public class ProgressBarManager {
 	}
 
 	public ProgressState getStateByNumerator(float numerator) {
+		// could binary search
 		for(ProgressState state : states) {
 			if(state.withinRange(numerator)) {
 				return state;

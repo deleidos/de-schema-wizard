@@ -1,0 +1,122 @@
+<div ng-controller="userCtrl" class="col-xs-12 panel-group" style="margin: 0px; padding: 0px;">
+    <div class="panel-primary container" style="width: 99%; padding: 0px;">
+        <div id="schemaPanel" class="container">
+            <div class="row">
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">My Account
+                        </h3>
+                    </div>
+                    <div class="container tab-panel">
+                        <div style="text-align: center; padding-top: 10px; padding-bottom: 20px;">
+                            <h3 style="padding-bottom:  5px;" class="panel-title">{{name}}
+                            </h3>
+                            <img style="width: 125px;"
+                                 src="assets/img/user-symbol.jpg">
+                            <h3 style="padding-top: 5px; padding-bottom: 10px;" class="panel-title">{{userRole}}
+                            </h3>
+                        </div>
+                        <div id="domainPanelBody" class="panel-body"
+                             style="padding-left: 0px; height: 240px;">
+                            <table id="domainPanelTable" class="table table-striped"
+                                   style="height: 240px; width: 99.8%" fixed-header>
+                                <thead>
+                                <tr>
+                                    <th style="width: 650px">Username</th>
+                                    <th style="width: 400px">Name</th>
+                                    <th style="width: 400px">Role</th>
+                                    <th style="width: 300px"></th>
+                                </tr>
+                                </thead>
+                                <tr ng-repeat="x in userPackage">
+                                    <td>{{x.userName}}
+                                        <button ng-show="currentUserRole=='admin'"
+                                            class="btn-graphic-only btn-remove ng-pristine ng-untouched ng-valid"
+                                            type="button" ng-model="singleModel" uib-tooltip="Delete User"
+                                            tooltip-placement="right" ng-click="deleteUser(x.userName);">
+                                        </button>
+                                    </td>
+                                    <td>{{x.firstName}}
+                                    </td>
+                                    <td>{{x.userRole}}
+                                    </td>
+                                    <td>
+                                        <button ng-click="modifyUserList(x.firstName,x.userName,x.userRole)"
+                                                class="btn btn-primary btn-xs"
+                                                type="button">Modify User
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr ng-show="newUser">
+                                    <td>
+                                        <input id="newUsername" type="text"
+                                               placeholder="Enter Username"
+                                               style="width: 260px; height: 18px; margin-top: 2px; font-size: 12px;"/>
+                                        <input id="newPassword" type="password"
+                                               placeholder="Enter password"
+                                               ng-model="value1"
+                                               equals="{{value2}}"
+                                               style="width: 240px; height: 18px; margin-top: 2px; font-size: 12px;"/>
+                                        <input id="newPasswordConfirm" type="password"
+                                               ng-model="value2"
+                                               equals="{{value1}}"
+                                               placeholder="Confirm Password"
+                                               style="width: 240px; height: 18px; margin-top: 2px; font-size: 12px;"/>
+                                    </td>
+                                    <td>
+                                        <input id="newName" type="text"
+                                               autofocus
+                                               placeholder="Enter Name"
+                                               style="width: 200px; height: 18px; margin-top: 2px; font-size: 12px;"/>
+                                    </td>
+                                    <td>
+                                        <form id="newUserForm">
+                                            <label style="margin-right: 10px;">
+                                                <input ng-checked="role=='Admin'"
+                                                       ng-click="$event.stopPropagation();role='Admin'"
+                                                       type="radio" name="roleTypeNew"
+                                                       value="Admin"> Admin
+                                            </label>
+                                            <label style="margin-right: 10px;">
+                                                <input ng-checked="role=='User'"
+                                                       ng-click="$event.stopPropagation();role='User'"
+                                                       type="radio" name="roleTypeNew"
+                                                       value="User"> User
+                                            </label>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <button style="margin: 0px;" class="btn btn-primary btn-xs"
+                                                id="saveButton"
+                                                uib-tooltip="Save New User"
+                                                tooltip-placement="left"
+                                                ng-click="saveNewUser();"
+                                                disabled>
+                                            Save
+                                        </button>
+                                        <button style="margin: 0px; margin-left:8px;" class="btn btn-primary btn-xs"
+                                                uib-tooltip="Cancel New User"
+                                                tooltip-placement="left"
+                                                ng-click="cancelNewUser();">
+                                            Cancel
+                                        </button>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="float: right; margin: 8px;"
+                    uib-tooltip="Return to Catalog" tooltip-placement="left"
+                    ng-click="navigateTo('/catalog')">
+                Ok
+            </button>
+            <button ng-show="userRole=='admin'" id="createNewUser" style="float: right; margin: 8px;"
+                    class="btn btn-primary ng-scope"
+                    ng-click="createNewUser();">
+                Create New User
+            </button>
+        </div>
+    </div>
+</div>

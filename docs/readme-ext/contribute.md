@@ -11,7 +11,6 @@ Windows Developer Requirements (with executable names) -
 * Python 3.5 (python)
 * Pip 8 for Python 3 (pip)
 * Jetty 9
-* [WinPcap] [winpcap]
                
 Linux Developer Requirements
 * Java 8 (java)
@@ -19,7 +18,6 @@ Linux Developer Requirements
 * Python 3.5 (python3)
 * Pip 8 for Python 3 (pip3)
 * Docker (docker)
-* tcpdump
 
 ## One-time setup
 
@@ -27,7 +25,7 @@ On each platform, you must install third party dependencies before you can compi
 
 	mvn clean install
 
-**The following step will install the jnetpcap.dll or .so file(s) in either System32 or /usr/lib/.**  If you are ok with that, execute the platform appropriate script (Windows - **install_link.cmd**, Linux - **install_link.sh**) **as an administrator.**  This is a one time install as long as you do not delete your local Maven repository or change any .ddl or .so files.  You can alternatively add the paths to these files to the Java classpath at runtime.  Now that that's over, let's get to the fun part.
+This is a one time install as long as you do not delete your local Maven repository.  Now that that's over, let's get to the fun part.
 
 ## Project Structure
 Schema Wizard is composed of eight projects: three Java, one Java/JavaScript, and four Python projects. 
@@ -36,7 +34,7 @@ Schema Wizard is composed of eight projects: three Java, one Java/JavaScript, an
 **h2-database**: Configures and starts up the H2 database.
 
 
-**data-profiler**: Gather metrics and profile data. Handleds all interaction with the H2 database and interfaces with the Intepretation Engine.
+**data-profiler**: The "brains" of the operation. It is composed of data accumulators and profilers and also is the sole interactor of the H2 database.
 
 
 **data-model-factory**: Composed of the service layer, data analyzers, detectors, parsers, and splitters.  This project handles automated file detection/parsing.  There are two API entrypoints that are meant to offer plugability to detection and parsing.  **com.deleidos.dmf.framework.AbstractMarkSupportAnalyticsDetector** is the entrypoint for any detectors, and **com.deleidos.dmf.framework.AbstractAnalyticsParser** is the entrypoint for additional parser.  If Apache Tika can detect the file type, you need only implement a parser.  Otherwise, you must subclass both of these abstract classes.  Once you write the classes, add the fully resolved class names to the appropriate **data-model-factory/src/main/resources/META-INF/services/** service files.  For the time being, the javadocs in these classes are the reference material to help a developer add to Schema Wizard.
@@ -67,7 +65,7 @@ Schema Wizard uses Apache Maven for build and dependency management. To build th
 This will execute the build and also unit testing of the project based on the Reactor POM of Schema Wizard.
 
 ## Testing
-Tests are broken into two categories, unit tests and integration tests.  A majority of tests are not included in the public version of Schema Wizard.  However, use the following commands to test and build the software when making changes.
+Tests are broken into two categories, unit tests and integration tests.
 
 Unit tests are run by default when executing:
 
@@ -101,26 +99,26 @@ This is a brief description of the deployment scheme that Schema Wizard uses.  T
 After you successfully build the necessary artifacts with Maven, you can build the containers with these commands.  Just set the variables on the first two lines:
 
 	schwiz_build_dir=<your-local-project-directory>
-	BUILD_NUMBER=<build-tag>
 	cd ${schwiz_build_dir}/h2-database/target
     sudo cp ../Dockerfile .
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-h2:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-h2 .
             
     cd ${schwiz_build_dir}/interpretation-engine-mongodb
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-mongodb:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-mongodb .
             
     cd ${schwiz_build_dir}/interpretation-engine
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-ie:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-ie .
             
     cd ${schwiz_build_dir}/schema-wizard/target
     sudo cp ../Dockerfile .
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-webapp:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-webapp .
             
     cd ${schwiz_build_dir}/interpretation-engine-sidekick
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-ie-sidekick:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-ie-sidekick .
             
     cd ${schwiz_build_dir}/interpretation-engine-untrusted
-    sudo docker build --force-rm=true --tag der.deleidos.com/digitaledge/schema-wizard/sw-ie-untrusted:${BUILD_NUMBER} .
+    sudo docker build --force-rm=true --tag sw-ie-untrusted .
+    # This tag is used to set the $PULL_TAG environment variable in the sw-ie-sidekick container.
 
 The following Docker commands are executed in order to start Schema Wizard.  If you have a Docker group set up, you may omit the superuser prefix.  These commands name each container the image name without the version:
 
@@ -130,13 +128,12 @@ The following Docker commands are executed in order to start Schema Wizard.  If 
     sudo docker run -d -p 127.0.0.1:9123:9123 --name sw-h2 sw-h2
     sudo docker run -d -p 127.0.0.1:27017:27017 --name sw-mongodb sw-mongodb
     sudo docker run -d -p 127.0.0.1:5000:5000 --link sw-mongodb:sw-mongodb --link r_cache:redis --name sw-ie sw-ie
-    sudo docker run -d --link r_cache:redis -e "PULL_TAG=${pull_tag}" -e "U_PROFILE=sw-script-profile" --volumes-from shared-volume -v /var/run/docker.sock:/var/run/docker.sock --name sw-sidekick sw-ie-sidekick
+    sudo docker run -d --link r_cache:redis -e "PULL_TAG=sw-ie-untrusted" -e "U_PROFILE=sw-script-profile" --volumes-from shared-volume -v /var/run/docker.sock:/var/run/docker.sock --name sw-sidekick sw-ie-sidekick
     sudo docker run -d -p 80:8080 --link sw-h2:h2-db --link sw-ie:sw-ie --name sw-webapp sw-webapp
                
 Alternatively, use the docker-compose method of deployment by navigating to the root project directory and then executing
 
-    sudo docker compose up (May not be available on the public Docker repository at the time of this writing)
+    sudo docker compose up
                
 [//]: # (Links)
 
-   [winpcap]: <https://www.winpcap.org/install/>

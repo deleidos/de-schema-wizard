@@ -8,7 +8,7 @@
         <div style="margin: 0 auto;">
             <div style="width: 900px; margin-top: 20px;">
                 <form novalidate class="simple-form" name="saveSchema">
-                    <fieldset>
+                    <fieldset style=" border-style: none;">
                         <label for="sName" style="width:400px;">Schema Name:</label>
                         <input name="sName" type="text"
                                style="width: 400px;"
@@ -18,7 +18,7 @@
                                required/>
                         <br><br>
                     </fieldset>
-                    <fieldset>
+                    <fieldset style=" border-style: none;">
                         <label for="sDescription" style="width:400px; float: left;">Schema Description:</label>
                         <textarea name="sDescription" type="text"
                                   style="width: 400px; height: 100px;margin-left: 4px;"
@@ -28,7 +28,7 @@
                                   required></textarea>
                         <br><br>
                     </fieldset>
-                    <fieldset>
+                    <fieldset style=" border-style: none;">
                         <label for="sVersion" style="width:400px;">Schema Version:</label>
                         <input id="sVersion" name="sVersion" type="text" valid-number
                                style="width: 400px;"
@@ -38,7 +38,7 @@
                                required/>
                         <br><br>
                     </fieldset>
-                    <fieldset ng-repeat="ds in currentSchema.sDataSamples track by $index">
+                    <fieldset style=" border-style: none;" ng-repeat="ds in currentSchema.sDataSamples track by $index">
                         <label for="{{dsField$index}}" style="width:400px;">
                             Data Sample Name ({{ds.dsFileName}}):</label>
                         <input name="{{dsField$index}}" type="text"

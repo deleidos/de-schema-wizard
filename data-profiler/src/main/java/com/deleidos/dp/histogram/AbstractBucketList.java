@@ -1,15 +1,12 @@
 package com.deleidos.dp.histogram;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.deleidos.dp.accumulator.Accumulator;
 import com.deleidos.dp.beans.Histogram;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
-import io.netty.handler.codec.UnsupportedMessageTypeException;
 
 /**
  * Abstraction of a bucket list.  Subclasses must define how to add a value to the list and the ordered list.

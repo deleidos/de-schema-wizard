@@ -12,9 +12,33 @@
                   $uibModal, $timeout, $interval,
                   DomainInformation, Server, UploadParameters, version,
                   matchConfidenceThreshold, defaultInterpretationMatch, myModals, $confirm, $sce,
-                  guidedTourStepFactory, $q, TourService, statusCodesFactory, Globals, Utilities) {
+                  guidedTourStepFactory, $q, TourService, statusCodesFactory, Globals, Utilities, Idle, Keepalive) {
 
             $scope.userid = Globals.setDefaultUserId();
+
+            $scope.userRole = "";
+
+            $scope.$on('did-not-set-security-questions', function(event, args) {
+                console.log("user has not set questions");
+                $scope.waitForDom = function () {
+                    $confirm({
+                            title: 'Security Questions have not been set',
+                            text: "Security questions have not been set.\nPress 'OK' to navigate to settings and set them.",
+                            ok: 'OK',
+                            cancel: 'Cancel'
+                        }
+                    ).then(function () {
+                        $scope.navigateTo("/userPage");
+                    })
+                };
+                $timeout($scope.waitForDom,4000);
+            });
+
+            $scope.$on("userRoleChanged", function (event, args) {
+                console.log(args)
+                $scope.userRole = args.userRole;
+            }); // onUserIdChanged
+
             $scope.$on("userIdChanged", function (event, args) {
                 $scope.userid = args.userId;
             }); // onUserIdChanged
@@ -42,6 +66,7 @@
             $scope.animationsEnabled = true;
             $scope.isCollapsed = true;
             $scope.modifySchemaMode = false;
+            Utilities.setModifySchemaMode(false);
             $scope.confidenceThreshold = matchConfidenceThreshold;
             $scope.interpretationMatch = defaultInterpretationMatch;
             $scope.matchingFieldsUndoId = 99;
@@ -88,17 +113,16 @@
             $scope.fileIndex = -1;
 
             //TODO: determine scoping issue for long field names
-            $scope.placeHolderForLongFieldName = "Hover over points to see full name";
+            $rootScope.placeHolderForLongFieldName = "Hover over points to see full name";
+            $rootScope.hoverLongFieldName = function (points, evt) {
+                try {
+                    $scope.index = points[0]['_index'];
+                    $rootScope.placeHolderForLongFieldName = points[0]['_view'].label;
+                    $scope.$apply();
+                }
+                catch(e){
 
-            //these are used to grab the field name and then log long-field names
-            $scope.fieldName = null;
-            $scope.logFieldNameFromRepeat = function(field){
-                $scope.fieldName = field;
-            }
-            $scope.hoverLongFieldName = function (points, evt) {
-                $scope.index = points[0]['_index']
-                $scope.placeHolderForLongFieldName = $rootScope.test.sProfile[$scope.fieldName]['detail']['freq-histogram']['long-labels'][$scope.index];
-                $scope.$apply()
+                }
             };
 
             $scope.transformTable = function () {
@@ -239,7 +263,15 @@
                                 document.getElementById("schemaDetailsContainer").style.height =
                                     newViewHeight - 45 + "px";
                                 document.getElementById("schemaDetailsPanelBody").style.height =
-                                    newViewHeight - 413 + "px";
+                                    newViewHeight - 390 + "px";
+                                document.getElementById("wizardDetailsPanelBody").style.height =
+                                    newViewHeight - 390 + "px";
+                                document.getElementById("wizardDetailsHbcCanvas").style.height =
+                                document.getElementById("wizardDetailsVbcCanvas").style.height =
+                                document.getElementById("wizardDetailsGphCanvas").style.height =
+                                document.getElementById("wizardDetailsMapCanvas").style.height =
+                                document.getElementById("wizardDetailsExampleCanvas").style.height =
+                                    newViewHeight - 642 + "px";
                                 break;
                             case "/sampleData":
                                 document.getElementById("sampleDetailsContainer").style.height =
@@ -249,15 +281,11 @@
                                 document.getElementById("wizardDetailsPanelBody").style.height =
                                     newViewHeight - 129 + "px";
                                 document.getElementById("wizardDetailsHbcCanvas").style.height =
-                                    newViewHeight - 355 + "px";
                                 document.getElementById("wizardDetailsVbcCanvas").style.height =
-                                    newViewHeight - 355 + "px";
                                 document.getElementById("wizardDetailsGphCanvas").style.height =
-                                    newViewHeight - 355 + "px";
                                 document.getElementById("wizardDetailsMapCanvas").style.height =
-                                    newViewHeight - 355 + "px";
                                 document.getElementById("wizardDetailsExampleCanvas").style.height =
-                                    newViewHeight - 355 + "px";
+                                    newViewHeight - 383 + "px";
                                 break;
                             case "/wizardUploadSamples":
                                 break;
@@ -269,21 +297,25 @@
                                 document.getElementById("wizardDetailsPanelBody").style.height =
                                     newViewHeight - 199 + "px";
                                 document.getElementById("wizardDetailsHbcCanvas").style.height =
-                                    newViewHeight - 425 + "px";
                                 document.getElementById("wizardDetailsVbcCanvas").style.height =
-                                    newViewHeight - 425 + "px";
                                 document.getElementById("wizardDetailsGphCanvas").style.height =
-                                    newViewHeight - 425 + "px";
                                 document.getElementById("wizardDetailsMapCanvas").style.height =
-                                    newViewHeight - 425 + "px";
                                 document.getElementById("wizardDetailsExampleCanvas").style.height =
-                                    newViewHeight - 425 + "px";
+                                    newViewHeight - 452 + "px";
                                 break;
                             case "/wizardMatchFields":
                                 document.getElementById("wizardMatchFieldsContainer").style.height =
                                     newViewHeight - 107 + "px";
                                 document.getElementById("wizardMatchFieldsProfilesPanelBody").style.height =
                                     newViewHeight - 223 + "px";
+                                try { /*sizing for up to 20 columns which isn't expected to hapen*/
+                                    for (var i = 0; i < 20; i++) {
+                                        document.getElementById("col" + i).style.height = newViewHeight - 252 + "px";
+                                    }
+                                } catch (e) { /* do nothing */
+                                } finally {
+                                    document.getElementById("colN").style.height = newViewHeight - 252 + "px";
+                                }
                                 document.getElementById("wizardDetails1PanelBody").style.height =
                                     newViewHeight - 193 + "px";
                                 document.getElementById("wizardDetails2PanelBody").style.height =
@@ -293,31 +325,30 @@
                                 document.getElementById("wizardDetails2CanvasBody").style.maxHeight =
                                     newViewHeight - 422 + "px";
                                 document.getElementById("wizardDetails1HbcCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails1VbcCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails1GphCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails1MapCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails1ExampleCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails2HbcCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails2VbcCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails2GphCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails2MapCanvas").style.height =
-                                    newViewHeight - 418 + "px";
                                 document.getElementById("wizardDetails2ExampleCanvas").style.height =
-                                    newViewHeight - 418 + "px";
+                                    newViewHeight - 447 + "px";
                                 break;
                             case "/wizardFinalizeSchema":
                                 document.getElementById("wizardFinalizeSchemaContainer").style.height =
                                     newViewHeight - 108 + "px";
                                 document.getElementById("wizardFinalizeSchemaPanelBody").style.height =
-                                    newViewHeight - 419 + "px";
+                                    newViewHeight - 390 + "px";
+                                document.getElementById("wizardDetailsPanelBody").style.height =
+                                    newViewHeight - 391 + "px";
+                                document.getElementById("wizardDetailsHbcCanvas").style.height =
+                                document.getElementById("wizardDetailsVbcCanvas").style.height =
+                                document.getElementById("wizardDetailsGphCanvas").style.height =
+                                document.getElementById("wizardDetailsMapCanvas").style.height =
+                                document.getElementById("wizardDetailsExampleCanvas").style.height =
+                                    newViewHeight - 645 + "px";
                                 break;
                             case "/wizardSave":
                                 break;
@@ -402,18 +433,22 @@
                                 // do nothing
                             }, function (data) {
                                 $scope.modifySchemaMode = false;
+                                Utilities.setModifySchemaMode(false);
                                 $scope.schemaDomain = null;
                                 $scope.wizardStateControl('wizard-upload-samples');
                                 console.log("modal gone")
                             });
                         } else {
                             $scope.modifySchemaMode = false;
+                            Utilities.setModifySchemaMode(false);
                             $scope.schemaDomain = null;
                             $scope.wizardStateControl('wizard-upload-samples');
                         }
                         break;
                     case "wizard-upload-samples-existing-schema":
                         $scope.modifySchemaMode = true;
+                        Utilities.setModifySchemaMode(true);
+                        $scope.currentSchema = Utilities.getSchema();
                         $scope.schemaDomain = $scope.currentSchema.sDomainName;
                         console.log("wizard-upload-samples-existing-schema $scope.currentSchema.sDomainName: " + $scope.currentSchema.sDomainName);
                         $scope.wizardStateControl('wizard-upload-samples');
@@ -474,7 +509,7 @@
                             $scope.currentSample = $scope.model.dataSamples[$scope.currentSampleIndex];
 
                             $scope.navigateTo("/wizardInspectSamples");
-                            // broadcast to treeTableController (after waiting for it to become available in the dom)
+                            // broadcast to hierarchicalGenericController (after waiting for it to become available in the dom)
                             $timeout(function () {
                                         $rootScope.$broadcast("setCurrentSample", { sample: $scope.currentSample });
                                     }, 500);
@@ -490,31 +525,7 @@
                             }, 2500);
                             $cookies.put('schwiz.tours.matchFields', "visited");
                         }
-                        if ($scope.modifySchemaMode === true) {
-                            $scope.addSchemaToModel();
-                            //console.log("$scope.model.properties");
-                            //console.log($scope.model.properties);
-                        }
-                        console.log("$scope.model.dataSamples");
-                        console.log($scope.model.dataSamples);
-                        // make a copy of data samples to preserve the originals
-                        // repeatMatching() needs to start with the original copy each time it gets called
-                        $scope.model.originalDataSamples = angular.copy($scope.model.dataSamples);
-                        // reinitialize interpretationMatch
-                        $scope.interpretationMatch = defaultInterpretationMatch;
-                        $scope.addNewDataSamples($scope.model.dataSamples,
-                                                 $scope.confidenceValues.selectedConfidenceValue,
-                                                $scope.interpretationMatch);
-
-                        var foundDetailsToDisplay = false;
-                        angular.forEach(Object.keys($scope.model.properties), function (property) {
-                            if ($scope.model.properties[property].linkedDs.length > 1 &&
-                                $scope.model.properties[property].linkedDs[0].dsProfile[property]['main-type'] == "number" && !foundDetailsToDisplay) {
-                                $scope.showInDetails1($scope.model.properties[property].linkedDs[0], property, false);
-                                $scope.showInDetails2($scope.model.properties[property].linkedDs[1], property, false);
-                                foundDetailsToDisplay = true;
-                            }
-                        });
+                        Utilities.setDataSamples($scope.model.dataSamples);
                         // reinitialize hidePanel
                         $scope.hidePanel = false;
                         $scope.navigateTo("/wizardMatchFields");
@@ -529,21 +540,8 @@
                             $cookies.put('schwiz.tours.finalizeSchema', "visited");
                         }
                         console.log("wizard-finalize-schema");
-
-                        // interate through linked data sources to get alias names
-                        angular.forEach(Object.keys($scope.model.properties), function (property) {
-                            angular.forEach($scope.model.properties[property].linkedDs, function (linkedDs) {
-                                if (!linkedDs.dsProfile[property]['alias-names']) {
-                                    linkedDs.dsProfile[property]['alias-names'] = [];
-                                }
-                                linkedDs.dsProfile[property]['alias-names'].push(
-                                    {
-                                        "alias-name": linkedDs.dsProfile[property]['original-name'],
-                                        "dsId": linkedDs.dsId
-                                    });
-                            })
-                        });
                         // overwrite the original dataSamples with the possibly altered ones after matching
+                        $scope.model.dataSamples = Utilities.getDataSamples();
                         console.log($scope.model.dataSamples);
                         // open the websocket for progress bar updates
                         $rootScope.$broadcast("openWebSocket", {
@@ -576,6 +574,7 @@
                             if ($scope.currentSchema.sVersion == null) {
                                 $scope.currentSchema.sVersion = "1.0";
                             }
+                            Utilities.setSchema($scope.currentSchema);
                             $scope.hideMask();
                             $rootScope.$broadcast("closeWebSocket", {});
                             $scope.navigateTo("/wizardFinalizeSchema");
@@ -599,11 +598,6 @@
                         console.log("wizard-complete");
                         console.log($scope.currentSchema);
                         document.getElementById('titleRef').style.pointerEvents = 'auto';
-                        // open the websocket for progress bar updates
-                        $rootScope.$broadcast("openWebSocket", {
-                            sessionId: Server.getSessionId().sessionId
-                        });
-                        $scope.showMask();
                         // can't get this to work using $routeProvider and $resource
                         // TODO: try again in the future
                         var restURL =
@@ -620,8 +614,8 @@
                         .success(function (data) {
                             console.log("post saveSchema success");
                             console.log(data);
-                            $scope.hideMask();
-                            $rootScope.$broadcast("closeWebSocket", {});
+                            //$scope.hideMask();
+                            //$rootScope.$broadcast("closeWebSocket", {});
                             $scope.navigateTo("/catalog");
                         });
                         break;
@@ -749,6 +743,8 @@
                 console.log("onSetCurrentSchema");
                 console.log(args.schema);
                 $scope.currentSchema = args.schema;
+                Utilities.setSchema($scope.currentSchema);
+
                 //TODO dont use rootscope to try and resolve scoping issue before broadcast
                 $rootScope.test = $scope.currentSchema;
             }); // onsetCurrentSchema
@@ -1107,83 +1103,6 @@
                 console.log(dataSource);
             }; // showInGenericDetails
 
-            $scope.showInDetails1 = function (dataSource, property, schemaProperty) {
-                console.log("showInDetails1");
-                console.log(dataSource);
-                console.log(property);
-                    // interate through working model properties to turn off shown-in-details1
-                    angular.forEach(Object.keys($scope.model.properties), function (property) {
-                        $scope.model.properties[property]['shown-in-details1'] = false;
-                    });
-                    // interate through linked data sources to turn off shown-in-details1
-                    angular.forEach(Object.keys($scope.model.properties), function (property) {
-                        angular.forEach($scope.model.properties[property].linkedDs, function (linkedDs) {
-                            linkedDs.dsProfile[property]['shown-in-details1'] = false;
-                        })
-                    });
-                    $scope.detailModels.detailPanels.panel1 = [];
-                    if (!schemaProperty) {
-                        $scope.detailModels.detailPanels.panel1.push(dataSource.dsProfile[property]);
-                        dataSource.dsProfile[property]['shown-in-details1'] = true;
-                    } else {
-                        $scope.detailModels.detailPanels.panel1.push(dataSource[property]);
-                        dataSource[property]['shown-in-details1'] = true;
-                    }
-                    $scope.detailModels.detailPanels.panel1[0]["dsName"] = dataSource.dsName;
-                    $scope.detailModels.detailPanels.panel1[0]["property-name"] = property;
-                    $scope.detailModels.detailPanels.panel1[0]["hideUseBtn"] = schemaProperty;
-                    $scope.detailModels.detailPanels.panel1[0]["hideMergeBtn"] = schemaProperty;
-                    // set the default viz for the histogram
-                    if ($scope.detailModels.detailPanels.panel1[0].detail['freq-histogram'].type == "map") {
-                        $scope.detailModels.detailPanels.panel1[0].viz = "map";
-                    }
-                    else if($scope.detailModels.detailPanels.panel1[0].detail['detail-type'] == "text") {
-                        $scope.detailModels.detailPanels.panel1[0].viz = "example";
-                    }
-                    else {
-                        $scope.detailModels.detailPanels.panel1[0].viz = "hbc";
-                    }
-                    if (dataSource.dsProfile[property]['original-name']) {
-                        $scope.detailModels.detailPanels.panel1[0]["confidence"] =
-                            dataSource.dsProfile[property]['matching-fields'][0]['confidence'];
-                    }
-                    console.log("detailModels.detailPanels.panel1[0]");
-                    console.log($scope.detailModels.detailPanels.panel1[0]);
-            }; // showInDetails1
-
-            $scope.showInDetails2 = function (dataSource, property) {
-                console.log("showInDetails2");
-                console.log(dataSource);
-                console.log(property);
-                    // interate through linked data sources to turn off shown-in-details2
-                    angular.forEach(Object.keys($scope.model.properties), function (property) {
-                        angular.forEach($scope.model.properties[property].linkedDs, function (linkedDs) {
-                            linkedDs.dsProfile[property]['shown-in-details2'] = false;
-                        })
-                    });
-                    $scope.detailModels.detailPanels.panel2 = [];
-                    $scope.detailModels.detailPanels.panel2.push(dataSource.dsProfile[property]);
-                    dataSource.dsProfile[property]['shown-in-details2'] = true;
-                    $scope.detailModels.detailPanels.panel2[0]["dsName"] = dataSource.dsName;
-                    $scope.detailModels.detailPanels.panel2[0]["property-name"] = property;
-                    // set the default viz for the histogram
-                    if ($scope.detailModels.detailPanels.panel2[0].detail['freq-histogram'].type == "map") {
-                        $scope.detailModels.detailPanels.panel2[0].viz = "map";
-                    }
-                    else if($scope.detailModels.detailPanels.panel2[0].detail['detail-type'] == "text") {
-                        $scope.detailModels.detailPanels.panel2[0].viz = "example";
-                    }
-                    else {
-                        $scope.detailModels.detailPanels.panel2[0].viz = "hbc";
-                    }
-                    if (dataSource.dsProfile[property]['original-name']) {
-                        $scope.detailModels.detailPanels.panel2[0]["confidence"] =
-                            dataSource.dsProfile[property]['matching-fields'][0]['confidence'];
-                    }
-                    console.log("detailModels.detailPanels.panel2[0]");
-                    console.log($scope.detailModels.detailPanels.panel2[0]);
-            }; // showInDetails2
-
             $scope.editFieldName = function ($event, oldName, newName) {
                 $scope.editFieldNames = function () {
                     document.getElementById("wizard-finalize-schema-back").disabled = true;
@@ -1241,7 +1160,6 @@
                             }
                         ).then(function () {
                             document.getElementById("wizard-finalize-schema-back").disabled = true;
-//$event.originalEvent.srcElement.focus();
                             $scope.editFieldName($event, oldName, newName);
                         }, function (error) {
                             statusCodesFactory.get().$promise.then(function (response) {
@@ -1261,55 +1179,6 @@
                     return oldName;
                 }
             };// editFieldName
-
-            $scope.addNewField = function () {
-                $scope.addNewFields = function () {
-                    document.getElementById("wizard-finalize-schema-back").disabled = true;
-                    $scope.currentSchema.sProfile['New-field'] = {};
-                    $scope.currentSchema.sProfile['New-field']["manually-added"] = true;
-                    $scope.currentSchema.sProfile['New-field']["main-type"] = "string";
-                    $scope.currentSchema.sProfile['New-field']["presence"] = -1;
-                    $scope.currentSchema.sProfile['New-field']["detail"] = {};
-                    $scope.currentSchema.sProfile['New-field']["detail"]["detail-type"] = "phrase";
-                    console.log($scope.currentSchema);
-
-                    // need some time until DOM finishes
-                    $timeout($scope.focusNewField, 250);
-                };
-                if (document.getElementById("wizard-finalize-schema-back").disabled) {
-                    $scope.addNewFields();
-                } else {
-                    $confirm({
-                            title: 'Confirm Add New Field',
-                            text: "The 'Back' button will be disabled if a field \n" +
-                            "name is changed. Press 'OK' to confirm.",
-                            ok: 'OK',
-                            cancel: 'Cancel'
-                        }
-                    ).then(function () {
-                        $scope.addNewFields();
-                    }, function (error) {
-                        statusCodesFactory.get().$promise.then(function (response) {
-                            $confirm(
-                                {
-                                    title: response.addNewFieldFailed.title,
-                                    text: response.addNewFieldFailed.title +
-                                    " (" + error.status + ")",
-                                    ok: 'OK'
-                                },
-                                {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                        })
-                    });
-                }
-            }; // addNewField
-
-            $scope.focusNewField = function () {
-                var theForm = document.getElementById(
-                    "fieldNameForm" + (Object.keys($scope.currentSchema.sProfile).length - 1));
-                theForm.elements.newName.scrollTop = 0;
-                theForm.elements.newName.focus();
-                theForm.elements.newName.select();
-            }; // focusNewField
 
             $scope.setMenuTop = function (arr) {
                 var styleObj = "{top: " + (-arr.length * 22) + "px !important;}";

@@ -124,4 +124,10 @@ public class CLIWorkflow extends AbstractHeadlessWorkflow {
 		return schemaAnalysis;
 	}
 
+
+	@Override
+	public List<HeadlessResource> giveEmbeddedResources() {
+		return Arrays.asList();
+	}
+
 }

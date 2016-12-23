@@ -40,5 +40,4 @@ public class StructuredNode {
 	public void setChildren(List<StructuredNode> children) {
 		this.children = children;
 	}
-	
 }

@@ -43,7 +43,9 @@
             }); // onOpenWebSocket
 
             $scope.$on("closeWebSocket", function(event) {
-                websocket.close();
+                try {
+                    websocket.close();
+                } catch (e) {}
                 $scope.dynamic = 1;
                 $scope.type = "1%";
                 $scope.description = "Uploading...";

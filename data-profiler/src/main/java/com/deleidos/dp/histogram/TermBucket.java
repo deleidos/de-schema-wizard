@@ -57,13 +57,12 @@ public class TermBucket extends AbstractBucket {
 		String[] labels = new String[2];
 		String[] splits = rawLabel.split(",", 2);
 		if(splits.length > 1) {
-			if(splits[0].length() == 0 || splits[1].length() == 0) {
-				labels[0] = rawLabel;
-			} else {
+			if (rawLabel.startsWith("[") && rawLabel.endsWith("]")) {
 				labels[0] = splits[0].substring(1);
 				int length = splits[1].length() - 1;
 				labels[1] = splits[1].substring(0, length);
 			}
+			labels[0] = rawLabel;
 		} else {
 			labels[0] = splits[0];
 		}

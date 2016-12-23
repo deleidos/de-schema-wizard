@@ -4,9 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,12 +20,12 @@ import com.deleidos.analytics.websocket.api.WebSocketApiPlugin;
 import com.deleidos.analytics.websocket.api.WebSocketEventListener;
 import com.deleidos.analytics.websocket.api.WebSocketMessage;
 import com.deleidos.analytics.websocket.api.WebSocketMessageFactory;
+import com.deleidos.dmf.exception.AnalyticsRuntimeException;
+import com.deleidos.dmf.exception.JobQueueException;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.ProgressBarManager.ProgressBar;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 
 /**
  * Manage backend resources by keeping track of session data.  Session data is currently based on active 
@@ -35,16 +36,18 @@ import com.google.common.collect.HashBiMap;
 public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocketMessageFactory, WebSocketEventListener {
 	private static SchemaWizardSessionUtility INSTANCE = null;
 	private static final Logger logger = Logger.getLogger(SchemaWizardSessionUtility.class);
-	private final WeakList recentSessionRegistry;
-	private final BiMap<String, String> sessionSocketBidirectionalMapping;
-	private final Map<String, SessionData> sessionDataMapping;
-	private final Map<String, Long> memoryUsageMapping;
-	private final ExecutorService executorService;
-	private long overheadEstimate;
-	private long updateFrequencyMillis = 100;
-	private long fakeUpdateDelay = 105;
-	private int noticeableProgressJump = 5;
-	private int minFakeUpdates = 10;
+	protected static final int MAX_QUEUE_SIZE = 10;
+	protected static final long MAX_WAIT_TIME_SECONDS = 1200; // wait ten minutes max 
+	private static final Long DEFAULT_CHECK_FREQUENCY = 1000L;
+	protected final Map<String, String> socketToSessionMapping;
+	protected final Map<String, SessionData> sessionDataMapping;
+	protected final PriorityQueue<JobQueueEntry> jobQueue;
+	protected final ExecutorService executorService;
+	protected long overheadEstimate;
+	protected long updateFrequencyMillis = 100;
+	protected long fakeUpdateDelay = 105;
+	protected int noticeableProgressJump = 5;
+	protected int minFakeUpdates = 10;
 	private boolean performFakeUpdates = true;
 	public final String OVER_ESTIMATE_ENV_VAR = "OVER_ESTIMATE_MULTIPLIER";
 	public static double OVER_ESTIMATE_MULTIPLIER;
@@ -56,11 +59,10 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 			OVER_ESTIMATE_MULTIPLIER = 3;
 		}
 		executorService = Executors.newCachedThreadPool();
-		sessionSocketBidirectionalMapping = HashBiMap.create();
-		memoryUsageMapping = new ConcurrentHashMap<String, Long>();
+		socketToSessionMapping = new HashMap<String, String>();
 		sessionDataMapping = new ConcurrentHashMap<String, SessionData>();
 		overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		recentSessionRegistry = new WeakList(10);
+		jobQueue = new PriorityQueue<JobQueueEntry>(MAX_QUEUE_SIZE);
 	}
 
 	public static SchemaWizardSessionUtility getInstance(SchemaWizardSessionUtility testUtility) {
@@ -69,10 +71,6 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 			logger.info("Registering plugin with web socket server.");
 		}
 		return INSTANCE;
-	}
-
-	public static void register() {
-		WebSocketServer.getInstance().registerPlugin(SchemaWizardSessionUtility.getInstance());
 	}
 
 	public static SchemaWizardSessionUtility getInstance() {
@@ -90,32 +88,22 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 	 * @param sessionId
 	 */
 	public synchronized void updateProgress(ProgressBarManager updater, String sessionId) {
-		ProgressBar updateBean = updater.asBean();
-		try {
-			if(isAssociated(sessionId)) {
-				boolean shouldUpdate = sessionDataMapping.get(sessionId).shouldUpdate();
-				if(shouldUpdate) {
-					if(updateBean.getNumerator() / updateBean.getDenominator() == 1) {
-						sessionDataMapping.get(sessionId).setDone(true);
-						logger.info("Analysis for session "+sessionId+" determined to be complete.");
-					}
-					// if the progress jump is large, send a few intermediary updates to smooth it out - side effects
-					smoothUpdate(updater, sessionId);					
-					WebSocketServer.getInstance().send(updateBean, sessionSocketBidirectionalMapping.get(sessionId));
-					sessionDataMapping.get(sessionId).setLastUpdateNumerator(updater.getNumerator());
-				}
-			} 
-		} catch (Exception e) {
-			logger.debug("Progress update failed to send to session " + sessionId + ".", e);
-			if(sessionDataMapping.containsKey(sessionId)) {
-				sessionDataMapping.get(sessionId).setSendingErrors(
-						sessionDataMapping.get(sessionId).getSendingErrors()+1);
-				if(sessionDataMapping.get(sessionId).getSendingErrors() >= SessionData.ERROR_CUTOFF) {
-					logger.error(SessionData.ERROR_CUTOFF + " errors have been caught for session " + sessionId +
-							".  Attempting to send on last message and then disabling progress updates.", e);
+		if (sessionDataMapping.containsKey(sessionId)) {
+			SessionData sessionData = sessionDataMapping.get(sessionId);
+			try {
+				if(sessionData.isWebSocketOpen() && sessionData.shouldUpdate()) {
+					updateSession(updater, sessionData);
+				} 
+			} catch (Exception e) {
+				logger.debug("Progress update failed to send to session " + sessionId + ".", e);
+				sessionData.setSendingErrors(sessionData.getSendingErrors()+1);
+				if(sessionData.getSendingErrors() >= SessionData.ERROR_CUTOFF) {
+					logger.error(sessionData.getSendingErrors() + " errors have been caught for session " 
+							+ sessionId + ".  Attempting to send on last message "
+							+ "and then disabling progress updates.", e);
 					try {
 						updater.getCurrentState().setDescription("Sorry, there was a problem gauging the progress of your analysis.");
-						WebSocketServer.getInstance().send(updateBean, sessionSocketBidirectionalMapping.get(sessionId));
+						updateSession(updater, sessionData);
 					} catch (Exception e1) {
 						logger.error("Exception sending message over websocket.", e);
 					}
@@ -124,15 +112,44 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 		}
 	}
 
-	public void associateSessionAndSocket(String sessionId, String socketId) {
-		logger.debug("Session "+sessionId+" associated with socket " +socketId + "." );
-		sessionSocketBidirectionalMapping.put(sessionId, socketId);
-		sessionDataMapping.put(sessionId, new SessionData());
-		recentSessionRegistry.add(sessionId);
+	private void updateSession(ProgressBarManager progressBarManager, SessionData sessionData) throws Exception {
+		ProgressBar updateBean = progressBarManager.asBean();
+		// if the progress jump is large, send a few intermediary updates to smooth it out
+		smoothUpdate(progressBarManager, sessionData);
+		updateSession(updateBean, sessionData);
+		sessionData.setLastUpdateNumerator(progressBarManager.getNumerator());
+		sessionData.setLastUpdateTime(System.currentTimeMillis());
 	}
 
-	private synchronized boolean isAssociated(String sessionId) {
-		return sessionSocketBidirectionalMapping.containsKey(sessionId) && sessionDataMapping.containsKey(sessionId);
+	protected void updateSession(ProgressBar progressBar, SessionData sessionData) throws Exception {
+		WebSocketServer.getInstance().send(progressBar, sessionData.getWebSocketId());
+	}
+	
+	private void smoothUpdate(ProgressBarManager progressUpdater, SessionData sessionData) throws Exception {
+		ProgressBar progressBar = progressUpdater.asBean();
+		float previousUpdate = sessionData.getLastUpdateNumerator();
+		float updateDif = progressUpdater.getNumerator() - previousUpdate;
+		// need to lock the progress bar so the websocket doesnt get closed while these updates are happening
+		synchronized(progressBar) {
+			if(updateDif >= noticeableProgressJump && performFakeUpdates) {
+				int fakeUpdates = (int)(updateDif / minFakeUpdates);
+				fakeUpdates = (fakeUpdates < minFakeUpdates) ? minFakeUpdates : fakeUpdates;
+				final float fakeUpdateProgressInterval = updateDif/fakeUpdates;
+				boolean interrupted = false;
+				for (int i = 0; i < fakeUpdates && !interrupted; i++) {
+					float numerator = previousUpdate + (fakeUpdateProgressInterval * i);
+					String description = progressUpdater.getStateByNumerator(numerator).getDescription();
+					ProgressBar ithUpdateProgressBar = new ProgressBar((int)numerator, description);
+					updateSession(ithUpdateProgressBar, sessionData);
+					try {
+						Thread.sleep(fakeUpdateDelay);
+					} catch (InterruptedException e) {
+						logger.error("Smooth updater interrupted.  Sending raw update");
+						interrupted = true;
+					}
+				}
+			}
+		}
 	}
 
 	@Override
@@ -154,21 +171,26 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 
 	@Override
 	public WebSocketMessage buildMessage(String message, String webSocketId) {
-		// if sample/schema analysis is started here, progress updating will be handled in the same thread as the analysis
-		// handle communications coming from the client
-		// as of 2/9, only a session id message
 		try {
 			JsonNode j = SerializationUtility.getObjectMapper().readTree(message);
 			JsonNode sessionId = j.path("sessionId");
-			JsonNode request = j.path("request");
 			if(sessionId != null) {
-				//SchemaWizardWebSocketSession session = SerializationUtility.deserialize(message, SchemaWizardWebSocketSession.class);
-				//can use beans if more fields become necessary
 				String sessionIdString = sessionId.asText(null);
 				if(sessionIdString == null) {
 					logger.error("Session Id received from client as null.  Progress bar not successfully initialized.");
 				} else {
-					SchemaWizardSessionUtility.getInstance().associateSessionAndSocket(sessionIdString, webSocketId);
+					socketToSessionMapping.put(webSocketId, sessionIdString);
+					if (!sessionDataMapping.containsKey(sessionIdString)) {
+						logger.debug("Added session " + sessionIdString + " to sessiond data mapping.");
+						SessionData sessionData = new SessionData();
+						sessionData.setIsWebSocketOpen(true);
+						sessionData.setWebSocketId(webSocketId);
+						sessionDataMapping.put(sessionIdString, sessionData);
+					} else {
+						logger.debug("Associated session " + sessionIdString + " with websocket " + webSocketId + ".");
+						sessionDataMapping.get(sessionIdString).setIsWebSocketOpen(true);
+						sessionDataMapping.get(sessionIdString).setWebSocketId(webSocketId);
+					}
 				}
 
 			} else {
@@ -182,24 +204,15 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 		return null; 
 	}
 
-	public void endSession(String sessionId) {
-		sessionSocketBidirectionalMapping.remove(sessionId);
-		sessionDataMapping.remove(sessionId);
-		memoryUsageMapping.remove(sessionId);
-		overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-	}
-
 	@Override
 	public void onWebSocketClose(String webSocketId) {
-		String associatedSessionId = sessionSocketBidirectionalMapping.inverse().get(webSocketId);
-		if(!sessionDataMapping.get(associatedSessionId).isDone()) {
-			// set the parameters as cancelled if they were not finished
-			// parsers will check these parameters to see if there was a cancellation
-			logger.info("Session "+associatedSessionId+" cancelled.");
-			sessionDataMapping.get(associatedSessionId).setCancelled(true);
+		if (socketToSessionMapping.containsKey(webSocketId)) {
+			String associatedSessionId = socketToSessionMapping.get(webSocketId);
+			sessionDataMapping.get(associatedSessionId).setIsWebSocketOpen(false);
+			logger.debug("Socket " + webSocketId + " with associated session " + associatedSessionId + " closed.");
+		} else {
+			logger.warn("SockerId " + webSocketId + " was not associated as a session.");
 		}
-		endSession(associatedSessionId);
-		logger.debug("Socket " + webSocketId + " with associated session " + associatedSessionId + " closed.");
 	}
 
 	@Override
@@ -208,104 +221,207 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 	}
 
 	public Boolean isCancelled(String sessionId) {
-		Optional<SessionData> sessionData = Optional.ofNullable(sessionDataMapping.get(sessionId));
-		if(sessionData.isPresent()) {
-			return sessionData.get().isCancelled();
-		} else if (recentSessionRegistry.contains(sessionId)) {
-			return true;
+		if (!sessionDataMapping.containsKey(sessionId)) {
+			throw new AnalyticsRuntimeException("Session should not be removed from data mapping until it is"
+					+ " recognized as cancelled or completed.");
 		}
-		return false;
+		return sessionDataMapping.get(sessionId).isCancelled();
 	}
 
-	public void waitForAvailableResources(String sessionId, File sampleFile) throws FileUploadException {
-		Runtime instance = Runtime.getRuntime();
-		long totalMemory = instance.totalMemory();
-		if(totalMemory < sampleFile.length()) {
-			throw new FileUploadException("File is too large to be processed with current JVM settings.");
-		}
-		long heapUsageOverEstimate = (long)(((int)sampleFile.length())*OVER_ESTIMATE_MULTIPLIER);
-		long t1 = System.currentTimeMillis();
-		synchronized (memoryUsageMapping) {
-			if(memoryUsageMapping.containsKey(sessionId)) {
-				memoryUsageMapping.remove(sessionId);	
-			}
-		}
-		long freeMemory = instance.totalMemory() - overheadEstimate - memoryFromMapping();
-		boolean sendUpdates = true;
-		while(heapUsageOverEstimate > freeMemory) {
-			logger.info("Free memory - " + freeMemory + " < " + heapUsageOverEstimate);
+	/**
+	 * Debugging code
+	public long userSetAvailableMemory = -1;
+	public long userSetOverhead = -1;
+	public boolean requireGoAhead = false;
+	public boolean goAhead = false;
+	
+	public void setAvailableMemory(long available) {
+		userSetAvailableMemory = available;
+	}
+	
+	public long getAvailableMemory() {
+		return userSetAvailableMemory;
+	}
+	
+	public long getUserSetOverhead() {
+		return userSetOverhead;
+	}
 
-			// need to lock memory mapping so size is locked 
-			synchronized(memoryUsageMapping) {
-				if(System.currentTimeMillis() - t1 > CancellableFileUploader.MAX_UPLOAD_SECONDS*1000) {
-					throw new FileUploadException("File upload timed out while waiting for resources.");
-				} else if(memoryUsageMapping.size() == 0 
-						|| (memoryUsageMapping.size() == 1 && memoryUsageMapping.containsKey(sessionId))) {
-					// throw new FileUploadException("There is not enough space in the JVM for this file.");
-					// let front end handle size limit - always attempt to process it
-					break;
+	public void setUserSetOverhead(long userSetOverhead) {
+		this.userSetOverhead = userSetOverhead;
+	}
+
+	public boolean isRequireGoAhead() {
+		return requireGoAhead;
+	}
+
+	public void setRequireGoAhead(boolean requireGoAhead) {
+		this.requireGoAhead = requireGoAhead;
+	}
+
+	public void setGoAhead() {
+		this.goAhead = true;
+	}
+	 */
+
+	protected PriorityQueue<JobQueueEntry> waitForSessionToReachNextInQueue(PriorityQueue<JobQueueEntry> jobQueue,
+			Map<String, SessionData> sessionDataMapping, String sessionId, Long minimalMemoryRequirement,
+			Long insertionTime, Long checkFrequency) throws JobQueueException {
+		boolean sendUpdates = true;
+		int previousActiveJobs = -1;
+		//boolean requireGoAhead = this.requireGoAhead;
+		while (!jobQueue.peek().getSessionId().equals(sessionId)/* || requireGoAhead*/) {
+			/*if (requireGoAhead) synchronized (this) {
+				if (goAhead && jobQueue.peek().getSessionId().equals(sessionId)) {
+					goAhead = false;
+					requireGoAhead = false;
 				}
-				if(this.memoryUsageMapping.size() <= 1) {
-					overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-				}
-			}
-			try {
-				float num = sessionDataMapping.get(sessionId).getLastUpdateNumerator();
-				ProgressBar queuedProgressBarUpdate = new ProgressBar((int)num, "Computing resources are limited. "
-						+ String.valueOf(memoryUsageMapping.size()-1) + " other users also awaiting processing.");
-				if(sendUpdates) {
+			}*/
+			
+			if (sendUpdates) {
+				int activeJobs = sessionDataMapping.size();
+				if (activeJobs != previousActiveJobs) {
+					// there's a change -- need to update the user on status
+					StringBuilder progressUpdate = new StringBuilder("Your analysis has been queued.");
+					if (activeJobs == 1) {
+						progressUpdate.append("There is 1 job ahead of yours.");
+					} else if (activeJobs > 1) {
+						progressUpdate.append("There are ");
+						progressUpdate.append(activeJobs);
+						progressUpdate.append(" ahead of yours.");
+					} else {
+						throw new AnalyticsRuntimeException("Reached unexpected branch of code waiting for job queue.");
+					}
+					// don't change progress until analysis actually starts
+					SessionData sessionData = sessionDataMapping.get(sessionId);
+					int num = sessionData.getLastUpdateNumerator().intValue();
+					ProgressBar queuedProgressBarUpdate = new ProgressBar(num, progressUpdate.toString());
 					try {
-						WebSocketServer.getInstance().send(queuedProgressBarUpdate, 
-								sessionSocketBidirectionalMapping.get(sessionId));
+						updateSession(queuedProgressBarUpdate, sessionData);
 					} catch (Exception e) {
 						logger.debug("Web socket communications failed.  Attempting to continue analysis.", e);
 						sendUpdates = false;
 					}
 				}
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				throw new FileUploadException("Unexpected threading interruption.", e);
 			}
-
-			freeMemory = instance.totalMemory() - overheadEstimate - memoryFromMapping();
+			if (System.currentTimeMillis() - insertionTime > MAX_WAIT_TIME_SECONDS*1000) {
+				throw new JobQueueException("Analysis timed out while waiting in queue (waited for "
+						+MAX_WAIT_TIME_SECONDS+" seconds).");
+			}
+			try {
+				Thread.sleep(checkFrequency);
+			} catch (InterruptedException e) {
+				logger.error("Unexpected thread interrupt.", e);
+			}
 		}
-		memoryUsageMapping.put(sessionId, heapUsageOverEstimate);
+
+		/* debug version
+		 * Long totalMemory = userSetAvailableMemory > -1 ? userSetAvailableMemory : Runtime.getRuntime().totalMemory();
+		Long overHead = userSetOverhead > -1 ? userSetOverhead : overheadEstimate; 
+		
+		 */
+		
+		// now that this job is next, wait for appropriate resources to be available before taking
+		// it off the queue
+		// note docs say this total memory may vary over time
+		Long totalMemory = Runtime.getRuntime().totalMemory();
+		if(totalMemory < minimalMemoryRequirement) {
+			throw new JobQueueException("File is too large to be processed with current JVM settings.");
+		} else {
+			Long memoryEstimate = waitForEnoughMemory(
+					totalMemory, overheadEstimate, insertionTime, minimalMemoryRequirement, checkFrequency);
+			sessionDataMapping.get(sessionId).setMemoryEstimate(memoryEstimate);
+			return jobQueue;
+		}
 	}
 
-	private synchronized long memoryFromMapping() {
+	protected Long waitForEnoughMemory(Long totalAvailableMemory, Long overheadMemory, Long insertionTime, 
+			Long minimalMemoryRequirement, Long checkFrequency) throws JobQueueException {
+		long memoryUsageOverEstimate = (long)(minimalMemoryRequirement*OVER_ESTIMATE_MULTIPLIER);
+		long freeMemory = totalAvailableMemory - overheadMemory - currentlyRequiredMemory();
+		while(memoryUsageOverEstimate > freeMemory) {
+			logger.debug("Free memory - " + freeMemory + " < " + memoryUsageOverEstimate);
+
+			if(System.currentTimeMillis() - insertionTime > MAX_WAIT_TIME_SECONDS*1000) {
+				throw new JobQueueException("Job timed out while waiting for resources.");
+			} else if(sessionDataMapping.size() == 0) {
+				// throw new FileUploadException("There is not enough space in the JVM for this file.");
+				// let front end handle size limit - always attempt to process it
+				logger.info("There is not enough space in the JVM to handle the estimate of this file.");
+				logger.info("If this error message has started showing after long term use, "
+						+ "there may be a resource leak!");
+				logger.warn("Attempting to analyze despite excessive memory estimate.");
+				break;
+			}
+			try {
+				Thread.sleep(checkFrequency);
+			} catch (InterruptedException e) {
+				logger.error(e);
+			}
+
+			freeMemory = totalAvailableMemory - overheadMemory - currentlyRequiredMemory();
+		}
+		return memoryUsageOverEstimate;
+	}
+	
+	/**
+	 * Should be called when a batch of samples or a schema analysis is started.
+	 * @param sessionId
+	 * @param sampleFile
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public boolean requestAnalysis(String sessionId, File sampleFile) {
+		return requestAnalysis(sessionId, sampleFile.length(), DEFAULT_CHECK_FREQUENCY);
+	}
+
+	protected boolean requestAnalysis(String sessionId, Long sampleFileLength, Long checkFrequency) {
+		if (!sessionDataMapping.containsKey(sessionId)) {
+			SessionData sessionData = new SessionData();
+			sessionData.setIsWebSocketOpen(false);
+			sessionDataMapping.put(sessionId, sessionData);
+			logger.info("Session " + sessionId + " is not in the session data mapping.  Creating without a websocket.");
+		} else {
+			logger.debug("Session " + sessionId + " is in the session data mapping.");
+		}
+		if (jobQueue.size() > MAX_QUEUE_SIZE) {
+			return false;
+		} 
+		Long insertTime = System.currentTimeMillis();
+		jobQueue.offer(new JobQueueEntry(sessionId, insertTime));
+
+		try {
+			// hold the queue until this particular session is next
+			JobQueueEntry jobQueueEntry = waitForSessionToReachNextInQueue(
+					jobQueue, sessionDataMapping, sessionId, sampleFileLength, insertTime, checkFrequency).poll();
+			logger.debug("Ready to analyze for session " + jobQueueEntry.getSessionId() + ".");
+
+			return true;
+		} catch (JobQueueException e) {
+			logger.error("Error in the queue.", e);
+			return false;
+		}
+	}
+
+	/**
+	 * Should be called at the completion (regardless of success) of any analysis.
+	 * @param sessionId
+	 */
+	public synchronized void registerCompleteAnalysis(String sessionId) {
+		sessionDataMapping.remove(sessionId);
+		logger.info("Session " + sessionId + " registered as completed.");
+		System.gc();
+		if (sessionDataMapping.size() == 0) {
+			overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		}
+	}
+
+	protected synchronized long currentlyRequiredMemory() {
 		long sum = 0;
-		for(String key : memoryUsageMapping.keySet()) {
-			sum += memoryUsageMapping.get(key);
+		for(String key : sessionDataMapping.keySet()) {
+			sum += sessionDataMapping.get(key).getMemoryEstimate();
 		}
 		return sum;
-	}
-
-
-	private void smoothUpdate(ProgressBarManager progressUpdater, String sessionId) throws Exception {
-		ProgressBar progressBar = progressUpdater.asBean();
-		float previousUpdate = sessionDataMapping.get(sessionId).getLastUpdateNumerator();
-		float updateDif = progressUpdater.getNumerator() - previousUpdate;
-		// need to lock the progress bar so the websocket doesnt get closed while these updates are happening
-		synchronized(progressBar) {
-			if(updateDif >= noticeableProgressJump && performFakeUpdates) {
-				int fakeUpdates = (int)(updateDif / minFakeUpdates);
-				fakeUpdates = (fakeUpdates < minFakeUpdates) ? minFakeUpdates : fakeUpdates;
-				final float fakeUpdateProgressInterval = updateDif/fakeUpdates;
-				boolean interrupted = false;
-				for (int i = 0; i < fakeUpdates  && !interrupted; i++) {
-					float numerator = previousUpdate + (fakeUpdateProgressInterval * i);
-					String description = progressUpdater.getStateByNumerator(numerator).getDescription();
-					ProgressBar ithUpdateProgressBar = new ProgressBar((int)numerator, description);
-					WebSocketServer.getInstance().send(ithUpdateProgressBar, sessionSocketBidirectionalMapping.get(sessionId));
-					try {
-						Thread.sleep(fakeUpdateDelay);
-					} catch (InterruptedException e) {
-						logger.error("Smooth updater interrupted.  Sending raw update");
-						interrupted = true;
-					}
-				}
-			}
-		}
 	}
 
 	public long getUpdateFrequencyMillis() {
@@ -351,22 +467,79 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 	public ExecutorService getExecutorService() {
 		return executorService;
 	}
-
-	private static class WeakList extends ArrayList<String> {
-		private final int sizeLimit;
-		
-		public WeakList(int sizeLimit) {
-			super(sizeLimit);
-			this.sizeLimit = sizeLimit;
-		}
-		
-		@Override
-		public boolean add(String e) {
-			if (this.size() > sizeLimit) {
-				this.remove(0);
-			}
-			return super.add(e);
-		}
+	
+	public synchronized StatusReport getStatusReport() {
+		int totalJobs = sessionDataMapping.size();
+		int queuedJobs = jobQueue.size();
+		int activeJobs = totalJobs - queuedJobs;
+		long availableMem = Runtime.getRuntime().freeMemory();
+		return new StatusReport(activeJobs, queuedJobs, availableMem, overheadEstimate, currentlyRequiredMemory());
 	}
 	
+	public static class StatusReport {
+		private final int numActiveJobs;
+		private final int numJobsInQueue;
+		private final long memoryAvailable;
+		private final long overheadEstimate;
+		private final long memoryHeld;
+		
+		public StatusReport(int numActiveJobs, int numJobsInQueue, 
+				long memoryAvailable, long overheadEstimate, long memoryHeld) {
+			this.numActiveJobs = numActiveJobs;
+			this.numJobsInQueue = numJobsInQueue;
+			this.memoryAvailable = memoryAvailable;
+			this.overheadEstimate = overheadEstimate;
+			this.memoryHeld = memoryHeld;
+		}
+
+		public int getNumActiveJobs() {
+			return numActiveJobs;
+		}
+
+		public int getNumJobsInQueue() {
+			return numJobsInQueue;
+		}
+
+		public long getMemoryAvailable() {
+			return memoryAvailable;
+		}
+
+		public long getOverheadEstimate() {
+			return overheadEstimate;
+		}
+
+		public long getMemoryHeld() {
+			return memoryHeld;
+		}
+		
+	}
+
+	/**
+	 * Ordering for jobs in the priority queue.
+	 * @author leegc
+	 *
+	 */
+	protected static class JobQueueEntry implements Comparable<JobQueueEntry> {
+		private final String sessionId;
+		private final Long insertionTime;
+
+		public JobQueueEntry(String sessionId, Long insertionTime) {
+			this.sessionId = sessionId;
+			this.insertionTime = insertionTime;
+		}
+
+		public String getSessionId() {
+			return sessionId;
+		}
+
+		public Long getInsertionTime() {
+			return insertionTime;
+		}
+
+		@Override
+		public int compareTo(JobQueueEntry o) {
+			return (int)(getInsertionTime() - o.getInsertionTime());
+		}
+	}
+
 }

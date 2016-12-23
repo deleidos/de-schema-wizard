@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" lang="en-us" xml:lang="en-us" data-mc-search-type="Stem" data-mc-help-system-file-name="Default.xml" data-mc-path-to-help-system="../../../" data-mc-target-type="WebHelp2" data-mc-runtime-file-type="Topic" data-mc-preload-images="false" data-mc-in-preview-mode="false" data-mc-toc-path="Schemas">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>Data Samples</title>
+        <link href="../../../Skins/Default/Stylesheets/Slideshow.css" rel="stylesheet" />
+        <link href="../../../Skins/Default/Stylesheets/TextEffects.css" rel="stylesheet" />
+        <link href="../../../Skins/Default/Stylesheets/Topic.css" rel="stylesheet" />
+        <link href="../../Resources/Stylesheets/Styles.css" rel="stylesheet" />
+        <script src="../../../Resources/Scripts/custom.modernizr.js">
+        </script>
+        <script src="../../../Resources/Scripts/jquery.min.js">
+        </script>
+        <script src="../../../Resources/Scripts/foundation.min.js">
+        </script>
+        <script src="../../../Resources/Scripts/plugins.min.js">
+        </script>
+        <script src="../../../Resources/Scripts/require.min.js">
+        </script>
+        <script src="../../../Resources/Scripts/require.config.js">
+        </script>
+        <script src="../../../Resources/Scripts/MadCapAll.js">
+        </script>
+    </head>
+    <body>
+        <div class="TopicContent">
+            <div class="MCBreadcrumbsBox_0"><span class="MCBreadcrumbsPrefix">You are here: </span><a class="MCBreadcrumbsLink" href="Supported Formats.htm">Schemas</a><span class="MCBreadcrumbsDivider"> &gt; </span><span class="MCBreadcrumbs">Data Samples</span>
+            </div>
+            <h1>Data Samples</h1>
+            <p>The starting point for using Schema Wizard is uploading data samples. Schema Wizard will use these samples to create your schema, so clean samples with a sweeping distribution of values will lead yield the best possible schema. Though metrics that represent the samples are persisted after their analysis, the original files will be discarded.</p>
+            <p>
+                <h2>Detection</h2>
+            </p>
+            <p>When Schema Wizard is given an arbitrary file, the first step is detecting its content type. Schema Wizard uses Apache Tika to detect file content type. The detection stage loops through every detector and gives it a chance to identify the proposed sample. Once a sample has been detected as a supported type, it will move on to the parsing stage.</p>
+            <p>
+                <h2>Parsing</h2>
+            </p>
+            <p>Schema Wizard also uses Tika to parse files. Note that not all formats supported in Tika are supported in Schema Wizard. However, Schema Wizard will use Tika to extract any embedded content that it can find. Assuming all of your content is supported, this diagram shows the detection and parsing process:</p>
+            <h2>
+                <img src="../../Resources/Images/file_processing_flowchart_338x262.jpg" style="width: 338;height: 262;" />
+            </h2>
+            <p>&#160;</p>
+            <p>For illustrative purposes, consider a zip of PDF files that contain XML. Schema Wizard will first detect and parse the zip file, extracting all of the PDF files. Then, it will iterate through the extracted files. For each PDF, it uses Apache Tika to extract the embedded text, and then it parses this content as if it were a plain text XML file.</p>
+            <h2>Main Types</h2>
+            <p>When parsing has been completed, all values will be classified as a number or string field. This is considered a main type.</p>
+            <p>
+                <h2>Detail Types</h2>
+            </p>
+            <p>Each main type has associated detail types:</p>
+            <li value="14">Number - integer, decimal, exponent</li>
+            <li value="15">String - boolean, term (no spaces), phrase (contains a few spaces), text (contains many spaces)</li>
+            <p style="font-size: 6pt;margin-top: 0;margin-bottom: 0;">&#160;</p>
+            <p class="copyright">Copyright © <span class="MyVariablesYear">2016</span>&#160;<span class="MyVariablesCompanyName">Leidos, Inc.</span> All rights reserved.</p>
+        </div>
+    </body>
+</html>

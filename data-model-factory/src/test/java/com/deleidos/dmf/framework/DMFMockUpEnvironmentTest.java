@@ -1,11 +1,14 @@
 package com.deleidos.dmf.framework;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +16,7 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.apache.tika.metadata.Metadata;
+import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.deleidos.dmf.analyzer.Analyzer;
@@ -22,7 +26,6 @@ import com.deleidos.dmf.handler.AnalyticsProgressTrackingContentHandler;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dmf.progressbar.SimpleProgressUpdater;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
-import com.deleidos.dmf.workflows.AbstractAnalyzerTestWorkflow;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.h2.H2DataAccessObject;
@@ -39,10 +42,72 @@ import com.deleidos.hd.h2.H2TestDatabase;
  * @author leegc
  *
  */
-public abstract class DMFMockUpEnvironmentTest extends ResourceLoader {
+public abstract class DMFMockUpEnvironmentTest {
 	private static final Logger logger = Logger.getLogger(DMFMockUpEnvironmentTest.class);
+	private static final String TARGET_UPLOAD_DIR = "test-session-dir";
 	private static boolean running = false;
+	private static String testSessionId = "test-session";
+	protected List<HeadlessResource> streamSources;
+	
+	public DMFMockUpEnvironmentTest() {
+		streamSources = new ArrayList<HeadlessResource>();
+	}
 
+	public void loadToFiles(File file, String expectedDataType, String expectedBodyContentType) throws FileNotFoundException {
+		for(String s : file.list()) {
+			File f = new File(file, s);
+			if(f.isFile()) {
+				streamSources.add(new HeadlessResource(f.getPath(), expectedDataType, expectedBodyContentType, new BufferedInputStream(new FileInputStream(f)), true, true));
+			} else {
+				loadToFiles(f, f.getName(), null);
+			}
+		}
+	}
+
+	@Before
+	public void initFiles() throws FileNotFoundException, UnsupportedEncodingException {
+
+	}
+
+	protected HeadlessResource getSourceByName(String name) {
+		if(!name.startsWith("/")) {
+			name = "/" + name;
+		}
+		for(HeadlessResource dtr : streamSources) {
+			if(dtr.getFilePath().equals(name)) {
+				return dtr;
+			}
+		}
+		return null;
+	}
+
+	protected boolean addToSource(HeadlessResource dtr) {
+		return streamSources.add(dtr);
+	}
+
+	protected void addToSources(String resourceName, String expectedType) throws UnsupportedEncodingException {
+		addToSources(resourceName, expectedType, null, true, true);
+	}
+
+	protected void addToSources(String resourceName, String expectedType, boolean isDetectorReady, boolean isParserReady) throws UnsupportedEncodingException {
+		addToSources(resourceName, expectedType, null, isDetectorReady, isParserReady);
+	}
+
+	protected void addToSources(String resourceName, String expectedType, String expectedBodyContentType, boolean isDetectorReady, boolean isParserReady) throws UnsupportedEncodingException {
+		if(!resourceName.startsWith("/")) {
+			resourceName = "/" + resourceName;
+		}
+		String path = resourceName;
+		path = URLDecoder.decode(path, "UTF8");
+		InputStream is = getClass().getResourceAsStream(path);
+		if(is == null) {
+			logger.error("Resource " + path + " not found.  Ignoring.");
+		} else {
+			streamSources.add(new HeadlessResource(path, expectedType, expectedBodyContentType, is, isDetectorReady, isParserReady));
+		}
+		//sources.put(resourceName, expectedType);
+	}
+	
 	@BeforeClass
 	public static void setupUnitTestingEnvironment() throws DataAccessException, ClassNotFoundException, SQLException, InterruptedException, IOException {
 		if(!running) {
@@ -66,8 +131,7 @@ public abstract class DMFMockUpEnvironmentTest extends ResourceLoader {
 					super.updateProgress(updateBean, sessionId);
 				}
 			}*/);
-			SchemaWizardSessionUtility.register();
-			File uploadDir = new File(AbstractAnalyzerTestWorkflow.TARGET_UPLOAD_DIR);
+			File uploadDir = new File(TARGET_UPLOAD_DIR);
 			if(!uploadDir.exists() && !uploadDir.mkdirs()) {
 				throw new IOException("Could not create upload directory base.");
 			}
@@ -76,9 +140,9 @@ public abstract class DMFMockUpEnvironmentTest extends ResourceLoader {
 	}
 	
 	public static TikaSampleAnalyzerParameters generateTestSampleParameters(HeadlessResource dtr, int sampleNumber, int totalNumberSamples) throws FileNotFoundException, IOException {
-		String sessionId = AbstractAnalyzerTestWorkflow.testSessionId;
+		String sessionId = testSessionId;
 		String guid = Analyzer.generateUUID();
-		String uploadFileDir = AbstractAnalyzerTestWorkflow.TARGET_UPLOAD_DIR;
+		String uploadFileDir = TARGET_UPLOAD_DIR;
 		String domainName = "Transportation";
 		String tolerance = Tolerance.STRICT.toString();
 		String name = new File(dtr.getFilePath()).getName();

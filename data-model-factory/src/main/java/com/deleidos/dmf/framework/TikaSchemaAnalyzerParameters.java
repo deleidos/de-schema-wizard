@@ -10,6 +10,7 @@ import com.deleidos.dmf.exception.AnalyticsRuntimeException;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Schema;
+import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.profiler.SchemaProfiler;
 import com.deleidos.dp.profiler.api.Profiler;
 
@@ -66,6 +67,7 @@ public class TikaSchemaAnalyzerParameters extends TikaAnalyzerParameters<Schema>
 	public Schema getProfilerBean() {
 		SchemaProfiler schemaProfiler = (SchemaProfiler) super.profiler;
 		Schema bean = schemaProfiler.finish();
+		bean.setsProfile(ConversionUtility.addObjectProfiles(bean.getsProfile()));
 		Schema schemaBean = (Schema) bean;
 		schemaBean.setsGuid(getGuid());
 		schemaBean.setRecordsParsedCount(schemaProfiler.getRecordsParsed());

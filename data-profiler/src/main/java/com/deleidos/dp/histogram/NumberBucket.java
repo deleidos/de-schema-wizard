@@ -1,13 +1,11 @@
 package com.deleidos.dp.histogram;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.annotate.JsonIgnore;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Bucket that contains exclusively numerical values.
@@ -17,7 +15,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 public class NumberBucket extends AbstractBucket {
 	public static final int TEMP_DEFAULT_NUMBER_BUCKET_DISPLAY_CUTOFF = 6;
 	private static Logger logger = Logger.getLogger(NumberBucket.class);
-	@JsonIgnore
+	@com.fasterxml.jackson.annotation.JsonIgnore
 	public BigDecimal minBoundary;
 	@JsonIgnore
 	public BigDecimal maxBoundary;

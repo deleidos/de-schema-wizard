@@ -21,7 +21,7 @@ public class SimpleProgressUpdater implements ProfilingProgressUpdateHandler {
 	private final ProgressBarManager progressBar;
 	private final long totalRecords;
 	private final String sessionId;
-	private Optional<DescriptionCallback> descriptionCallback = Optional.empty();
+	private DescriptionCallback descriptionCallback = null;
 	
 	public SimpleProgressUpdater(String sessionId, ProgressBarManager progressBar, long recordCount) {
 		this(sessionId, progressBar, recordCount, true);
@@ -39,9 +39,11 @@ public class SimpleProgressUpdater implements ProfilingProgressUpdateHandler {
 		int numeratorUpdate = 
 				(int)progressBar.getCurrentState().getStartValue() + 
 				(int)((percentCompleted * progressBar.getCurrentState().rangeLength()));
-		if(numeratorUpdate != 0) {
-			if(progressBar.updateNumerator(numeratorUpdate)) {
-				descriptionCallback.ifPresent(x->progressBar.getCurrentState().setDescription(x.determineDescription(this, progress)));
+		if (numeratorUpdate != 0) {
+			if (progressBar.updateNumerator(numeratorUpdate)) {
+				if (descriptionCallback != null) {
+					progressBar.getCurrentState().setDescription(descriptionCallback.determineDescription(this, progress));
+				}
 			}
 		}
 		SchemaWizardSessionUtility.getInstance().updateProgress(progressBar, sessionId);
@@ -61,14 +63,14 @@ public class SimpleProgressUpdater implements ProfilingProgressUpdateHandler {
 	}
 
 	public Optional<DescriptionCallback> getDescriptionCallback() {
-		return descriptionCallback;
+		return Optional.ofNullable(descriptionCallback);
 	}
 
 	public void setDescriptionCallback(DescriptionCallback descriptionCallback) {
-		this.descriptionCallback = Optional.of(descriptionCallback);
+		this.descriptionCallback = descriptionCallback;
 	}
 	
 	public void removeDescriptionCallback() {
-		this.descriptionCallback = Optional.empty();
+		this.descriptionCallback = null;
 	}
 }

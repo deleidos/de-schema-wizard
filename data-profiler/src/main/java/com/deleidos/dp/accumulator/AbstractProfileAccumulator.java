@@ -46,7 +46,7 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 
 	// fields for progress updating
 	private int transientWalkingCount;
-	private Optional<ProfilingProgressUpdateHandler> optionalCallback = Optional.empty();
+	private ProfilingProgressUpdateHandler callback = null;
 
 	@Override
 	public Profile getState() {
@@ -60,7 +60,6 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 		fieldName = key;
 		accumulationStage = Stage.UNINITIALIZED;
 		profile = new Profile();
-		profile.setInterpretation(Interpretation.UNKNOWN);
 		profile.setMainType(mainType.toString());
 		detailTypeTracker = new int[DetailType.values().length]; 
 		presenceCount = 0;
@@ -88,7 +87,7 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 	/**
 	 * Accumulate data into the Accumulator's metric.  The intention is to do minimal calculations until they are 
 	 * required (e.g. don't calculate the average until it is required)
-	 * @param value The value to accumulate into the metric.
+	 * @param defaultValue The value to accumulate into the metric.
 	 */
 	@Override
 	public void accumulate(Object object, Boolean accumulatePresence) throws MainTypeException {
@@ -173,7 +172,9 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 	}
 
 	public void handleProgressUpdate(final int progress) {
-		optionalCallback.ifPresent(x->optionalCallback.get().handleProgressUpdate(progress));
+		if (callback != null) {
+			callback.handleProgressUpdate(progress);
+		}
 	}
 
 	@Override
@@ -207,24 +208,19 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 		return profile;
 	}
 
-	/**
-	 * 
-	 * @param optionalCallback
-	 * @throws NullPointerException if optionalCallback is null
-	 */
-	public void setCallback(ProfilingProgressUpdateHandler optionalCallback, boolean restartCount) {
-		this.optionalCallback = Optional.of(optionalCallback);
+	public void setCallback(ProfilingProgressUpdateHandler callback, boolean restartCount) {
+		this.callback = callback;
 		if(restartCount) {
 			transientWalkingCount = 0;
 		}
 	}
 
 	public void removeCallback() {
-		this.optionalCallback = Optional.empty();
+		this.callback = null;
 	}
 
 	public Optional<ProfilingProgressUpdateHandler> getOptionalCallback() {
-		return optionalCallback;
+		return Optional.ofNullable(callback);
 	}
 
 	public boolean hasGeoSpatialData() {
@@ -352,7 +348,8 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 			}
 			abstractProfileAccumulator = abstractProfileAccumulator.initializeForSchemaAccumulation(schemaProfile, recordsInSchema, sampleProfiles);
 			if(schemaProfile == null) {
-				abstractProfileAccumulator.initializeDetailFields(sampleProfiles.get(0).getDetail().getDetailType(), Stage.SCHEMA_AWAITING_FIRST_VALUE);
+				DetailType detailType = abstractProfileAccumulator.determineDetailType(schemaProfile, sampleProfiles);
+				abstractProfileAccumulator.initializeDetailFields(detailType.toString(), Stage.SCHEMA_AWAITING_FIRST_VALUE);
 			}
 			return abstractProfileAccumulator;
 		}
@@ -371,13 +368,21 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 	}
 
 	/**
+	 * Method that allows a subclass to determine an accumulators detail type based on existing profiles.
+	 * @param existingSchemaProfile null or the existing schema profile
+	 * @param sampleProfiles a list (minimum size 1) of profiles that are actively being processed
+	 * @return the detail type that the accumulator should inherit from the existing profiles
+	 */
+	protected abstract DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles);
+	
+	/**
 	 * Abstract method requiring that a subclass initial any detail fields that do not require a first value.
 	 * An example of this is setting a walking count to 0 because it can be initialized without an initial value.
 	 * @param knownDetailType The detail type or null if unknown
 	 * @param resultingStage the expected stage after this method is called
 	 */
 	protected abstract void initializeDetailFields(String knownDetailType, Stage resultingStage);
-
+	
 	/**
 	 * Initialize fields of an accumulator based on an initial value.  An example of this is setting a minimum
 	 * value because a minimum cannot be initialized without at least one value.

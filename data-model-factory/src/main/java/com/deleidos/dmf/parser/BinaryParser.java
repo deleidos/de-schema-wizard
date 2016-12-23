@@ -3,14 +3,19 @@ package com.deleidos.dmf.parser;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.image.ImageMetadataExtractor;
 import org.xml.sax.ContentHandler;
 
 import com.deleidos.dmf.exception.AnalyticsParsingRuntimeException;
@@ -19,6 +24,7 @@ import com.deleidos.dmf.framework.AbstractAnalyticsParser;
 import com.deleidos.dmf.framework.TikaAnalyzerParameters;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.profiler.BinaryProfilerRecord;
+import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
 
 /**
@@ -33,9 +39,20 @@ public class BinaryParser extends AbstractAnalyticsParser {
 	private String name;
 	private boolean binaryParsingEnabled = false;
 	private final static String ENABLE_BINARY_PARSING = "ENABLE_BINARY_PARSING";
-	
 
-	private final static Map<MediaType, DetailType> types = new HashMap<MediaType, DetailType>();
+	private final static Map<String, DetailType> types = new HashMap<String, DetailType>();
+	private final static Set<MediaType> mediaTypes = new HashSet<MediaType>();
+
+	static {
+		types.put(MediaType.image("jpeg").toString(), DetailType.IMAGE);
+		types.put(MediaType.image("png").toString(), DetailType.IMAGE);
+		mediaTypes.addAll(
+				types.keySet()
+				.stream()
+				.map(MediaType::parse)
+				.collect(Collectors.toList())
+				);
+	}
 
 	@Override
 	public void preParse(InputStream inputStream, ContentHandler handler, Metadata metadata,
@@ -69,7 +86,7 @@ public class BinaryParser extends AbstractAnalyticsParser {
 			int numBytesRead = stream.read(bytes);
 			context.setCharsRead(numBytesRead);
 			if(numBytesRead > 0) {
-				if(!types.containsKey(mediaType)) {
+				if(!types.containsKey(mediaType.toString())) {
 					throw new AnalyticsParsingRuntimeException("Required media type was not set for binary parser.", this);
 				}
 				BinaryProfilerRecord binaryRecord = new BinaryProfilerRecord(name, types.get(mediaType), byteBuffer);
@@ -83,15 +100,32 @@ public class BinaryParser extends AbstractAnalyticsParser {
 	}
 
 	@Override
-	public void postParse(ContentHandler handler, Metadata metadata, TikaAnalyzerParameters context) throws AnalyticsTikaProfilingException {
+	public void postParse(ContentHandler handler, Metadata metadata, TikaAnalyzerParameters<?> context) throws AnalyticsTikaProfilingException {
 		super.postParse(handler, metadata, context);
+		if (binaryParsingEnabled) {
+			if (MediaType.image("jpeg").toString().equals(this.mediaType)) try {
+				String objectName = name.contains(DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER)
+						? name.substring(0, name.lastIndexOf(DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER))
+								: name;
+						Metadata imageMetadata = new Metadata();
+						ImageMetadataExtractor metadataExtractor = new ImageMetadataExtractor(imageMetadata);
+						metadataExtractor.parseJpeg(context.get(File.class));
+						DefaultProfilerRecord rootRecord = new DefaultProfilerRecord();
+						rootRecord.put(objectName, new DefaultProfilerRecord(
+								Arrays.asList(imageMetadata.names()).stream()
+								.collect(Collectors.toMap(Function.identity(), imageMetadata::get)
+										)));
+						context.getProfiler().accumulate(rootRecord);
+			} catch (Exception e) {
+				logger.error("Could not extract image metadata.");
+				throw new AnalyticsTikaProfilingException(e);
+			}
+		}
 	}
 
 	@Override
 	public Set<MediaType> getSupportedTypes(ParseContext context) {
-		types.put(MediaType.image("jpeg"), DetailType.IMAGE);
-		types.put(MediaType.image("png"), DetailType.IMAGE);
-		return types.keySet();
+		return mediaTypes;
 	}
 
 	public String getMediaType() {

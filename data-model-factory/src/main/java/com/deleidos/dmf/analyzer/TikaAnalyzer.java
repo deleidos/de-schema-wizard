@@ -22,6 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.deleidos.config.AbstractConfig;
 import com.deleidos.dmf.analyzer.workflows.CLIWorkflow;
 import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.exception.AnalyticsInitializationRuntimeException;
@@ -60,6 +61,7 @@ import com.deleidos.dp.profiler.SampleSecondPassProfiler;
 import com.deleidos.dp.profiler.SchemaProfiler;
 import com.deleidos.dp.profiler.api.Profiler;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
+import com.deleidos.hd.h2.H2Config;
 import com.deleidos.hd.h2.H2Database;
 import com.deleidos.hd.h2.H2TestDatabase;
 
@@ -170,11 +172,8 @@ public class TikaAnalyzer implements FileAnalyzer {
 
 	public TikaSampleAnalyzerParameters runSampleAnalysis(TikaSampleAnalyzerParameters params)
 			throws IOException, AnalyzerException, DataAccessException {
-		try {
-			SchemaWizardSessionUtility.getInstance().waitForAvailableResources(params.getSessionId(), params.get(File.class));
-		} catch (FileUploadException e) {
-			throw new AnalyticsTikaProfilingException(e);
-		}
+	
+		SchemaWizardSessionUtility.getInstance().requestAnalysis(params.getSessionId(), params.get(File.class));
 
 		AnalyticsDefaultDetector detector = new AnalyticsDefaultDetector();
 		detector.enableProgressUpdates(params.getSessionId(), params.getProgressBar());
@@ -264,7 +263,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 		for (String key : dataSampleBean.getDsProfile().keySet()) {
 			Interpretation interpretation = dataSampleBean.getDsProfile().get(key).getInterpretation();
 			if (interpretation != null && !(Interpretation.isUnknown(interpretation))) {
-				logger.info("Field \"" + key + "\" interpretted to be " + interpretation.getInterpretation() + ".");
+				logger.info("Field \"" + key + "\" interpreted to be " + interpretation.getInterpretation() + ".");
 			}
 
 			Attributes attribute = dataSampleBean.getDsProfile().get(key).getAttributes();
@@ -321,7 +320,6 @@ public class TikaAnalyzer implements FileAnalyzer {
 			metadata.set(Metadata.CONTENT_TYPE, sample.getDsFileType());
 
 			File file = new File(uploadFileDir, sample.getDsFileName());
-
 			File extractedContentDirectory = AnalyticsEmbeddedDocumentExtractor.getOrCreateExtractedContentDirectory(
 					uploadFileDir, file.getName(), EXTRACTED_CONTENT_DIRECTORY_SUFFIX);
 
@@ -364,11 +362,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 
 			params.set(Profiler.class, schemaProfiler);
 
-			try {
-				SchemaWizardSessionUtility.getInstance().waitForAvailableResources(params.getSessionId(), params.get(File.class));
-			} catch (FileUploadException e) {
-				throw new AnalyticsTikaProfilingException(e);
-			}
+			SchemaWizardSessionUtility.getInstance().requestAnalysis(params.getSessionId(), params.get(File.class));		
 
 			try {
 				AnalyticsDefaultDetector detector = new AnalyticsDefaultDetector();
@@ -392,14 +386,10 @@ public class TikaAnalyzer implements FileAnalyzer {
 	public String analyzeSample(String uploadFileDir, String sampleFilePath, String domainName, String tolerance,
 			String sessionId, int sampleNumber, int totalNumberSamples, ProgressBarManager progressBar) 
 					throws AnalyticsCancelledWorkflowException {
+
 		try {
 			TikaSampleAnalyzerParameters params = generateSampleParameters(uploadFileDir, sampleFilePath, domainName, 
 					tolerance, sessionId, sampleNumber, totalNumberSamples, progressBar);
-			/*File extractedContentDirectory = 
-					AnalyticsEmbeddedDocumentExtractor.
-					getOrCreateExtractedContentDirectory(params.getUploadFileDir(), 
-							params.get(File.class).getName(), extractedContentDirSuffix);
-			params.setExtractedContentDir(extractedContentDirectory.getAbsolutePath());*/
 			try {
 				return runSampleAnalysis(params).getProfilerBean().getDsGuid();
 			} catch (AnalyticsCancelledWorkflowException e) {
@@ -429,6 +419,10 @@ public class TikaAnalyzer implements FileAnalyzer {
 		} catch (IOException e) {
 			logger.error("IOException processing sample " + sampleFilePath + ".", e);
 			return H2Database.IO_ERROR_GUID;
+		} finally {
+			if (sampleNumber == totalNumberSamples - 1) {
+				SchemaWizardSessionUtility.getInstance().registerCompleteAnalysis(sessionId);
+			}
 		}
 	}
 
@@ -449,7 +443,9 @@ public class TikaAnalyzer implements FileAnalyzer {
 				} else {
 					schemaBean.setsVersion("1.00");
 				}
-				return new JSONObject(SerializationUtility.serialize(schemaBean));
+				JSONObject result = new JSONObject(SerializationUtility.serialize(schemaBean));
+				SchemaWizardSessionUtility.getInstance().registerCompleteAnalysis(sessionId);
+				return result;
 			} catch (AnalyticsCancelledWorkflowException e) {
 				logger.error("Schema workflow cancelled - session " + sessionId +".");
 				throw e;
@@ -472,11 +468,13 @@ public class TikaAnalyzer implements FileAnalyzer {
 	}
 
 	public static void main(String[] args)
-			throws IOException, AnalyzerException, DataAccessException, ClassNotFoundException, SQLException, InterruptedException {
-		H2TestDatabase h2Test = new H2TestDatabase();
-		h2Test.startTestServer(h2Test.getConfig());
-		H2DataAccessObject.setInstance(h2Test);
-		InterpretationEngineFacade.setInstance(IEConfig.BUILTIN_CONFIG);
+			throws IOException, AnalyzerException, DataAccessException, SQLException, InterruptedException {
+		if (System.getenv(H2Config.SW_CONFIG_ENV_VAR) == null) {
+			H2TestDatabase h2Test = new H2TestDatabase();
+			h2Test.startTestServer(h2Test.getConfig());
+			H2DataAccessObject.setInstance(h2Test);
+			InterpretationEngineFacade.setInstance(IEConfig.BUILTIN_CONFIG);
+		}
 		Scanner scanner = new Scanner(System.in);
 		List<String> argList = new ArrayList<String>(args.length);
 		List<String> files = new ArrayList<String>();
@@ -525,6 +523,8 @@ public class TikaAnalyzer implements FileAnalyzer {
 			CLIWorkflow mainWorkflow = new CLIWorkflow(uploadDir, domainName, tolerance, files, scanner);
 			String schemaGuid = mainWorkflow.runAnalysis();
 			System.out.println("Added schema with guid " + schemaGuid + ".");
+			System.out.println(SerializationUtility.serialize(
+					H2DataAccessObject.getInstance().getSchemaByGuid(schemaGuid, true)));
 			System.out.println("Would you like to run another analysis? (y/n)");
 			if (scanner.nextLine().equals("y")) {
 				List<String> f = new ArrayList<String>();

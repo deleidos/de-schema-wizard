@@ -15,13 +15,17 @@
     }
 }(this, function (angular) {
     angular.module('angular-confirm', ['ui.bootstrap.modal'])
-        .controller('ConfirmModalController', function ($scope, $uibModalInstance, data) {
+        .controller('ConfirmModalController', function ($scope, $uibModalInstance, data, $rootScope) {
             $scope.data = angular.copy(data);
 
             $scope.ok = function (closeMessage) {
                 $uibModalInstance.close(closeMessage);
                 return true;
             };
+
+            $rootScope.$on('dismissModal', function() {
+            $scope.cancel();
+            });
 
             $scope.cancel = function (dismissMessage) {
                 if (angular.isUndefined(dismissMessage)) {

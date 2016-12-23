@@ -17,5 +17,4 @@ com.deleidos.dmf.parser.CEFTikaParser
 com.deleidos.dmf.parser.CSVTikaParser
 com.deleidos.dmf.parser.JSONTikaParser
 com.deleidos.dmf.parser.XMLTikaParser
-#com.deleidos.dmf.parser.BinaryParser
-com.deleidos.dmf.parser.JNetPcapTikaParser
+com.deleidos.dmf.parser.BinaryParser

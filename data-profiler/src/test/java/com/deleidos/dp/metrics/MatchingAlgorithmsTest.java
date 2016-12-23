@@ -18,6 +18,7 @@ import com.deleidos.dp.accumulator.NumberProfileAccumulator;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
+import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
@@ -37,13 +38,13 @@ public class MatchingAlgorithmsTest extends DPMockUpEnvironmentTest {
 	
 	@Test
 	public void jaroWinklerTest() {
-		double jwMatch = MetricsCalculationsFacade.jaroWinklerComparison(s1, s2);
+		double jwMatch = MatchingAlgorithm.jaroWinklerComparison(s1, s2);
 		logger.info(s1 + " and " + s2 + " matched with " + jwMatch + " confidence.");
 		assertTrue(jwMatch > .80);
-		jwMatch = MetricsCalculationsFacade.jaroWinklerComparison(s3, s4);
+		jwMatch = MatchingAlgorithm.jaroWinklerComparison(s3, s4);
 		logger.info(s3 + " and " + s4 + " matched with " + jwMatch + " confidence.");
 		assertTrue(jwMatch > .50);
-		jwMatch = MetricsCalculationsFacade.jaroWinklerComparison(s5, s6);
+		jwMatch = MatchingAlgorithm.jaroWinklerComparison(s5, s6);
 		logger.info(s5 + " and " + s6 + " matched with " + jwMatch + " confidence.");
 		assertTrue(jwMatch > .50);
 	}
@@ -207,7 +208,7 @@ public class MatchingAlgorithmsTest extends DPMockUpEnvironmentTest {
 		// for the matching algorithm
 		Map<String, Profile> profileMap1 = profileToMap(name1, profile1);
 		Map<String, Profile> profileMap2 = profileToMap(name2, profile2);
-		return MetricsCalculationsFacade.match(name1, profileMap1.get(name1),
+		return MatchingAlgorithm.match(name1, profileMap1.get(name1),
 				name2, profileMap2.get(name2));
 	}
 }

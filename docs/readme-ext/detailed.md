@@ -22,7 +22,7 @@ When parsing has been completed, all values will be classified as a **number** o
 ### Detail Types
 Each main type has associated detail types:
 * Number - **integer**, **decimal**, **exponent**
-* String - **boolean**, **term** (no spaces), **phrase** (contains a few spaces), **text** (contains many spaces)
+* String - **boolean**, **term** (no spaces), **phrase** (contains spaces)
 
 ## Interpretation Engine
 The Interpretation Engine brings more meaning to your data.  Using a pluggable framework, it inspects field and identifies significant information elements in data sets.  This adds value to the fields in your samples and schemas.  The following section will explain the details of the Interpretation Engine and what you need to know to use it.
@@ -77,7 +77,7 @@ In the validation script, the “field_profile” is passed to validateInterpret
 |Keyword|Present for type|Value Type|Value Description|
 |:-------:|:-------------:|:--------:|:---------------:|
 |main_type|All|String|“number”, “string”|
-|detail_type|All|String|“integer”, “decimal”, “exponent”, “boolean”, “term”, “phrase”|
+|detail_type|All|String|“integer”, “decimal”, “exponent”, “boolean”, “term”, “phrase”, "text"|
 |example_values|All|List|A list of some unique example values found in the data sample.  If the sample has more than 100 distinct values, Schema Wizard will attempt to populate this list with an even distribution of values across the sample.|
 |num_distinct_values|All|Integer|Number of distinct values found for the number|
 |number_min|Number|Integer or Float|The minimum numerical value|

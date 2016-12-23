@@ -121,9 +121,6 @@ public class H2Database {
 					logger.error(e);
 					System.err.println("Could not populate database with necessary tables.");
 				}
-			} catch (ClassNotFoundException e) {
-				logger.error(e);
-				System.err.println("Could not find h2 driver on classpath.");
 			} catch (InterruptedException e) {
 				logger.error(e);
 				System.err.println("Unexpected threading error while starting server.");
@@ -176,7 +173,7 @@ public class H2Database {
 	 * @throws ClassNotFoundException 
 	 * @throws InterruptedException 
 	 */
-	public Server startServer(H2Config config) throws ClassNotFoundException, SQLException, InterruptedException {
+	public Server startServer(H2Config config) throws SQLException, InterruptedException {
 		logger.info("Starting up H2 server.");
 		String[] args = new String[3];
 		args[0] = "-tcpAllowOthers";

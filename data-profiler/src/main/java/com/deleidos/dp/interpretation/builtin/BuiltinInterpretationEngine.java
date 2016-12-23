@@ -17,6 +17,7 @@ import org.json.JSONObject;
 import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.DomainMetaData;
 import com.deleidos.dp.beans.Interpretation;
+import com.deleidos.dp.beans.Interpretations;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
@@ -68,8 +69,8 @@ public class BuiltinInterpretationEngine implements InterpretationEngine {
 				comparisonName = key.substring(key.lastIndexOf(DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER)+1, key.length());
 			}
 			Interpretation iBean = determineInterpretation(builtinDomain, comparisonName, profileMap.get(key), .8f);
+			profileMap.get(key).setInterpretations(Interpretations.newInstance(iBean));
 			profileMap.get(key).setInterpretation(iBean);
-			profileMap.get(key).setInterpretations(Arrays.asList(iBean));
 		}
 		return profileMap;
 	}

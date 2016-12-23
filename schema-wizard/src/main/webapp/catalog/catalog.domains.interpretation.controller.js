@@ -2,7 +2,7 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.controller('interpretationController', ['$rootScope', '$scope', '$cookies', '$resource',
+    schemaWizardApp.controller('interpretationCtrl', ['$rootScope', '$scope', '$cookies', '$resource',
         '$location', '$route', '$routeParams', '$timeout', '$confirm', 'domainName', 'domainId',
         'interpretationData', 'interpretationResource', 'statusCodesFactory', 'pythonValidateResource',
         'pythonTestResource', '$q', 'uiTourService',

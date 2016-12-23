@@ -5,7 +5,6 @@ import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -30,6 +29,7 @@ public class SchemaWizardServlet extends DefaultServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		
 		if (super.getServletContext().getContextPath().equals("/schwiz")) {
 			logger.debug("Performing health check of Schema Wizard backend services.");
 

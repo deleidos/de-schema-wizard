@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
@@ -19,7 +20,12 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.enums.Tolerance;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
+import com.deleidos.dp.exceptions.SchemaNotFoundException;
+import com.deleidos.dp.export.SQLExporter;
+import com.deleidos.dp.export.SQLExporter.SQLExportException;
+import com.deleidos.dp.export.SQLExporter.SQL_IMPLEMENTATION;
 import com.deleidos.dp.integration.DataProfilerIntegrationEnvironment;
 import com.deleidos.dp.profiler.api.Profiler;
 
@@ -93,6 +99,7 @@ public class ModifyExistingSchemaSimluationIT extends DataProfilerIntegrationEnv
 		}
 		Schema schema = schemaProfiler.finish();
 		schema.setsGuid(UUID.randomUUID().toString());
+		schema.setsName(existingSchema == null ? "original" : "existing");
 		return schema;
 	}
 

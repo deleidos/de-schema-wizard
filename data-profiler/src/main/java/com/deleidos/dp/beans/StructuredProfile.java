@@ -133,7 +133,6 @@ public class StructuredProfile extends Profile {
 		profile.setDetail(this.getDetail());
 		profile.setDisplayName(this.getDisplayName());
 		profile.setExampleValues(this.getExampleValues());
-		profile.setInterpretation(this.getInterpretation());
 		profile.setInterpretations(this.getInterpretations());
 		profile.setMainType(this.getMainType());
 		profile.setMatchingFields(this.getMatchingFields());
@@ -175,13 +174,6 @@ public class StructuredProfile extends Profile {
 	public String getDisplayName() {
 		// TODO Auto-generated method stub
 		return super.getDisplayName();
-	}
-	
-	@JsonIgnore
-	@Override
-	public Interpretation getInterpretation() {
-		// TODO Auto-generated method stub
-		return super.getInterpretation();
 	}
 	
 	@JsonIgnore

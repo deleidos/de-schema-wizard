@@ -99,7 +99,7 @@
                     </ul>
                 </div>
             </div>
-            <div style="width: 600px; margin: 0 auto;">
+            <div style="width: 600px; margin: 0 auto; white-space:normal; padding-bottom:16px; margin-top:11px;">
                 <!-- Two divs are overlayed in order to provide a styled
                      button for the input tag and display of the chosen file name.
                      The 'file' input tag displays poorly in IE so it is hidden
@@ -108,12 +108,12 @@
                     <input id="file-upload" type="file" multiple="multiple" file-model="sampleFile" ng-click="clearFiles()"/>
                     <!--accept="image/jpeg,image/gif,image/png"-->
                 </div>
-                <div style="display: inline-block; margin: 8px;">
+                <div style="display: inline; margin: 8px; padding-top:14px;">
                     <label for="file-upload" class="btn btn-primary">
                         Choose Files
                     </label>
                 </div>
-                <div style="display: inline-block; float: right; margin: 8px;">
+                <div style="margin-right:10px; float:right;">
                     <button id="file-upload-btn" class="btn btn-primary"
                             ng-click="showMask(); uploadFile();" disabled>
                         Upload

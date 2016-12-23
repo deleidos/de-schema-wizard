@@ -1,0 +1,7 @@
+<span style="display: inline-block; width: 100%;"
+      ng-style="justify == 'left' && { 'text-align': 'left' } ||
+                justify == 'center' && { 'text-align': 'center' } ||
+                justify == 'right' && { 'text-align': 'right' }"
+      ng-show="label1 != undefined">
+    {{label1}}<span ng-show="label2 != undefined">&thinsp;/&thinsp;{{label2}}</span>
+</span>

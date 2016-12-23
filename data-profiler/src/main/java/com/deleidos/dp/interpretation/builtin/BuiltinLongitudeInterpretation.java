@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
-import com.deleidos.dp.calculations.MetricsCalculationsFacade;
+import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
 
@@ -42,7 +42,7 @@ public class BuiltinLongitudeInterpretation extends AbstractBuiltinInterpretatio
 		baseComparisonMetrics.setMin(new BigDecimal(-180));
 		baseComparisonMetrics.setMax(new BigDecimal(180));
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.originalMatch(name, profile, "Longitude", baseProfile, nameWeight);
+		return MatchingAlgorithm.originalMatch(name, profile, "Longitude", baseProfile, nameWeight);
 	}
 
 	@Override
@@ -141,7 +141,7 @@ public class BuiltinLongitudeInterpretation extends AbstractBuiltinInterpretatio
 		baseComparisonMetrics.setStdDevLength(.1);
 		baseComparisonMetrics.setNumDistinctValues(finalStringDetails.getNumDistinctValues());
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.originalMatch(stringProfileName, finalStringMetrics, "Longitude", baseProfile, nameWeight);
+		return MatchingAlgorithm.originalMatch(stringProfileName, finalStringMetrics, "Longitude", baseProfile, nameWeight);
 	}
 
 	@Override

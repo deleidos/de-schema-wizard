@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.deleidos.dp.deserializors.ConversionUtility;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -28,8 +28,10 @@ public class Schema {
 	private String sDomainName;
 	private int recordsParsedCount;
 	private Map<String, Profile> sProfile;
+	private List<StructuredNode> sStructuredProfile;
 	private List<DataSampleMetaData> sDataSamples;
-
+	private boolean sContainsStructuredData = false;
+	
 	public Schema() {
 		sProfile = new HashMap<String, Profile>();
 		sDataSamples = new ArrayList<DataSampleMetaData>();
@@ -151,6 +153,14 @@ public class Schema {
 
 	public void setsProfile(Map<String, Profile> sProfile) {
 		this.sProfile = sProfile;
+		this.sStructuredProfile = ConversionUtility.convertToHeirarchicalList(sProfile);
+		for(StructuredNode node : sStructuredProfile) {
+			if(node.getChildren().size() > 0) {
+				sContainsStructuredData = true;
+				return;
+			}
+		}
+		sContainsStructuredData = false;
 	}
 
 	@JsonProperty("sDataSamples")
@@ -180,5 +190,8 @@ public class Schema {
 		this.sDomainName = sDomainName;
 	}
 
+	public List<StructuredNode> getsStructuredProfile() {
+		return sStructuredProfile;
+	}
 
 }

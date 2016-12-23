@@ -8,6 +8,7 @@ import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
+import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
@@ -43,7 +44,7 @@ public class BuiltinLatitudeInterpretation extends AbstractBuiltinInterpretation
 		baseComparisonMetrics.setMin(new BigDecimal(-90));
 		baseComparisonMetrics.setMax(new BigDecimal(90));
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.originalMatch(numberProfileName, finalNumberMetrics, "Latitude", baseProfile, nameWeight);
+		return MatchingAlgorithm.originalMatch(numberProfileName, finalNumberMetrics, "Latitude", baseProfile, nameWeight);
 	}
 
 	@Override
@@ -140,7 +141,7 @@ public class BuiltinLatitudeInterpretation extends AbstractBuiltinInterpretation
 		baseComparisonMetrics.setStdDevLength(.1);
 		baseComparisonMetrics.setNumDistinctValues(finalStringDetails.getNumDistinctValues());
 		baseProfile.setDetail(baseComparisonMetrics);
-		return MetricsCalculationsFacade.originalMatch(stringProfileName, finalStringMetrics, "Latitude", baseProfile, nameWeight);
+		return MatchingAlgorithm.originalMatch(stringProfileName, finalStringMetrics, "Latitude", baseProfile, nameWeight);
 	}
 
 	@Override

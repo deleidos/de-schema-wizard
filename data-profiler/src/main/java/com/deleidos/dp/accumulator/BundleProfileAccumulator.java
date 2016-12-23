@@ -133,11 +133,15 @@ public class BundleProfileAccumulator implements Accumulator.TypeInsensitivePres
 		return bestAccumulator.getState();
 	}
 
+	/**
+	 * Returns an optional containing the profile, or an empty optional if no main type could be determined.
+	 * @param numRecords
+	 * @return
+	 */
 	public Optional<Profile> getBestGuessProfile(int numRecords) {
 		try {
 			return Optional.of(BundleProfileAccumulator.getBestGuessProfile(this, numRecords));
 		} catch (MainTypeException e) {
-			logger.warn("Main type could not be determined for field " + this.fieldName + ".");
 			logger.debug("Main type could not be determined for field " + this.fieldName + ".", e);
 			return Optional.empty();
 		}

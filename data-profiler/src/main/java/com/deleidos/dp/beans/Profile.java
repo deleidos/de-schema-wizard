@@ -1,6 +1,7 @@
 package com.deleidos.dp.beans;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,11 +18,24 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  */
 public class Profile {
+	private String structType = null;
+	private static final String STRUCT_OBJECT = "object";
+
+	@JsonProperty("struc-type")
+	public String getStructType() {
+		return structType;
+	}
+
+	@JsonProperty("struc-type")
+	public void setStructType(String structType) {
+		this.structType = structType;
+	}
+
 	protected float presence;
 	private String originalName;
 	private MainType mainType;
-	private Interpretation interpretation;
-	private List<Interpretation> interpretations;
+	//private Interpretation interpretation;
+	private Interpretations interpretations;
 	private Detail detail;
 	private List<AliasNameDetails> aliasNames;
 	private List<MatchingField> matchingFields;
@@ -31,6 +45,11 @@ public class Profile {
 	private String displayName;
 	private Attributes attributes;
 
+	public Profile() {
+		matchingFields = new ArrayList<MatchingField>();
+		interpretations = new Interpretations();
+	}
+	
 	@JsonProperty("original-name")
 	public String getOriginalName() {
 		return originalName;
@@ -59,10 +78,6 @@ public class Profile {
 	@JsonProperty("merged-into-schema")
 	public void setMergedInto(boolean mergedInto) {
 		this.mergedInto = mergedInto;
-	}
-
-	public Profile() {
-		matchingFields = new ArrayList<MatchingField>();
 	}
 
 	@JsonProperty("main-type")
@@ -98,12 +113,12 @@ public class Profile {
 		this.matchingFields = matchingFields;
 	}
 
-	@JsonProperty("alias-names")
+	@JsonProperty("aliasNames")
 	public List<AliasNameDetails> getAliasNames() {
 		return aliasNames;
 	}
 
-	@JsonProperty("alias-names")
+	@JsonProperty("aliasNames")
 	public void setAliasNames(List<AliasNameDetails> aliasNames) {
 		this.aliasNames = aliasNames;
 	}
@@ -169,29 +184,28 @@ public class Profile {
 		this.exampleValues = exampleValues;
 	}
 
-	public List<Interpretation> getInterpretations() {
+	public Interpretations getInterpretations() {
 		return interpretations;
 	}
 
-	public void setInterpretations(List<Interpretation> interpretations) {
+	public void setInterpretations(Interpretations interpretations) {
 		this.interpretations = interpretations;
-		if(this.interpretations != null && !this.interpretations.isEmpty()) {
+		/*if(this.interpretations != null && !this.interpretations.isEmpty()) {
 			this.interpretation = this.interpretations.get(0);
 		} else {
 			this.interpretation = Interpretation.UNKNOWN;
-		}
+		}*/
 	}
 
+	@JsonIgnore
 	public void setInterpretation(Interpretation interpretation) {
-		this.interpretation = interpretation;
-		if(interpretations == null) {
-			interpretations = new ArrayList<Interpretation>();
-			interpretations.add(interpretation);
-		}
+		interpretations.add(interpretation);
+		interpretations.setSelectedOption(interpretation);
 	}
 
+	@JsonIgnore
 	public Interpretation getInterpretation() {
-		return this.interpretation;
+		return interpretations.getSelectedOption();
 	}
 
 	@JsonProperty("display-name")
@@ -235,6 +249,8 @@ public class Profile {
 	public static Profile objectProfile() {
 		Profile profile = new Profile();
 		profile.setMainType(MainType.OBJECT.toString());
+		profile.setPresence(-1f);
+		profile.setStructType(STRUCT_OBJECT);
 		return profile;
 	}
 	

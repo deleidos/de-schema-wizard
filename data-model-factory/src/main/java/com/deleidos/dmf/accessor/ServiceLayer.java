@@ -1,8 +1,9 @@
 package com.deleidos.dmf.accessor;
 
+import java.util.Map;
+
 import javax.ws.rs.core.Response;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 public interface ServiceLayer {
@@ -186,5 +187,12 @@ public interface ServiceLayer {
 	 *            A GUID from either a Schema or Data Sample
 	 */
 	public Response deleteByGuid(String guid);
+	
+	/**
+	 * Make a call to the back end to export a schema.
+	 * @param parameters
+	 * @return
+	 */
+	public Response exportSchema(Map<String, Object> parameters);
 
 }

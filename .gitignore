@@ -27,6 +27,7 @@ data-model-factory/.classpath
 data-model-factory/.project
 data-model-factory/.settings
 data-model-factory/example.log
+data-model-factory/bin
 
 schema-wizard/.classpath
 schema-wizard/.project
@@ -51,6 +52,7 @@ data-profiler/.project
 data-profiler/.settings
 data-profiler/.settings
 data-profiler/example.log
+data-profiler/bin
 
 reverse-geocoding-service/
 
@@ -77,3 +79,11 @@ third-party-repo/data-services/analytics-data-services
 third-party-repo/gdal/ubuntu/gdal-1.11.1.ubuntu.x86_64
 third-party-repo/gdal/windows/gdal-1.11.1.win64
 third-party-repo/bin
+
+dev/*
+!dev/build/build.properties
+!dev/build.py
+!dev/commons.py
+!dev/deploy.py
+!dev/Readme.txt
+!dev/bigtext.cmd

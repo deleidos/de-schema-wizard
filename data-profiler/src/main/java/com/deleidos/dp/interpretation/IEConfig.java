@@ -7,11 +7,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.log4j.Logger;
 
 import com.deleidos.config.AbstractConfig;
-import com.deleidos.dp.deserializors.SerializationUtility;
 
 /**
  * Configuration class for Interpretation Engine

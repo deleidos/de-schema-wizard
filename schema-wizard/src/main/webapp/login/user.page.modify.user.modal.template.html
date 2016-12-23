@@ -1,0 +1,88 @@
+<div class="modal-header">
+    <div class="modal-title">{{data.title}}</div>
+</div>
+<div ng-controller="userCtrl" style="margin-left:10px;margin-top:10px">
+    <div>
+        <label><b style="padding-left:10px;">Name</b></label><br>
+        <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="name" placeholder="Name"
+               value="{{data.name}}" autofocus><br>
+    </div>
+    <div>
+        <label><b style="padding-left:10px">Username</b></label><br>
+        <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="username"
+               placeholder="Username"
+               value="{{data.username}}" disabled><br>
+    </div>
+    <div ng-hide="!data.currentUser">
+        <form style="width: 99%;" name="question">
+            <div>
+                <label><b style="padding-left:10px;">Question One</b></label><br>
+                <select id="q1q" style="width: 90%; margin-left: 9px; margin-bottom:15px; " ng-model="question1">
+                    <option ng-repeat="option in data.sec1" value="{{option}}">{{option}}</option>
+                </select>
+                <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="q1" placeholder="Q1"
+                ><br>
+            </div>
+            <div>
+                <label><b style="padding-left:10px;">Question Two</b></label><br>
+                <select id="q2q" style="width: 90%; margin-left: 9px; margin-bottom:15px; " ng-model="question2"
+                >
+                    <option ng-repeat="option in data.sec2" value="{{option}}">{{option}}</option>
+                </select>
+                <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="q2" placeholder="Q2"
+                ><br>
+            </div>
+            <div>
+                <label><b style="padding-left:10px;">Question Three</b></label><br>
+                <select id="q3q" style="width: 90%; margin-left: 9px; margin-bottom:15px; " ng-model="question3"
+                >
+                    <option ng-repeat="option in data.sec3" value="{{option}}">{{option}}</option>
+                </select>
+                <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="text" id="q3" placeholder="Q3"
+                ><br>
+            </div>
+
+        </form>
+    </div>
+    <div>
+        <label><b style="padding-left:10px">Enter New Password</b></label><br>
+        <input style="width: 90%; margin-left: 9px; margin-bottom:15px; " type="password" id="password"
+               placeholder="Enter New Password"
+               ng-model="value1"
+               equals="{{value2}}"
+               value="{{data.password}}"
+        ><br>
+    </div>
+    <div>
+        <label><b style="padding-left:10px">Confirm Password</b></label><br>
+        <input style="width: 90%; margin-left: 9px; " type="password" id="confirmPassword"
+               ng-model="value2"
+               equals="{{value1}}"
+               placeholder="Confirm Password"
+
+        ><br>
+    </div>
+
+    <form ng-hide="data.currentUser" style="width: 93%;">
+        <fieldset style="margin-top: 20px; -webkit-padding-end: 68%;margin-left:10px; ">
+            <legend style="font-size: 12pt; margin-bottom: 0px;border-bottom:0;">User Role</legend>
+            <label style="margin-right: 10px;">
+                <input ng-checked="data.role == 'admin'" ng-click="$event.stopPropagation();"
+                       type="radio"
+                       name="roleType"
+                       value="Admin"> Admin
+            </label>
+            <label style="margin-right: 10px;">
+                <input ng-checked="data.role == 'user'" ng-click="$event.stopPropagation();"
+                       type="radio"
+                       name="roleType"
+                       value="User"> User
+            </label>
+        </fieldset>
+    </form>
+</div>
+<br>
+<div class="modal-footer btn-group-xs">
+    <button class="btn btn-primary btn-group-xs" ng-click="cancel()">{{data.cancel}}</button>
+    <button class="btn btn-primary btn-group-xs" ng-enter="ok();" ng-click="ok()">{{data.ok}}</button>
+</div>

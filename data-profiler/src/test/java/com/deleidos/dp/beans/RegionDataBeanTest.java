@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.json.JSONObject;
 import org.junit.Test;
 
 import com.deleidos.dp.deserializors.SerializationUtility;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 
 public class RegionDataBeanTest {

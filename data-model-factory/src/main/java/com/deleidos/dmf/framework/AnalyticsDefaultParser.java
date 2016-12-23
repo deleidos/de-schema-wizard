@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.tika.config.ServiceLoader;
 import org.apache.tika.detect.Detector;
@@ -28,8 +27,6 @@ import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.sax.SecureContentHandler;
 import org.gagravarr.tika.OggParser;
 import org.gagravarr.tika.SpeexParser;
-import org.jnetpcap.packet.JRegistry;
-import org.jnetpcap.packet.RegistryHeaderErrors;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
@@ -41,19 +38,13 @@ import com.deleidos.dmf.exception.AnalyticsRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.exception.AnalyticsUndetectableTypeException;
 import com.deleidos.dmf.exception.AnalyticsUnsupportedParserException;
+import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dmf.framework.AnalyticsEmbeddedDocumentExtractor.ExtractedContent;
 import com.deleidos.dmf.handler.AnalyticsProgressTrackingContentHandler;
-import com.deleidos.dmf.parser.JNetPcapTikaParser;
-import com.deleidos.dmf.parser.pcap.ext.Wireless80211;
-import com.deleidos.dmf.parser.pcap.ext.Wireless80211RadioTap;
-import com.deleidos.dmf.progressbar.ProgressBarManager;
-import com.deleidos.dmf.progressbar.ProgressState;
 import com.deleidos.dmf.progressbar.ProgressState.STAGE;
 import com.deleidos.dmf.web.SchemaWizardSessionUtility;
-import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.profiler.AbstractReverseGeocodingProfiler;
-import com.deleidos.dp.profiler.api.Profiler;
 
 /**
  * This class parses files to load them into a Schema Wizard Analyzer.  This parser will attempt to recursively extract
@@ -82,12 +73,6 @@ public class AnalyticsDefaultParser extends DefaultParser implements Analyzer<Ti
 	public AnalyticsDefaultParser(AnalyticsDefaultDetector detector, TikaAnalyzerParameters parameters) {
 		super(MediaTypeRegistry.getDefaultRegistry(), new ServiceLoader(), excludedParsers);
 		this.detector = detector;
-		try {
-			JRegistry.register(Wireless80211RadioTap.class);
-			JRegistry.register(Wireless80211.class);
-		} catch (RegistryHeaderErrors e) {
-			logger.error("Could not add JNetPcapTikaParser.  Parser will not be available.", e);
-		}
 
 		PDFParserConfig pc = new PDFParserConfig();
 		pc.setExtractInlineImages(true);

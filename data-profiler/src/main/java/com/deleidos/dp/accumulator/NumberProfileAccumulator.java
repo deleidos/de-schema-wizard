@@ -10,6 +10,8 @@ import org.apache.log4j.Logger;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
+import com.deleidos.dp.calculations.TypeDetermination;
+import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractNumberBucketList;
@@ -48,7 +50,7 @@ public class NumberProfileAccumulator extends AbstractProfileAccumulator<Number>
 	}
 
 	public void accumulateDetailType(Object value) {
-		detailTypeTracker[MetricsCalculationsFacade.determineNumberDetailType(value).getIndex()]++;
+		detailTypeTracker[TypeDetermination.determineNumberDetailType(value).getIndex()]++;
 	}
 
 	public void accumulateMin(BigDecimal value) {
@@ -84,12 +86,8 @@ public class NumberProfileAccumulator extends AbstractProfileAccumulator<Number>
 		NumberDetail schemaNumberDetail = (schemaProfile != null) ? Profile.getNumberDetail(schemaProfile) : null;
 		List<NumberDetail> sampleNumberDetails = new ArrayList<NumberDetail>();
 		for(Profile sampleProfile : sampleProfiles) {
-			Optional<NumberDetail> numberDetailOptional = Profile.getNumberDetailOptional(sampleProfile);
-			if(numberDetailOptional.isPresent()) {
-				sampleNumberDetails.add(numberDetailOptional.get());
-			} else {
-				logger.info("Profile for " + sampleProfile.getDisplayName() + " dropped due to type mismatch.");
-			}	
+			NumberDetail numberDetail = Profile.getNumberDetail(sampleProfile);
+			sampleNumberDetails.add(numberDetail);
 		}
 		numberHistogram = AbstractNumberBucketList.newNumberBucketList(
 				schemaNumberDetail, sampleNumberDetails);
@@ -170,5 +168,14 @@ public class NumberProfileAccumulator extends AbstractProfileAccumulator<Number>
 	@Override
 	protected Number createAppropriateObject(Object object) throws MainTypeException {
 		return MainType.NUMBER.createNumber(object);
+	}
+
+	@Override
+	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
+		if (existingSchemaProfile != null) {
+			return existingSchemaProfile.getDetail().getDetailTypeClass();
+		} else {
+			return sampleProfiles.get(0).getDetail().getDetailTypeClass();
+		}
 	}
 }

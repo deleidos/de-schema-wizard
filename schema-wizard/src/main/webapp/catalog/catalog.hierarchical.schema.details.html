@@ -1,0 +1,167 @@
+<div style="width: 100%; margin: 2px 6px;">
+    <div id="sampleMask" class="full-size"
+         style="color: white; background-color: black; opacity: 0.8;
+                font-family: 'MS Reference Sans Serif', sans-serif; font-size: 24px;
+            z-index: 999; text-align: center; display: none;">
+        <p style="position: absolute; left: 200px; top:200px; right: 200px;">
+            If the schema contains structured fields then it may take up to 30 seconds to load.
+        </p>
+        <p style="position: absolute; left: 200px; top:300px; right: 200px;">
+            If the browser warns about a 'busy' script then respond to allow more time.
+        </p>
+    </div>
+    <div id="schemaDetailsContainer"
+         class="panel-primary container" style="width: 99%; padding: 6px;">
+        <div class="row" style="margin-bottom: 6px; padding-bottom: 0px;">
+            <div class="col-xs-8 panel-group" style="margin-bottom: 0px;">
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            Schema Details - {{currentSchema.sName}}
+                            <img style="border: none; float: right; margin-top: -3px; margin-right: 0px;"
+                                 src="assets/img/blue-tour-bus-22x22.png"
+                                 uib-tooltip="Take a tour of the Schema Page"
+                                 tooltip-placement="bottom"
+                                 ng-click="tour.startAt('500')"
+                                 tour-step-template-url="'schema-wizard/schema-wizard.tour-first-step.template.html'"
+                                 tour-step="500"
+                                 tour-step-title={{finalizeSchemaTour.step1.title}}
+                                 tour-step-order="500"
+                                 tour-step-content={{finalizeSchemaTour.step1.message}}
+                                 tour-step-prevStep="500"
+                                 tour-step-orphan="true"
+                                 tour-step-backdrop="false">
+                        </h3>
+                    </div>
+                    <div id="schemaDetailsPanelBody" class="panel-body"
+                         style="height: 530px; width: 100%; white-space: nowrap; overflow-x: auto; overflow-y: hidden; border: thin solid gray;">
+                        <div ng-repeat="col in columns track by $index"
+                             class="tree-table-grid"
+                             style="float: left; height: 500px; border-bottom: thin solid gray;">
+                            <div class="tree-table-heading">
+                                <div class="tree-table-cell">
+                                    <p>{{col.name}}</p>
+                                </div>
+                            </div>
+                            <div id="{{getColumnId($index, $last)}}"
+                                 style="{{getColumnStyle($last)}}">
+                                <div class="tree-table-row">
+                                    <div class="tree-table-cell" style="border-bottom: 2px solid lightgrey;"
+                                         ng-switch on="col.complexCell">
+                                        <div ng-switch-when="true"
+                                             style="display: inline-block; width: 100%;"
+                                             ng-style="($middle || $last) && { 'display': 'inline-block', 'text-align': 'center' }"
+                                             data-angular-complex-tree-grid="true"
+                                             data-complex-tree-grid=treeTable.data
+                                             data-complex-tree-data-id="treeTable"
+                                             data-node-id="id"
+                                             data-node-label1="{{col.property1}}"
+                                             data-node-label2="{{col.property2}}"
+                                             data-node-children="children"
+                                             data-tree-depth="0"
+                                             data-column-is-tree="{{$first}}"
+                                             data-cell-min-width="{{col.width}}"
+                                             data-callback-method="{{col.callback}}"
+                                             data-tree-cell-directive="{{col.tree.directive}}"
+                                             data-other-tree-data="{{col.tree.data}}"
+                                             data-table-cell-directive="{{col.table.directive}}"
+                                             data-other-table-data={{col.table.data}}
+                                             data-link-data=currentSchema>
+                                        </div>
+                                        <div ng-switch-default
+                                             style="display: inline-block; width: 100%;"
+                                             ng-style="($middle || $last) && { 'display': 'inline-block', 'text-align': 'center' }"
+                                             data-angular-simple-tree-grid="true"
+                                             data-simple-tree-grid=treeTable.data
+                                             data-simple-tree-data-id="treeTable"
+                                             data-node-id="id"
+                                             data-node-label1="{{col.property1}}"
+                                             data-node-label2="{{col.property2}}"
+                                             data-node-children="children"
+                                             data-cell-min-width="{{col.width}}"
+                                             data-table-cell-directive="{{col.table.directive}}"
+                                             data-other-table-data={{col.table.data}}
+                                             data-link-data=currentSchema>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-4 panel-group" style="margin-left: -6px; margin-bottom: 0px; padding-left: 0px;">
+                <div details-panel panel-index="" detail-models-panel="detailPanel"></div>
+            </div>
+        </div>
+        <ng-include src="'schema-wizard/schema-wizard.legend.html'"></ng-include>
+        <br>
+        <div class="row" style="margin-bottom: 0px; padding-bottom: 0px;">
+            <style>
+                .table > tbody > tr > td {
+                    padding: 2px;
+                    max-width: 10px;
+                    padding-left: 20px;
+                }
+
+                .table > thead > tr > th, .table > tbody > tr > th {
+                    max-width: 10px;
+                }
+
+                .panel-group {
+                    margin-bottom: 0px;
+                }
+            </style>
+            <div class="col-xs-12 panel-group">
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Data Samples</h3>
+                    </div>
+                    <table class="table table-striped">
+                        <tr>
+                            <th>Name</th>
+                            <th>File Name</th>
+                            <th>File Type</th>
+                        </tr>
+                    </table>
+                    <div class="panel-body" style="padding-left: 0px; height: 160px; overflow-y: scroll;">
+                        <table class="table table-striped header-fixed">
+                            <tbody>
+                            <tr ng-repeat="sample in currentSchema.sDataSamples track by $index">
+                                <td>
+                                    <p onmouseover="this.style.cursor='pointer'"
+                                       ng-click="tabHistoryFactory.setPrevTab(1); browseSample(sample, browseSchema, currentSchema)"
+                                       style="color: blue; font-style: italic;">
+                                        {{sample.dsName}}
+                                    </p>
+                                </td>
+                                <td>{{sample.dsFileName}}</td>
+                                <td>{{sample.dsFileType}}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary" style="float: right; margin-top: 8px; margin-left: 4px;"
+                uib-tooltip="Return to catalog"
+                tooltip-placement="left"
+                ng-click="navigateTo('/catalog')">
+            Ok
+        </button>
+        <button class="btn btn-primary" style="float: right; margin-top: 8px; margin-left: 4px;"
+                uib-tooltip="Modify this schema by adding data samples using the wizard"
+                tooltip-placement="left"
+                ng-click="wizardStateControl('wizard-upload-samples-existing-schema')">
+            Modify Using Wizard
+        </button>
+        <button ng-controller="exportCtrl"
+                class="btn btn-primary" style="float: right; margin-top: 8px; margin-left: 4px;"
+                uib-tooltip="Export schema to local file system"
+                tooltip-placement="left"
+                ng-click="exportSchema(currentSchema)">
+            Export
+        </button>
+    </div>
+</div>

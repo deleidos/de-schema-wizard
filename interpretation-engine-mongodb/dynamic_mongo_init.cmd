@@ -13,8 +13,8 @@ mongo reverse-geo --eval "db.dropDatabase()"
 
 :: Import necessary files.
 mongoimport --db reverse_geo --collection geospatial --file "%~dp0\country_polygon_data.json"
-mongoimport --db domain_manager --collection domains --file ""%~dp0\target\domain_imports.json"
-mongoimport --db domain_manager --collection interpretations --file ""%~dp0\target\interpretation_imports.json"
+mongoimport --db domain_manager --collection domains --file "%~dp0\target\domain_imports.json"
+mongoimport --db domain_manager --collection interpretations --file "%~dp0\target\interpretation_imports.json"
 
 echo Creating geospatial index.
 mongo reverse_geo --eval "db.geospatial.createIndex({geometry: '2dsphere'})"

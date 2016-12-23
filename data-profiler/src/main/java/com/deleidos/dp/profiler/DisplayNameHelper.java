@@ -43,7 +43,7 @@ public class DisplayNameHelper {
 	public String getProposed() {
 		return proposed;
 	}
-	
+
 	public int getPathDepth() {
 		return pathDepth;
 	}
@@ -56,7 +56,7 @@ public class DisplayNameHelper {
 		this.proposed = dropPathPrefix(original, --pathDepth);
 	}
 
-	public String dropPathPrefix(String originalName, int numPathQualifiersToDrop) {
+	public static String dropPathPrefix(String originalName, int numPathQualifiersToDrop) {
 		String tmpName = originalName;
 		for(int i = 0; i < numPathQualifiersToDrop; i++) {
 			int index = tmpName.indexOf(splitter);
@@ -117,7 +117,7 @@ public class DisplayNameHelper {
 		}
 		return displayNameMap;
 	}
-	
+
 	private static boolean containsDuplicates(Map<String, List<DisplayNameHelper>> proposedDisplayNames) {
 		for(String key : proposedDisplayNames.keySet()) {
 			if(proposedDisplayNames.get(key).size() > 1) {
@@ -126,7 +126,7 @@ public class DisplayNameHelper {
 		}
 		return false;
 	}
-	
+
 	private static Map<String, List<DisplayNameHelper>> stepUpDuplicatePaths(Map<String, List<DisplayNameHelper>> proposedDisplayNames) {
 		for(String key : proposedDisplayNames.keySet()) {
 			if(proposedDisplayNames.get(key).size() > 1) {
@@ -137,7 +137,7 @@ public class DisplayNameHelper {
 		}
 		return proposedDisplayNames;
 	}
-	
+
 	private static Map<String, String> determineUniqueDisplayNames(Map<String, List<DisplayNameHelper>> nonUniqueDisplayNameMap) {
 		// map proposedDisplayName -> list of helperClassesThat currently have that as a proposed name
 		int maxIterations = 0;
@@ -157,7 +157,7 @@ public class DisplayNameHelper {
 		for(String displayName : nonUniqueDisplayNameMap.keySet()) {
 			if(nonUniqueDisplayNameMap.get(displayName).size() > 1) {
 				nonUniqueDisplayNameMap.get(displayName).forEach(x->
-					logger.error("Error determining unique key for " + x.getOriginal()));
+				logger.error("Error determining unique key for " + x.getOriginal()));
 			} else {
 				uniqueFieldToDisplayNameMapping.put(
 						nonUniqueDisplayNameMap.get(displayName).get(0).getOriginal(), displayName);
@@ -167,14 +167,22 @@ public class DisplayNameHelper {
 	}
 
 	public static Map<String, Profile> determineDisplayNames(Map<String, Profile> profile) {
-		Map<String, List<DisplayNameHelper>> nonUniqueDisplayNameMap = profileToDisplayNameMap(profile);
-		Map<String, String> displayNames = determineUniqueDisplayNames(nonUniqueDisplayNameMap);
-		for(String key : displayNames.keySet()) {
-			profile.get(key).setDisplayName(displayNames.get(key));
+		final boolean advancedDisplayName = false;
+		if (advancedDisplayName) {
+			Map<String, List<DisplayNameHelper>> nonUniqueDisplayNameMap = profileToDisplayNameMap(profile);
+			Map<String, String> displayNames = determineUniqueDisplayNames(nonUniqueDisplayNameMap);
+			for(String key : displayNames.keySet()) {
+				profile.get(key).setDisplayName(displayNames.get(key));
+			}
+			return profile;
+		} else {
+			for (String key : profile.keySet()) {
+				profile.get(key).setDisplayName(dropPathPrefix(key, 100));
+			}
+			return profile;
 		}
-		return profile;
 	}
-	
+
 	public static Map<String, Profile> replaceKeysWithDisplayNames(Map<String, Profile> profile) {
 		Map<String, Profile> replacedMap = new HashMap<String, Profile>();
 		profile.forEach((k, v)-> {
@@ -188,7 +196,7 @@ public class DisplayNameHelper {
 						regionData.setLongitudeKey(profile.get(regionData.getLongitudeKey()).getDisplayName());
 					} else {
 						logger.error("Could not correctly identify coordinate pair " +regionData.getLatitudeKey()
-								+ ", " +regionData.getLongitudeKey()+ ".");
+						+ ", " +regionData.getLongitudeKey()+ ".");
 					}
 				}
 			}

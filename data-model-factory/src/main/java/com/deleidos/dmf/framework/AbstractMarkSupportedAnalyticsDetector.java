@@ -19,7 +19,7 @@ import com.deleidos.dmf.exception.AnalyticsRuntimeException;
  * @author leegc
  *
  */
-public abstract class AbstractMarkSupportedAnalyticsDetector extends AnalyticsDetectorWrapper {
+public abstract class AbstractMarkSupportedAnalyticsDetector implements Detector {
 	/**
 	 * 
 	 */
@@ -27,10 +27,6 @@ public abstract class AbstractMarkSupportedAnalyticsDetector extends AnalyticsDe
 	private static final Logger logger = Logger.getLogger(AbstractMarkSupportedAnalyticsDetector.class);
 	protected int validStartMark = 0;
 	protected int validEndMark = 0;
-	
-	public AbstractMarkSupportedAnalyticsDetector() {
-		setHasBodyPlainTextContent(false);
-	}
 
 	/**
 	 * Implementation of the Tika detect() method.  Adds some additional functionality to the
@@ -54,16 +50,19 @@ public abstract class AbstractMarkSupportedAnalyticsDetector extends AnalyticsDe
 			if (type == null) {
 				throw new AnalyticsRuntimeException("Detector subclasses should not return null.");
 			}
-			if(!type.equals(MediaType.OCTET_STREAM) && Float.floatToRawIntBits(confidenceInterval) == 0) {
-				confidenceInterval = .99f; //as of 1/19, default confidence is 99%
-			}
 			tikaInputStream.reset();
 		} finally {
 			tmp.close();
 		}
 		return type;
 	}
+	
+	protected void setConfidence(Metadata metadata, Float confidence) {
+		AnalyticsDetectorWrapper.setConfidence(metadata, confidence);
+	}
 
+	public abstract Set<MediaType> getDetectableTypes();
+	
 	/**
 	 * Main override method for any new detectors.  Call getTikaInputStream() within this method to obtain the working input stream.
 	 * This is a protective layer to simplify the Apache Tika framework.
@@ -146,4 +145,5 @@ public boolean closeOnBinaryDetection() throws IOException {
 		else if(character == 32) return true;
 		else return false;
 	}
+	
 }

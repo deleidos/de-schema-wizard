@@ -10,6 +10,7 @@ import com.deleidos.dp.beans.AliasNameDetails;
 import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.Detail;
 import com.deleidos.dp.beans.Interpretation;
+import com.deleidos.dp.beans.Interpretations;
 import com.deleidos.dp.beans.MatchingField;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
@@ -30,7 +31,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public class ProfileDeserializer extends JsonDeserializer<Profile> {
 	private static final Logger logger = Logger.getLogger(ProfileDeserializer.class);
-
+	
 	@Override
 	public Profile deserialize(JsonParser p, DeserializationContext ctxt)
 			throws IOException, JsonProcessingException {
@@ -38,6 +39,11 @@ public class ProfileDeserializer extends JsonDeserializer<Profile> {
 
 		JsonNode rootNode = p.readValueAsTree();
 		MainType mainType = MainType.fromString(rootNode.path("main-type").asText());
+		
+		if (mainType.equals(MainType.OBJECT)) {
+			return Profile.objectProfile();
+		}
+		
 		JsonNode detailJson = rootNode.path("detail");
 		Detail detail;
 		float presence = (float)rootNode.path("presence").asDouble(0.0);
@@ -62,7 +68,7 @@ public class ProfileDeserializer extends JsonDeserializer<Profile> {
 			profile.setDetail(detail);
 
 			List<AliasNameDetails> aliasNameList = null;
-			JsonNode aliasNode = rootNode.path("alias-names");
+			JsonNode aliasNode = rootNode.path("aliasNames");
 			if(aliasNode.size() > 0) {
 				aliasNameList = new ArrayList<AliasNameDetails>();
 				for(int i = 0; i < aliasNode.size(); i++) {
@@ -80,8 +86,7 @@ public class ProfileDeserializer extends JsonDeserializer<Profile> {
 				}
 			}
 			profile.setMatchingFields(matchingFieldList);
-			JsonNode interpretations = rootNode.path("interpretations");
-			if(!interpretations.isMissingNode()) {
+			/*if(!interpretations.isMissingNode()) {
 				profile.setInterpretations(SerializationUtility.deserialize(interpretations
 						, new TypeReference<List<Interpretation>>(){}));
 				if(profile.getInterpretations() != null && !profile.getInterpretations().isEmpty()) {
@@ -91,13 +96,16 @@ public class ProfileDeserializer extends JsonDeserializer<Profile> {
 				}
 			} else {
 				profile.setInterpretation(SerializationUtility.deserialize(rootNode.path("interpretation"), Interpretation.class));
-			}
+			}*/
+			JsonNode interpretations = rootNode.path("interpretations");
+			profile.setInterpretations(
+					SerializationUtility.deserialize(interpretations, Interpretations.class));
 			profile.setMainType(mainType.toString());
 			profile.setMergedInto(rootNode.path("merged-into-schema").asBoolean());
-			profile.setOriginalName((!rootNode.path("original-name").isNull()) ? rootNode.path("original-name").asText() : null);
+			profile.setOriginalName(rootNode.path("original-name").asText(null));
 			profile.setUsedInSchema(rootNode.path("used-in-schema").asBoolean());
 			profile.setPresence((float)rootNode.path("presence").asDouble());
-			profile.setDisplayName((!rootNode.path("display-name").isNull()) ? rootNode.path("display-name").asText() : null);
+			profile.setDisplayName(rootNode.path("display-name").asText(null));
 
 		} else {
 			switch(mainType) {

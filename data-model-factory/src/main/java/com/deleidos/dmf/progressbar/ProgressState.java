@@ -73,7 +73,7 @@ public class ProgressState {
 		return new ProgressState(start, end, sampleName+": Building data visualizations.", STAGE.SECOND_PASS);
 	}
 	public static ProgressState interpreting(String sampleName, float start, float end) {
-		return new ProgressState(start, end, sampleName+": Interpretting data.", STAGE.INTERPRET);
+		return new ProgressState(start, end, sampleName+": Interpreting data.", STAGE.INTERPRET);
 	}
 	public static ProgressState sampleParsingStage(String sampleName, float start, float end) {
 		return new ProgressState(start, end, sampleName+": Parsing fields.", STAGE.FIRST_PASS);

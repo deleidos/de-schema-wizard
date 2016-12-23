@@ -7,6 +7,7 @@ import java.util.Map;
 
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Profile;
+import com.deleidos.dp.enums.MainType;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -43,7 +44,9 @@ public class DataSampleDeserializer extends JsonDeserializer<DataSample> {
 			String nextKey = profilefieldsIterator.next();
 			JsonNode profileNode = profileMappingNode.path(nextKey);
 			Profile profile = SerializationUtility.deserialize(profileNode, Profile.class);
-			newProfiles.put(nextKey, profile);
+			if (!profile.getMainTypeClass().equals(MainType.OBJECT)) {
+				newProfiles.put(nextKey, profile);
+			}
 		}
 		sample.setDsProfile(newProfiles);
 		sample.setDataSampleId(rootNode.path("data-sample-id").asInt(0));

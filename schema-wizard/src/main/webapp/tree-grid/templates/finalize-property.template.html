@@ -1,0 +1,27 @@
+<span style="text-align: left;">
+    <span ng-show="nodeLabel1 == '~'">&nbsp;</span>
+    <span id="{{'treecell-' + nodeId}}"
+          ng-show="nodeLabel1 != '~'"
+          ng-hide="addProperty == true || renameProperty == true"
+          style="cursor: pointer; text-align: left;"
+          ng-style="cursor == 'not-allowed' && { 'cursor': 'not-allowed' }"
+          single-click="node = cbMethod($event, 'showInDetails', { 'node': node })"
+          ng-dblclick="cbMethod($event, 'prepRenameProperty', { 'node': node });">{{nodeLabel1}}</span>
+
+    <input id="newproperty"
+           type="text"
+           style="margin: 0; line-height: 1em;"
+           ng-model="nodeLabel1"
+           ng-show="addProperty == true"
+           ng-focus="nodeLabel1 = (nodeLabel1 == 'new-property' ?  '' : nodeLabel1)"
+           ng-blur="cbMethod($event, 'changeNodeLabel', { 'index': 'newproperty', 'newproperty': nodeLabel1 })"
+           onkeypress="if (event.keyCode === 13) blur();">
+
+    <input id="{{'treecell-' + nodeId + '-renameproperty'}}"
+           type="text"
+           style="margin: 0; line-height: 1em;"
+           ng-model="nodeLabel1"
+           ng-show="renameProperty == true"
+           ng-blur="cbMethod($event, 'renameProperty', { 'node': node, 'newproperty': nodeLabel1 })"
+           onkeypress="if (event.keyCode === 13) blur();">
+</span>

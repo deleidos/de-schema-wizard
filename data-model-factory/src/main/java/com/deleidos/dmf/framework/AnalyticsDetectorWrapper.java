@@ -2,12 +2,17 @@ package com.deleidos.dmf.framework;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang.math.NumberUtils;
+import org.apache.log4j.Logger;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.pkg.PackageParser;
+
+import com.deleidos.dmf.exception.AnalyticsRuntimeException;
 
 /**
  * Wrapper detector built for use with media types that Tika can recognize by default.  "Wrap" an existing Tika detector
@@ -17,38 +22,51 @@ import org.apache.tika.mime.MediaType;
  * @author leegc
  *
  */
-public class AnalyticsDetectorWrapper implements Detector, Comparable<AnalyticsDetectorWrapper> {
+public class AnalyticsDetectorWrapper {
 	/**
 	 * 
 	 */
+	public static final Logger logger = Logger.getLogger(AnalyticsDetectorWrapper.class);
+	public static final String CONFIDENCE_KEY = "detection-confidence";
 	private static final long serialVersionUID = -7004302637534333152L;
-	private boolean hasBodyPlainTextContent;
-	protected Detector detector;
 	protected Set<MediaType> detectableTypes;
 	protected float confidenceInterval = 0.0f;
-
-	public AnalyticsDetectorWrapper() { }
+	private final boolean hasPlainTextBodyContent;
+	protected final Detector detector;
 	
-	public AnalyticsDetectorWrapper(Detector detector) {
+	static {
+		blackListStaticInit();
+	}
+	
+	private static Set<MediaType> bodyContentBlackList;
+	
+	public static void addToBodyContentBlackList(MediaType blackListedMediaType) {
+		bodyContentBlackList.add(blackListedMediaType);
+	}
+	
+	private static void blackListStaticInit() {
+		bodyContentBlackList = new HashSet<MediaType>();
+		PackageParser packageParser = new PackageParser();
+		bodyContentBlackList.addAll(packageParser.getSupportedTypes(null));
+		bodyContentBlackList.add(MediaType.TEXT_PLAIN);
+		bodyContentBlackList.add(MediaType.OCTET_STREAM);
+		packageParser = null;
+	}
+	
+	private static boolean isBodyContentDisabled(MediaType type, Metadata metadata) {
+		return bodyContentBlackList.contains(type); 
+	}
+
+	private AnalyticsDetectorWrapper(AbstractMarkSupportedAnalyticsDetector analyticsDetector) {
+		this.detector = analyticsDetector;
+		this.detectableTypes = analyticsDetector.getDetectableTypes();
+		this.hasPlainTextBodyContent = detector.getClass().isAnnotationPresent(BodyContent.class);
+	}
+	
+	private AnalyticsDetectorWrapper(Detector detector, Set<MediaType> detectableType) {
 		this.detector = detector;
-		if(detector instanceof AbstractMarkSupportedAnalyticsDetector) {
-			setHasBodyPlainTextContent(((AbstractMarkSupportedAnalyticsDetector)detector).hasBodyPlainTextContent());
-		} else {
-			setHasBodyPlainTextContent(true);
-		}
-	}
-	
-	public AnalyticsDetectorWrapper(Detector detector, Set<MediaType> detectableType) {
-		this(detector);
 		this.detectableTypes = detectableType;
-	}
-	
-	public void setConfidenceInterval(float minimumConfidence) {
-		confidenceInterval = minimumConfidence;
-	}
-
-	public float getConfidenceInterval() {
-		return confidenceInterval;
+		this.hasPlainTextBodyContent = true;
 	}
 
 	/**
@@ -57,30 +75,43 @@ public class AnalyticsDetectorWrapper implements Detector, Comparable<AnalyticsD
 	 * the AnalyticsMarkSupportedTikaDetector class will be given a default confidence of .01 because they are
 	 * assumed to be a lower priority than Analytics Detectors.
 	 */
-	@Override
-	public MediaType detect(InputStream input, Metadata metadata)
+	public DetectionResult wrappedDetect(InputStream input, Metadata metadata)
 			throws IOException {
 		MediaType type = detector.detect(input, metadata);
-		if(detector instanceof AnalyticsDetectorWrapper) {
-        	confidenceInterval = ((AnalyticsDetectorWrapper)detector).getConfidenceInterval();
-        	detectableTypes = ((AnalyticsDetectorWrapper)detector).getDetectableTypes();
-        } else {
-        	confidenceInterval = (type == null) ? 0.0f : .01f;
-        	detectableTypes = Collections.singleton(type);
-        }
-		return type;
-	}
-
-	@Override
-	public int compareTo(AnalyticsDetectorWrapper other) {
-		float dif = other.confidenceInterval - this.confidenceInterval;
-		if(dif > 0) {
-			return 1; 
-		} else if(dif < .00001) {
-			return 0;
+		Boolean couldHaveBodyContent = hasPlainTextBodyContent && !isBodyContentDisabled(type, metadata);
+		final Float defaultAnalyticsConfidence = .99f;
+		final Float defaultTikaConfidence = .01f;
+		final Float defaultOctetStreamConfidence = 0f;
+		if (!type.equals(MediaType.OCTET_STREAM)) {
+			// only set the confidence is the subclass has not already set it
+			if (detector instanceof AnalyticsDetectorWrapper) {
+				if (metadata.get(CONFIDENCE_KEY) == null) {
+					// expected case, the subclass just returned a type without setting the confidence
+					// default to high confidence 99%
+					metadata.set(CONFIDENCE_KEY, String.valueOf(defaultAnalyticsConfidence));
+				} else {
+					if (!NumberUtils.isNumber(metadata.get(CONFIDENCE_KEY))) {
+						// subclasses did something weird with the confidence - throw the runtime exception
+						throw new AnalyticsRuntimeException(
+								"Confidence was set to non number format " + metadata.get(CONFIDENCE_KEY));
+					}
+					// otherwise use the confidence set by the subclass
+				}
+			} else {
+				// the detector is a Tika detector, give it low confidence so Analytics detectors have priority
+				metadata.set(CONFIDENCE_KEY, String.valueOf(defaultTikaConfidence));
+			}
 		} else {
-			return -1;
+			// anything that returns octet stream is considered to have 0 confidence
+			metadata.set(CONFIDENCE_KEY, String.valueOf(defaultOctetStreamConfidence));
 		}
+		Float confidence = Float.valueOf(metadata.get(CONFIDENCE_KEY));
+		// confidence will not be set for Tika detectors - use .01f
+		return new DetectionResult(type, confidence, couldHaveBodyContent);
+	}
+	
+	public static void setConfidence(Metadata metadata, Float confidence) {
+		metadata.set(CONFIDENCE_KEY, String.valueOf(confidence));
 	}
 	
 	public Set<MediaType> getDetectableTypes() {
@@ -90,13 +121,54 @@ public class AnalyticsDetectorWrapper implements Detector, Comparable<AnalyticsD
 	public void setDetectableTypes(Set<MediaType> detectableTypes) {
 		this.detectableTypes = detectableTypes;
 	}
-
-	public boolean hasBodyPlainTextContent() {
-		return hasBodyPlainTextContent;
-	}
-
-	public void setHasBodyPlainTextContent(boolean hasBodyPlainTextContent) {
-		this.hasBodyPlainTextContent = hasBodyPlainTextContent;
+	
+	public static AnalyticsDetectorWrapper newInstance(Detector detector) {
+		if (detector instanceof AbstractMarkSupportedAnalyticsDetector) {
+			return new AnalyticsDetectorWrapper((AbstractMarkSupportedAnalyticsDetector) detector);
+		} else {
+			return new AnalyticsDetectorWrapper(detector, new HashSet<MediaType>());
+		}
 	}
 	
+	public static AnalyticsDetectorWrapper newInstance(Detector detector, Set<MediaType> detectableTypes) {
+		return new AnalyticsDetectorWrapper(detector, detectableTypes);
+	}
+	
+	/**
+	 * Annotation that identifies detectors whose types may contain some parseable plain text.
+	 * Marking a detector implementation with this annotation signifies that the associated parser could
+	 * write some plain text to a content handler that may or may not be parseable. In other words,
+	 * after the given type is parsed, a recursive detect/parsing call should be made on the file's plain
+	 * text content.
+	 * 
+	 * Marking a detector implementation with this annotation is the same as adding its type to the
+	 * <i>bodyContentBlackList</i>.
+	 * 
+	 * @author leegc
+	 *
+	 */
+	public @interface BodyContent { }
+	
+	public static DetectionResult UNDETECTABLE = new DetectionResult(MediaType.OCTET_STREAM, 0f, false);
+	public static class DetectionResult {
+		private final MediaType mediaType;
+		private final Float confidence;
+		private final Boolean couldHaveBodyContent;
+		
+		public DetectionResult(MediaType type, Float conf, Boolean bodyContent) {
+			mediaType = type;
+			confidence = conf;
+			couldHaveBodyContent = bodyContent;
+		}
+		
+		public MediaType getMediaType() {
+			return mediaType;
+		}
+		public Float getConfidence() {
+			return confidence;
+		} 
+		public Boolean getCouldHaveBodyContent() {
+			return couldHaveBodyContent;
+		}
+	}
 }

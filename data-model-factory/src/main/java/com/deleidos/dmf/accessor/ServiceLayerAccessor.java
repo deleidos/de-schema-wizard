@@ -1,9 +1,11 @@
 package com.deleidos.dmf.accessor;
 
-import java.sql.SQLException;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.core.MediaType;
@@ -15,15 +17,22 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.dmf.web.SchemaWizardSessionUtility.StatusReport;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.SchemaMetaData;
+import com.deleidos.dp.beans.User;
+import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.IEDataAccessException;
+import com.deleidos.dp.exceptions.SchemaNotFoundException;
+import com.deleidos.dp.export.AbstractExporter;
+import com.deleidos.dp.export.SQLExporter.SQLExportException;
 import com.deleidos.dp.h2.H2DataAccessObject;
 import com.deleidos.dp.interpretation.InterpretationEngine;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
@@ -38,12 +47,16 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public static final Logger logger = Logger.getLogger(ServiceLayerAccessor.class);
 	H2DataAccessObject h2Dao;
 	InterpretationEngine interpretationEngine;
+	SchemaWizardSessionUtility sessionUtility;
 	private ResourceBundle bundle = ResourceBundle.getBundle("error-messages");
+
+	private static final String DUPLICATE_USERNAME = "DUPLICATE_USERNAME";
 
 	public ServiceLayerAccessor() {
 		try {
 			h2Dao = H2DataAccessObject.getInstance();
 			interpretationEngine = InterpretationEngineFacade.getInstance();
+			sessionUtility = SchemaWizardSessionUtility.getInstance();
 		} catch (DataAccessException e) {
 			logger.error(e);
 		}
@@ -73,7 +86,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			logger.error(e.toString());
 			return generateEmptyResponse(Status.GATEWAY_TIMEOUT);
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -311,7 +324,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			jObject.put("schemaGuid", h2Dao.addSchema(schema));
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -330,11 +343,12 @@ public class ServiceLayerAccessor implements ServiceLayer {
 		try {
 			// Show histogram
 			Schema schema = h2Dao.getSchemaByGuid(guid, true);
+			schema.setsProfile(ConversionUtility.addObjectProfiles(schema.getsProfile()));
 			String jsonString = SerializationUtility.serialize(schema);
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -357,7 +371,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -379,7 +393,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -397,11 +411,12 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	public Response getSampleByGuid(String guid) {
 		try {
 			DataSample sample = h2Dao.getSampleByGuid(guid);
+			sample.setDsProfile(ConversionUtility.addObjectProfiles(sample.getDsProfile()));
 			String jsonString = SerializationUtility.serialize(sample);
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -423,7 +438,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -445,7 +460,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -467,7 +482,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -489,7 +504,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -511,7 +526,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			JSONObject jObject = new JSONObject(jsonString);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -529,12 +544,13 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	 */
 	public Response deleteSchemaByGuid(String guid) {
 		try {
-			h2Dao.deleteSchemaByGuid(guid);
+			boolean deleted = h2Dao.deleteSchemaByGuid(guid);
 			JSONObject jObject = new JSONObject();
-			jObject.put("deleted", guid);
+			jObject.put("guid", guid);
+			jObject.put("deleted", deleted);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -552,12 +568,13 @@ public class ServiceLayerAccessor implements ServiceLayer {
 	 */
 	public Response deleteSampleByGuid(String guid) {
 		try {
-			h2Dao.deleteSampleByGuid(guid);
+			boolean deleted = h2Dao.deleteSampleByGuid(guid);
 			JSONObject jObject = new JSONObject();
-			jObject.put("deleted", guid);
+			jObject.put("guid", guid);
+			jObject.put("deleted", deleted);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -580,7 +597,7 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			jObject.put("deleted", guid);
 			return generateResponse(Status.ACCEPTED, jObject.toString());
 		} catch (H2DataAccessException e) {
-			logger.error("Unable to reach the H2 database.");
+			logger.error("Error accessing the H2 database.");
 			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
 		} catch (Exception e) {
 			logger.error(e.toString());
@@ -588,16 +605,302 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
-	
-	public boolean testH2Connection() throws H2DataAccessException {
+
+	public Response createUser(User user) {
 		try {
-			h2Dao.testDefaultConnection();
-			return true;
-		} catch (SQLException e) {
-			throw new H2DataAccessException("Unable to reach the H2 database.");
+			JSONObject jObject = new JSONObject();
+			jObject.put("username", h2Dao.createUser(user));
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			if (e.getMessage().equals("DUPLICATE_USERNAME")) {
+				return generateResponse(Status.CONFLICT, "Cannot insert a duplicate username.");
+			} else {
+				logger.error("Error accessing the H2 database.");
+				return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+			}
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
 		}
 	}
-	
+
+	public Response getAllUsers() {
+		try {
+			JSONObject jObject = new JSONObject();
+			List<User> userList = h2Dao.getAllUsers();
+			JSONArray userPackage = new JSONArray();
+
+			for (User user : userList) {
+				JSONObject tmpUser = new JSONObject();
+				tmpUser.put("userName", user.getUserName());
+				tmpUser.put("firstName", user.getFirstName());
+				tmpUser.put("lastName", user.getLastName());
+				tmpUser.put("userRole", user.getUserRole());
+
+				userPackage.put(tmpUser);
+			}
+
+			jObject.put("userPackage", userPackage);
+
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response getUser(String username) {
+		try {
+			JSONObject jObject = new JSONObject();
+			User user = h2Dao.getUser(username);
+			boolean createdSecurityQuestions = false;
+
+			User tmpUser = h2Dao.getSecurityQuestionsForUser(username);
+			if (tmpUser.getSecurityQuestion1() != null || tmpUser.getSecurityQuestion2() != null
+					|| tmpUser.getSecurityQuestion3() != null)
+				createdSecurityQuestions = true;
+
+			jObject.put("userName", user.getUserName());
+			jObject.put("firstName", user.getFirstName());
+			jObject.put("lastName", user.getLastName());
+			jObject.put("userRole", user.getUserRole());
+			jObject.put("createdSecurityQuestions", createdSecurityQuestions);
+
+			return generateResponse(Status.OK, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public JSONObject getUserJson(String username) {
+		JSONObject jObject = new JSONObject();
+
+		try {
+			User user = h2Dao.getUser(username);
+
+			jObject.put("userName", user.getUserName());
+			jObject.put("firstName", user.getFirstName());
+			jObject.put("lastName", user.getLastName());
+			jObject.put("userRole", user.getUserRole());
+
+			if (user.getUserRole().isEmpty()) {
+				logger.info("Requesting user info returned a null object");
+				jObject.put("userRole", "NOT_FOUND");
+			}
+
+			return jObject;
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			jObject.put("userRole", "NOT_FOUND");
+			return null;
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			jObject.put("userRole", "NOT_FOUND");
+			return null;
+		}
+	}
+
+	public Response updateUser(User user) {
+		try {
+			String username = user.getUserName();
+			JSONObject jObject = new JSONObject();
+			jObject.put("username", username);
+			jObject.put("updated", h2Dao.updateUser(user));
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response deleteUser(String username) {
+		try {
+			JSONObject jObject = new JSONObject();
+			jObject.put("username", username);
+			jObject.put("deleted", h2Dao.deleteUser(username));
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response getUsernameFromFirstName(String firstName) {
+		try {
+			User user = h2Dao.getUsernameFromFirstName(firstName);
+			JSONObject jObject = new JSONObject();
+			jObject.put("username", user.getUserName());
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			if (e.getMessage().equals("DUPLICATE_FIRST_NAME")) {
+				// We need to come up with a better way to handle duplicate first names
+				// but as it stands, the solution is out of scope for RC1 TODO after RC1
+				return generateResponse(Status.CONFLICT, "Duplicate names in DB. Cannot proceed.");
+			} else {
+				logger.error("Error accessing the H2 database.");
+				return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+			}
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response addSecurityQuestionsForUser(User user) {
+		try {
+			JSONObject jObject = new JSONObject();
+			jObject.put("created", h2Dao.addSecurityQuestionsForUser(user));
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response getAllSecurityQuestions() {
+		try {
+			List<String> questions = h2Dao.getAllSecurityQuestions();
+			int totalQuestionsThird = questions.size() / 3;
+
+			JSONObject jObject = new JSONObject();
+			JSONArray secQuestions1 = new JSONArray();
+			JSONArray secQuestions2 = new JSONArray();
+			JSONArray secQuestions3 = new JSONArray();
+
+			for (String question : questions) {
+				if (secQuestions1.length() < totalQuestionsThird)
+					secQuestions1.put(question);
+				else if (secQuestions2.length() < totalQuestionsThird)
+					secQuestions2.put(question);
+				else if (secQuestions3.length() < totalQuestionsThird)
+					secQuestions3.put(question);
+			}
+
+			jObject.put("securityQuestion1", secQuestions1);
+			jObject.put("securityQuestion2", secQuestions2);
+			jObject.put("securityQuestion3", secQuestions3);
+
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response getSecurityQuestionsForUser(String userName) {
+		try {
+			User user = h2Dao.getSecurityQuestionsForUser(userName);
+
+			JSONObject securityQuestions = new JSONObject();
+
+			if (user.getSecurityQuestion1() != null || user.getSecurityQuestion2() != null
+					|| user.getSecurityQuestion3() != null) {
+				JSONObject questions = new JSONObject();
+				securityQuestions.put("userName", user.getUserName());
+
+				questions.put("securityQuestion1", user.getSecurityQuestion1());
+				questions.put("securityQuestion2", user.getSecurityQuestion2());
+				questions.put("securityQuestion3", user.getSecurityQuestion3());
+
+				securityQuestions.put("questions", questions);
+			}
+
+			return generateResponse(Status.ACCEPTED, securityQuestions.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public Response verifySecurityQuestionsForUser(User user, String tmpPass) {
+		try {
+			JSONObject jObject = new JSONObject();
+			jObject.put("userName", user.getUserName());
+			jObject.put("verification", h2Dao.verifySecurityQuestionsForUser(user));
+
+			if (h2Dao.verifySecurityQuestionsForUser(user)) {
+				User sysGenPasswordUser = new User();
+				sysGenPasswordUser.setUserName(user.getUserName());
+				sysGenPasswordUser.setPassword(user.getPassword());
+				sysGenPasswordUser.setSalt(user.getSalt());
+				updateUser(sysGenPasswordUser);
+				jObject.put("password", tmpPass);
+			}
+
+			return generateResponse(Status.ACCEPTED, jObject.toString());
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return generateResponse(Status.SERVICE_UNAVAILABLE, "Unable to reach the H2 database.");
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return generateEmptyResponse(Status.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	public boolean initializeDefaultUser(User user) {
+		try {
+			return h2Dao.initializeDefaultUser(user);
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return false;
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return false;
+		}
+	}
+
+	public boolean initializeDefaultSecurityQuestions() {
+		try {
+			return h2Dao.initializeDefaultSecurityQuestions();
+		} catch (H2DataAccessException e) {
+			logger.error("Error accessing the H2 database.");
+			return false;
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error(bundle.getString("h2.unexpected.error"));
+			return false;
+		}
+	}
+
+	// Test methods
+	public boolean testH2Connection() throws H2DataAccessException {
+		return h2Dao.testDefaultConnection();
+	}
+
 	public boolean testIEConnection() throws IEDataAccessException {
 		try {
 			interpretationEngine.testMongoConnection();
@@ -608,44 +911,136 @@ public class ServiceLayerAccessor implements ServiceLayer {
 			throw new IEDataAccessException("An unexpected error occured.");
 		}
 	}
-	
+
 	public String healthCheck() {
-		JSONObject topLevelObject = new JSONObject();
-		JSONObject serverStatuses = new JSONObject();
-		
+		return healthCheck(false);
+	}
+
+	public String healthCheck(boolean includeJobStatus) {
+		Map<String, Object> topLevel = new HashMap<String, Object>();
+		Map<String, Object> serverStatus = new HashMap<String, Object>();
+
 		long startTime = System.currentTimeMillis();
-		
-		 try {
-			 testH2Connection();
-			 serverStatuses.put("H2", "Up");
-		 } catch (H2DataAccessException e) {
-			 serverStatuses.put("H2", "Down");
-		 } catch (ProcessingException e) {
-			 logger.error("Server timed out trying to reach H2.");
-		 }
-		
-		 try {
-			 testIEConnection();
-			 serverStatuses.put("Interpretation Engine", "Up");
-			 serverStatuses.put("MongoDB", "Up");
-		 } catch (IEDataAccessException e) {
-			 if (e instanceof IEDataAccessException.DeadMongo) {
-				 serverStatuses.put("Interpretation Engine", "Up");
-				 serverStatuses.put("MongoDB", "Down");
-			 } else {
-				 serverStatuses.put("Interpretation Engine", "Down");
-				 serverStatuses.put("MongoDB", "Unknown");
-			 }
-		 } catch (ProcessingException e) {
-			 logger.error("Server timed out trying to reach the Interpretation Engine.");
-		 }
-		 
-		 long endTime = System.currentTimeMillis();
-		 
-		 topLevelObject.put("Server Statuses", serverStatuses);
-		 topLevelObject.put("Fetch time", endTime - startTime + "ms");
-		 
-		return topLevelObject.toString();
+
+		try {
+			testH2Connection();
+			serverStatus.put("H2", "Up");
+		} catch (H2DataAccessException e) {
+			serverStatus.put("H2", "Down");
+		} catch (ProcessingException e) {
+			logger.error("Server timed out trying to reach H2.");
+		}
+
+		try {
+			testIEConnection();
+			serverStatus.put("Interpretation Engine", "Up");
+			serverStatus.put("MongoDB", "Up");
+		} catch (IEDataAccessException e) {
+			if (e instanceof IEDataAccessException.DeadMongo) {
+				serverStatus.put("Interpretation Engine", "Up");
+				serverStatus.put("MongoDB", "Down");
+			} else {
+				serverStatus.put("Interpretation Engine", "Down");
+				serverStatus.put("MongoDB", "Unknown");
+			}
+		} catch (ProcessingException e) {
+			logger.error("Server timed out trying to reach the Interpretation Engine.");
+		}
+
+		long endTime = System.currentTimeMillis();
+
+		topLevel.put("Server Statuses", serverStatus);
+		topLevel.put("Fetch time", endTime - startTime + "ms");
+
+		if (includeJobStatus) {
+			StatusReport statusReport = SchemaWizardSessionUtility.getInstance().getStatusReport();
+			topLevel.put("Job Statuses", statusReport);
+		}
+
+		return SerializationUtility.serialize(topLevel);
+	}
+
+	// H2 Realm Methods
+	/**
+	 * Retrieves the password of a given user.
+	 * 
+	 * Does not return a response unlike the other methods in the Service Layer
+	 * Accessor because this method is only used by the H2Realm.
+	 * 
+	 * @param username
+	 * @return
+	 * @throws H2DataAccessException
+	 */
+	public User getPasswordForUser(String username) throws H2DataAccessException {
+		try {
+			return h2Dao.getPasswordForUser(username);
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error("Couldn't retrieve role names for user " + username + ".");
+			throw new H2DataAccessException("Couldn't retrieve role names.");
+		}
+	}
+
+	/**
+	 * Retrieves roles of a given user.
+	 * 
+	 * Does not return a response unlike the other methods in the Service Layer
+	 * Accessor because this method is only used by the H2Realm.
+	 * 
+	 * @param username
+	 * @return
+	 * @throws H2DataAccessException
+	 */
+	public Set<String> getRoleNamesForUser(String username) throws H2DataAccessException {
+		try {
+			return h2Dao.getRoleNamesForUser(username);
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error("Couldn't retrieve role names for user " + username + ".");
+			throw new H2DataAccessException("Couldn't retrieve role names.");
+		}
+	}
+
+	/**
+	 * Retrieves permissions of a given user.
+	 * 
+	 * Does not return a response unlike the other methods in the Service Layer
+	 * Accessor because this method is only used by the H2Realm.
+	 * 
+	 * @param username
+	 * @param roleNames
+	 * @return
+	 * @throws H2DataAccessException
+	 */
+	public Set<String> getPermissions(String username, Collection<String> roleNames) throws H2DataAccessException {
+		try {
+			return h2Dao.getPermissions(username, roleNames);
+		} catch (Exception e) {
+			logger.error(e.toString());
+			logger.error("Couldn't retrieve role names for user " + username + ".");
+			throw new H2DataAccessException("Couldn't retrieve permissions.");
+		}
+	}
+
+	@Override
+	public Response exportSchema(Map<String, Object> parameters) {
+		final String EXPORT_RESULT_KEY = "export-text";
+		final String EXPORT_ERROR_KEY = "error";
+
+		Status status = Status.ACCEPTED;
+		JSONObject responseBody = new JSONObject();
+		try {
+			responseBody.put(EXPORT_RESULT_KEY, AbstractExporter.export(parameters));
+		} catch (SchemaNotFoundException | SQLExportException e) {
+			logger.error(e);
+			responseBody.put(EXPORT_ERROR_KEY, e.getMessage());
+			status = Status.BAD_REQUEST;
+		} catch (Exception e) {
+			logger.error(e);
+			responseBody.put(EXPORT_ERROR_KEY, e.getMessage());
+			status = Status.INTERNAL_SERVER_ERROR;
+		}
+		return generateResponse(status, responseBody.toString());
 	}
 
 	// Private methods
@@ -657,4 +1052,5 @@ public class ServiceLayerAccessor implements ServiceLayer {
 		JSONObject emptyJson = new JSONObject();
 		return Response.status(status).entity(emptyJson.toString()).build();
 	}
+
 }

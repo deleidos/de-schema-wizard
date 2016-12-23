@@ -1,12 +1,15 @@
 package com.deleidos.dp.beans;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.junit.Test;
@@ -15,7 +18,11 @@ import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.environ.DPMockUpEnvironmentTest;
+import com.deleidos.dp.environ.TestUtils;
+import com.deleidos.dp.environ.TestUtils.RecordGeneratorFunction;
+import com.deleidos.dp.environ.TestUtils.SampleIngestionUtility;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.SampleProfiler;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
@@ -35,6 +42,71 @@ public class HeirarchicalConversionTest extends DPMockUpEnvironmentTest {
 			sb.append(letters.charAt(((int)(Math.random()*letters.length()))));
 		}
 		return sb.toString();
+	}
+	
+	@Test
+	public void testSortLambdaImprovement() throws H2DataAccessException {
+		SampleIngestionUtility ingestUtility = new SampleIngestionUtility();
+		ingestUtility.addSampleIngestion(10, new HierarchicalRecordGenerator());
+		Map<String, Profile> profiles = TestUtils.processSamples(ingestUtility, false).get(0).getDsProfile();
+		profiles = ConversionUtility.addObjectProfiles(profiles);
+		List<String> a = 
+				ConversionUtility.sortChildren(
+						profiles, 
+						profiles.keySet().stream()
+							.filter(ConversionUtility.ROOT_LEVEL_KEYS_PREDICATE)
+							.collect(Collectors.toList()),	
+						ConversionUtility.SORT_STRATEGY);
+		List<String> b = 
+				ConversionUtility.oldSortChildren(
+						profiles, 
+						profiles.keySet().stream()
+							.filter(ConversionUtility.ROOT_LEVEL_KEYS_PREDICATE)
+							.collect(Collectors.toList()),	
+						ConversionUtility.SORT_STRATEGY);
+		assertTrue(a.equals(b));
+	}
+	
+	@Test
+	public void testGetRootKeysLambdaImprovement() throws H2DataAccessException {
+		SampleIngestionUtility ingestUtility = new SampleIngestionUtility();
+		ingestUtility.addSampleIngestion(10, new TestUtils.SimpleRecordGenerator());
+		Map<String, Profile> profiles = TestUtils.processSamples(ingestUtility, false).get(0).getDsProfile();
+		assertTrue(
+				ConversionUtility.getRootKeys(profiles)
+				.equals(ConversionUtility.oldGetRootKeys(profiles)));
+	}
+	
+	@Test
+	public void testLambdaImprovement() throws H2DataAccessException {
+		SampleIngestionUtility ingestUtility = new SampleIngestionUtility();
+		ingestUtility.addSampleIngestion(10, new TestUtils.SimpleRecordGenerator());
+		Map<String, Profile> profiles = TestUtils.processSamples(ingestUtility, false).get(0).getDsProfile();
+		assertTrue(
+				ConversionUtility.addObjectProfiles(profiles)
+				.equals(ConversionUtility.oldAddObjectProfiles(profiles, true)));
+	}
+	
+	@Test
+	public void a() {
+		List<String> testList = ConversionUtility.generateParentKeys("hello.there.who.are.you");
+		assertTrue(testList.contains("hello"));
+		assertTrue(testList.contains("hello.there"));
+		assertTrue(testList.contains("hello.there.who"));
+		assertTrue(testList.contains("hello.there.who.are"));
+	}
+	
+	@Test
+	public void generateParentKeyTest() {
+		String[] parentKeys = {"hello","there","who","are","you"};
+		String ans = ConversionUtility.generateParentKey(parentKeys, 1);
+		try {
+			assertTrue(new String("hello"+DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER+"there")
+				.equals(ans));
+		} catch (AssertionError e) {
+			logger.error("Parent key is " + ans);
+			fail();
+		}
 	}
 
 	@Test
@@ -119,4 +191,29 @@ public class HeirarchicalConversionTest extends DPMockUpEnvironmentTest {
 			return true;
 		}
 	}
+	
+	public static class HierarchicalRecordGenerator implements RecordGeneratorFunction {
+		Optional<Integer> defaultValue;
+
+		public HierarchicalRecordGenerator() {
+			defaultValue = Optional.empty();
+		}
+
+		public HierarchicalRecordGenerator(Integer defaultValue) {
+			this.defaultValue = Optional.of(defaultValue);
+		}
+
+		@Override
+		public ProfilerRecord apply(int value) {
+			DefaultProfilerRecord profilerRecord = new DefaultProfilerRecord();
+			DefaultProfilerRecord root = new DefaultProfilerRecord();
+			profilerRecord.put("a", this.defaultValue.orElse(value));
+			profilerRecord.put("b", this.defaultValue.orElse(value));
+			root.put("nested", profilerRecord);
+			root.put("const", "C");
+			return root;
+		}
+
+	}
+
 }

@@ -14,9 +14,17 @@ import org.json.JSONObject;
 import com.deleidos.dmf.analyzer.TikaAnalyzer;
 import com.deleidos.dmf.exception.AnalyzerException;
 import com.deleidos.dmf.framework.TikaSampleAnalyzerParameters;
+import com.deleidos.dp.beans.BinaryDetail;
+import com.deleidos.dp.beans.Detail;
+import com.deleidos.dp.beans.NumberDetail;
+import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
+import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.deserializors.SerializationUtility;
+import com.deleidos.dp.enums.DetailType;
+import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.h2.H2DataAccessObject;
 
 public abstract class AbstractHeadlessWorkflow {
@@ -55,8 +63,11 @@ public abstract class AbstractHeadlessWorkflow {
 					resources.add(new HeadlessResource(fileCopy.getPath(), null, null, 
 							new FileInputStream(fileCopy), true, true));
 		}
+		resources.addAll(giveEmbeddedResources());
 		return resources;
 	}
+	
+	public abstract List<HeadlessResource> giveEmbeddedResources();
 
 	public List<String> processResources() 
 			throws AnalyzerException, DataAccessException, IOException {
@@ -87,6 +98,27 @@ public abstract class AbstractHeadlessWorkflow {
 			Object rKey = dsProfile.remove(nonMergedKey);
 		}
 		sampleObject1.put("dsProfile", dsProfile);
+	}
+	
+	public void addField(Schema schemaObject, String fieldName, MainType fieldMainType, DetailType fieldDetailType) {
+		if (!fieldDetailType.getMainType().equals(fieldMainType)) {
+			throw new MainTypeRuntimeException();
+		}
+		Profile profile = new Profile();
+		profile.setPresence(-1f);
+		Detail detail = null;
+		switch (fieldMainType) {
+		case NUMBER: detail = new NumberDetail(); break;
+		case STRING: detail = new StringDetail(); break;
+		case BINARY: detail = new BinaryDetail(); break;
+		default: break;
+		}
+		if (detail != null) {
+			detail.setDetailType(fieldDetailType.toString());
+		}
+		profile.setDetail(detail);
+		profile.setMainType(fieldMainType.toString());
+		schemaObject.getsProfile().put(fieldName, profile);
 	}
 
 	protected List<JSONObject> retrieveSingleSourceAnalysis(List<String> sampleGuids) throws JSONException, DataAccessException {

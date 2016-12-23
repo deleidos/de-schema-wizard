@@ -322,8 +322,8 @@ body {
     padding-left: 10px;
     padding-top: 4px;
     font-style: normal;
-    font-size: 11pt;
-    font-family: 'Cambria', Cambria, sans-serif;
+    font-size: 10pt;
+    font-family: 'MS Reference Sans Serif', sans-serif;
     color: white;
     background-color: rgb(97,34,115);
     background: url(../img/popup-banner-background.png) repeat-x;
@@ -425,9 +425,21 @@ fieldset {
     overflow: hidden;
 }
 
+select > option {
+    background: lemonchiffon;
+}
+
 .viz-select {
     float: left;
     clear: none;
+}
+
+.details1 {
+    background-color: gold !important;
+}
+
+.details2 {
+    background-color: lightsalmon !important;
 }
 
 .narrow-column {
@@ -580,5 +592,25 @@ input[type=number]::-webkit-outer-spin-button {
 
 .draggableList ul[dnd-list] li.selected {
     background-color: #dff0d8;
-    color: #3c763d;
+}
+fieldset {
+    display: block;
+    -webkit-margin-start: 2px;
+    -webkit-margin-end: 2px;
+    -webkit-padding-before: 0.35em;
+    -webkit-padding-start: 0.75em;
+    -webkit-padding-end: 55%;
+    -webkit-padding-after: 0.625em;
+    min-width: -webkit-min-content;
+    border-width: 2px;
+    border-style: groove;
+    border-color: threedface;
+    border-image: initial;
+}
+.exportModal{
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: normal;
+    font-style: normal;
+    font-family: sans-serif;
 }

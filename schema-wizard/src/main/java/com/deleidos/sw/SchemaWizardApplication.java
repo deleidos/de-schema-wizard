@@ -10,10 +10,15 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 
 import com.deleidos.analytics.websocket.WebSocketServlet;
 import com.deleidos.dmf.accessor.ServiceLayerAccessor;
 import com.deleidos.dmf.analyzer.TikaAnalyzer;
+import com.deleidos.dmf.web.SchemaWizardSessionUtility;
+import com.deleidos.sw.exception.mapper.UnauthorizedExceptionMapper;
+import com.deleidos.sw.exception.mapper.UnknownSessionExceptionMapper;
+import com.deleidos.sw.filter.SchemaWizardAuthFilter;
 
 /**
  * Implementation of Glassfish's default web application class. Instantiates
@@ -38,13 +43,22 @@ public class SchemaWizardApplication extends ResourceConfig {
 
 		String uploadDirectory = configurationMap.get(UPLOAD_DIR).toString();
 		boolean isSecure = (Boolean) configurationMap.get(USE_SECURE);
-
+		
 		if (isSecure) {
-			register(new SecureSchemaWizardController(new TikaAnalyzer(), new ServiceLayerAccessor(), uploadDirectory));
-		} else {
-			register(new SchemaWizardController(new TikaAnalyzer(), new ServiceLayerAccessor(), uploadDirectory));
-		}
-
+			// register the authorization filter if deployment is secure
+			register(new SchemaWizardAuthFilter());
+			register(RolesAllowedDynamicFeature.class);
+		} 
+		
+		// register handlers for Unauthorized or UnknownSession Exceptions thrown by the controller
+		register(new UnauthorizedExceptionMapper());
+		register(new UnknownSessionExceptionMapper());
+		
+		// register the SchemaWizardController
+		register(new SchemaWizardController(new TikaAnalyzer(), new ServiceLayerAccessor(),
+				SchemaWizardSessionUtility.getInstance(), uploadDirectory));
+		
+		// register the WebSocketServlet
 		register(new WebSocketServlet());
 
 	}
@@ -76,14 +90,7 @@ public class SchemaWizardApplication extends ResourceConfig {
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("Schema Wizard Configuration:");
-		// Requires Java 8 TODO after beta 3
-		// configurationMap.forEach((k, v) -> sb.append("\n\t" + k + "=" + v));
-		
-		Iterator configurationIterator = configurationMap.entrySet().iterator();
-		while (configurationIterator.hasNext()) {
-			Map.Entry pair = (Map.Entry) configurationIterator.next();
-			sb.append("\n\t" + pair.getKey() + "=" + pair.getValue());
-		}
+		configurationMap.forEach((k, v) -> sb.append("\n\t" + k + "=" + v));
 
 		return sb.toString();
 	}

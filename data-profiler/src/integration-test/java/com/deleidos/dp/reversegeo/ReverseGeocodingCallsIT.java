@@ -41,6 +41,7 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 	private static boolean geoDataMerged;
 	private static boolean presenceMetricCorrect;
 	private static boolean nonGeoWorked;
+	private static boolean geoDataWasInterpretted;
 
 	@BeforeClass
 	public static void makeSomeReverseGeoCallsTest() throws DataAccessException, MainTypeException {
@@ -68,6 +69,8 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 		String g2 = H2DataAccessObject.getInstance().addSample(sampleWithGeo2);
 		
 		geoDataInSamples = sampleGeoAssertion && sampleGeoAssertion2;
+		geoDataWasInterpretted = sampleWithGeo.getDsProfile().get("lat").getInterpretation().getiName().contains("Lat")
+				&& sampleWithGeo2.getDsProfile().get("lng").getInterpretation().getiName().contains("Long");
 		
 		DataSample sample1 = H2DataAccessObject.getInstance().getSampleByGuid(g1);
 		DataSample sample2 = H2DataAccessObject.getInstance().getSampleByGuid(g2);
@@ -77,6 +80,8 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 				Arrays.asList(seed1, seed2));
 		//logger.info(SerializationUtility.serialize(schemaBean));
 		geoDataInSchema = Profile.getNumberDetail(schemaBean.getsProfile().get("lat")).getHistogramOptional().get().getRegionData().getRows().size() > 0;
+		geoDataWasInterpretted = schemaBean.getsProfile().get("lat").getInterpretation().getiName().contains("Lat")
+				&& schemaBean.getsProfile().get("lng").getInterpretation().getiName().contains("Long");
 		
 		int usIndexSchema = ReverseGeocodingLoader.getCountryIndexByName(schemaBean.getsProfile().get("lat").getDetail().getHistogramOptional().get().getRegionData().getRows(), "United States");
 		int usLatCountSchema = Profile.getNumberDetail(schemaBean.getsProfile().get("lat")).getHistogramOptional().get().getRegionData().getRows().get(usIndexSchema).getValue();
@@ -139,6 +144,16 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 			logger.info("Presence indicator was correct.");
 		} else {
 			logger.error("Presence indicator was incorrect.");
+			assertTrue(false);
+		}
+	}
+
+	@Test
+	public void areInterpretationsSet() {
+		if (geoDataWasInterpretted) {
+			logger.info("Interpretations are set.");
+		} else {
+			logger.error("Interpretations not set.");
 			assertTrue(false);
 		}
 	}
@@ -264,8 +279,13 @@ public class ReverseGeocodingCallsIT extends DataProfilerIntegrationEnvironment 
 
 			randomLat = (rand.nextDouble() * 180) - 90;
 			randomLng = (rand.nextDouble() * 360) - 180;
-			profilerRecord.put("waypoints"+DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER+"lat", randomLat);
-			profilerRecord.put("waypoints"+DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER+"lng", randomLng);
+			
+			Map<String, Double> nested = new HashMap<String, Double>();
+			nested.put("lat", randomLat);
+			nested.put("lng", randomLng);
+			profilerRecord.put("waypoints", nested);
+			//profilerRecord.put("waypoints"+DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER+"lat", randomLat);
+			//profilerRecord.put("waypoints"+DefaultProfilerRecord.STRUCTURED_OBJECT_APPENDER+"lng", randomLng);
 			
 			
 			profilerRecord.put("no-geo", randomNotGeo);

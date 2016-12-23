@@ -7,7 +7,7 @@
 [Known Issues And Security](docs/readme-ext/known-issues.md)
 ## Version
 
-3.0.0-beta3
+3.0.0
 
 ## About
 Schema Wizard is an automation driven, human verified data modeling tool.
@@ -45,7 +45,6 @@ Basic Formats:
 * XML (application/xml) - **well formed** Extensible Markup Lanuage
  
 Application Formats:
-* PCAP (application/vnd.tcpdump.pcap) - Packet Capture
 * PDF (application/pdf) - content must be one of the "Basic Formats"
 * MS Word (application/vnd.openxmlformats-officedocument.wordprocessingml.document) - content must be one of the "Basic Formats" 
 

@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.apache.log4j.Logger;
 
+import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.histogram.AbstractBucketList;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -58,6 +59,11 @@ public abstract class Detail {
 	@JsonProperty("detail-type")
 	public String getDetailType() {
 		return detailType;
+	}
+	
+	@JsonIgnore
+	public DetailType getDetailTypeClass() {
+		return DetailType.fromString(getDetailType());
 	}
 
 	@JsonProperty("detail-type")

@@ -4,13 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -22,9 +20,11 @@ import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.SchemaMetaData;
+import com.deleidos.dp.beans.User;
 import com.deleidos.dp.deserializors.SerializationUtility;
 import com.deleidos.dp.environ.DPMockUpEnvironmentTest;
 import com.deleidos.dp.exceptions.DataAccessException;
+import com.deleidos.dp.exceptions.H2DataAccessException;
 
 /**
  * Tests the various functionalities of the H2 Data Access Object. These same
@@ -243,6 +243,7 @@ public class H2DataAccessObjectTest extends DPMockUpEnvironmentTest {
 		logger.info("deleteSampleByGuid(); passed.");
 	}
 
+	@Ignore
 	@Test
 	public void deleteByGuid() throws DataAccessException {
 		// Testing a Data Sample GUID
@@ -308,5 +309,249 @@ public class H2DataAccessObjectTest extends DPMockUpEnvironmentTest {
 		assertFalse(schemaGuids.contains(schemaGuid));
 
 		logger.info("deleteSchemaByGuid(); passed.");
+	}
+	
+	@Test
+	public void testCreateShiroUser() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Retrieving user with the username: " + user.getUserName());
+		User retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getFirstName() == null);
+		logger.info("User not found (expected behavior).");
+		logger.info("");
+		logger.info("Creating a user with the profile: ");
+		logger.info("\tUsername: " + user.getUserName());
+		logger.info("\tPassword: " + user.getPassword());
+		logger.info("\tFirst Name: " + user.getFirstName());
+		logger.info("\tLast Name: " + user.getLastName());
+		logger.info("\tSalt: " + user.getSalt());
+		logger.info("\tRole: " + user.getUserRole());
+		H2DataAccessObject.getInstance().createUser(user);
+		
+		logger.info("Retrieiving user with the username: " + user.getUserName());
+		retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getFirstName() != null);
+		logger.info("User found. Test passed.");
+	}
+	
+	@Test
+	public void testGetAllShiroUsers() throws H2DataAccessException, SQLException {
+		List<User> users = H2DataAccessObject.getInstance().getAllUsers();
+		int intialUserPoolSize = users.size();
+		int numUsersToAdd = 5;
+		
+		logger.info("Initial user pool size is: " + intialUserPoolSize);
+		logger.info("Adding " + numUsersToAdd + " users to the database.");
+		
+		for (int i = 1; i <= numUsersToAdd; i++) {
+			logger.info("Adding user " + i);
+			User tmpUser = createRandomUser();
+			logger.info("\tUsername: " + tmpUser.getUserName());
+			H2DataAccessObject.getInstance().createUser(tmpUser);
+		}
+		
+		users = H2DataAccessObject.getInstance().getAllUsers();
+		int newUserPoolSize = users.size();
+		logger.info("New user pool size is: " + newUserPoolSize);
+		assertTrue(newUserPoolSize == intialUserPoolSize + numUsersToAdd);
+		logger.info("Test passed.");
+	}
+	
+	@Test
+	public void testUpdateShiroUser() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		logger.info("Creating user in DB.");
+		H2DataAccessObject.getInstance().createUser(user);
+		
+		logger.info("Ensuring write consistency of inputted user values.");
+		User retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		String originalUser = SerializationUtility.serialize(user);
+		
+		assertTrue(user.getUserName() == retrievedUser.getUserName());
+		assertTrue(user.getFirstName() == retrievedUser.getFirstName());
+		assertTrue(user.getLastName() == retrievedUser.getLastName());
+		
+		logger.info("Modifying the user object.");
+		User modifiedUser = user;
+		modifiedUser.setFirstName("Jane");
+		modifiedUser.setLastName("Bow");
+		modifiedUser.setUserRole("admin");
+		H2DataAccessObject.getInstance().updateUser(modifiedUser);
+		
+		logger.info("Ensuring write consistency of inputted user values.");
+		retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		
+		logger.info("Old user object:");
+		logger.info(originalUser);
+		logger.info("New user object:");
+		logger.info(SerializationUtility.serialize(modifiedUser));
+		
+		logger.info("Comparing what's stored in the database to what's expected (new user object).");
+		assertTrue(modifiedUser.getUserName() == retrievedUser.getUserName());
+		assertTrue(modifiedUser.getFirstName() == retrievedUser.getFirstName());
+		assertTrue(modifiedUser.getLastName() == retrievedUser.getLastName());
+		
+		logger.info("Test passed.");
+	}
+	
+	@Test
+	public void testDeleteShiroUser() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Created user.");
+		H2DataAccessObject.getInstance().createUser(user);
+		
+		logger.info("Ensuring user was successfully written to database.");
+		User retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getUserName() != null);
+		
+		logger.info("Deleting user.");
+		H2DataAccessObject.getInstance().deleteUser(user.getUserName());
+		
+		logger.info("Ensuring user was successfully removed from the database.");
+		retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getUserName() == null);
+		
+		logger.info("Test passed.");
+	}
+	
+	@Test
+	public void testAddSecurityQuestionsForUser() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Ensuring there is no existing user for the impending insertion.");
+		User retrievedUser = H2DataAccessObject.getInstance().getSecurityQuestionsForUser(user.getUserName());
+		// ensure the user's security questions doesn't exist before proceeeding
+		assertTrue(retrievedUser.getSecurityQuestion1() == null);
+		assertTrue(retrievedUser.getSecurityQuestion2() == null);
+		assertTrue(retrievedUser.getSecurityQuestion3() == null);
+		
+		logger.info("Creating the user and adding security questions in DB.");
+		H2DataAccessObject.getInstance().createUser(user);
+		H2DataAccessObject.getInstance().addSecurityQuestionsForUser(user);
+		
+		retrievedUser = H2DataAccessObject.getInstance().getSecurityQuestionsForUser(user.getUserName());
+		assertTrue(retrievedUser.getSecurityQuestion1().equals(user.getSecurityQuestion1()));
+		assertTrue(retrievedUser.getSecurityQuestion2().equals(user.getSecurityQuestion2()));
+		assertTrue(retrievedUser.getSecurityQuestion3().equals(user.getSecurityQuestion3()));
+		
+		assertTrue(retrievedUser.getSecurityQuestion1Answer().equals(user.getSecurityQuestion1Answer()));
+		assertTrue(retrievedUser.getSecurityQuestion2Answer().equals(user.getSecurityQuestion2Answer()));
+		assertTrue(retrievedUser.getSecurityQuestion3Answer().equals(user.getSecurityQuestion3Answer()));
+		logger.info("Confirmed successful insertion of security questions.");
+	}
+	
+	@Test
+	public void testVerifySecurityQuestionsForUser() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Ensuring there is no existing user for the impending insertion.");
+		User retrievedUser = H2DataAccessObject.getInstance().getSecurityQuestionsForUser(user.getUserName());
+		// ensure the user doesn't exist before proceeding
+		assertTrue(retrievedUser.getUserName() == null);
+		logger.info("Creating the user in DB.");
+		H2DataAccessObject.getInstance().createUser(user);
+		H2DataAccessObject.getInstance().addSecurityQuestionsForUser(user);
+		
+		logger.info("Retrieving the username from the name: " + user.getFirstName());
+		retrievedUser = H2DataAccessObject.getInstance().getUsernameFromFirstName(user.getFirstName());
+		logger.info("Got username: " + retrievedUser.getUserName() + ". Expected: " + user.getUserName());
+		assertTrue(retrievedUser.getUserName().equals(user.getUserName()));
+		
+		logger.info("Submitting: " + SerializationUtility.serialize(user));
+		
+		boolean result = H2DataAccessObject.getInstance().verifySecurityQuestionsForUser(user);
+		assertTrue(result);
+		
+		logger.info("Test passed.");
+	} 
+	
+	@Test
+	public void testDuplicateUsernameInsertion() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Retrieving user with the username: " + user.getUserName());
+		User retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getFirstName() == null);
+		logger.info("User not found (expected behavior).");
+		logger.info("");
+		logger.info("Creating a user with the profile: ");
+		logger.info("\tUsername: " + user.getUserName());
+		logger.info("\tPassword: " + user.getPassword());
+		logger.info("\tFirst Name: " + user.getFirstName());
+		logger.info("\tLast Name: " + user.getLastName());
+		logger.info("\tSalt: " + user.getSalt());
+		logger.info("\tRole: " + user.getUserRole());
+		H2DataAccessObject.getInstance().createUser(user);
+		
+		logger.info("Retrieiving user with the username: " + user.getUserName());
+		retrievedUser = H2DataAccessObject.getInstance().getUser(user.getUserName());
+		assertTrue(retrievedUser.getFirstName() != null);
+		
+		logger.info("Attempting to insert duplicate user.");
+		try { 
+			String retrievedUsername = H2DataAccessObject.getInstance().createUser(user);
+		} catch (H2DataAccessException e) {
+			assertTrue(e.getMessage().equals("DUPLICATE_USERNAME"));
+		}
+		
+		logger.info("Test passed.");
+	}
+	
+	@Test
+	public void testGetSecurityQuestionsFromBank() throws H2DataAccessException, SQLException {
+		logger.info("Populating the DB with the initial security questions.");
+		H2DataAccessObject.getInstance().initializeDefaultSecurityQuestions();
+		
+		logger.info("Retrieving security questions from the DB.");
+		List<String> questions = H2DataAccessObject.getInstance().getAllSecurityQuestions();
+		assertTrue(questions.size() > 0);
+		
+		logger.info("Security questions:");
+		
+		for (String question : questions) { 
+			logger.info("\t" + question);
+		}
+		
+		logger.info("Test passed.");
+	}
+	
+	@Test
+	public void testGetUsernameFromFirstName() throws H2DataAccessException, SQLException {
+		User user = createRandomUser();
+		
+		logger.info("Ensuring there is no existing user for the impending insertion.");
+		User retrievedUser = H2DataAccessObject.getInstance().getSecurityQuestionsForUser(user.getUserName());
+		// ensure the user doesn't exist before proceeding
+		assertTrue(retrievedUser.getUserName() == null);
+		logger.info("Creating the user in DB.");
+		H2DataAccessObject.getInstance().createUser(user);
+		
+		logger.info("Retrieving the username from the name: " + user.getFirstName());
+		retrievedUser = H2DataAccessObject.getInstance().getUsernameFromFirstName(user.getFirstName());
+		logger.info("Got username: " + retrievedUser.getUserName() + ". Expected: " + user.getUserName());
+		assertTrue(retrievedUser.getUserName().equals(user.getUserName()));
+		logger.info("Test passed.");
+	}
+	
+	// Private methods
+	private User createRandomUser() {
+		User user = new User();
+		user.setUserName(UUID.randomUUID().toString().substring(0, 15));
+		user.setPassword(UUID.randomUUID().toString().substring(0, 15));
+		user.setSalt(UUID.randomUUID().toString().substring(0, 15));
+		user.setFirstName(UUID.randomUUID().toString().substring(0, 15));
+		user.setLastName(UUID.randomUUID().toString().substring(0, 15));
+		user.setUserRole("user");
+		
+		user.setSecurityQuestion1("What is 1 + 1?");
+		user.setSecurityQuestion1Answer("2");
+		user.setSecurityQuestion2("What is 2 + 2?");
+		user.setSecurityQuestion2Answer("4");
+		user.setSecurityQuestion3("What is 3 * 3?");
+		user.setSecurityQuestion3Answer("9");
+		
+		return user;
 	}
 }

@@ -2,21 +2,18 @@ package com.deleidos.dp.profiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.beans.ColsEntry;
-import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Histogram;
 import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.RegionData;
 import com.deleidos.dp.beans.RowEntry;
-import com.deleidos.dp.beans.Schema;
+import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.reversegeocoding.CoordinateProfile;
 
 /**
@@ -37,30 +34,31 @@ public class ReverseGeocodingLoader {
 		}
 		return -1;
 	}
-	
+
 	private static List<CoordinateProfile> profileToCoordinateProfiles(Map<String, Profile> profileMap) {
 		List<CoordinateProfile> tempFrequencyList = new ArrayList<CoordinateProfile>();
 		for(String key : profileMap.keySet()) { 
 			Profile profile = profileMap.get(key);
 			if(Interpretation.isCoordinate(profile.getInterpretation())) {
-				Optional<Histogram> histogram = profile.getDetail().getHistogramOptional();
-				if(histogram.isPresent()) {
-					RegionData regionData = histogram.get().getRegionData();
-					if(regionData != null) {
-						String latitudeKey = regionData.getLatitudeKey();
-						String longitudeKey = regionData.getLongitudeKey();
+				// as of 10/21, if a field is interpretted as a coordinate,
+				// but does not have a histogram, there is a problem
+				Histogram histogram = profile.getDetail().getHistogramOptional()
+						.orElseThrow(()->new MainTypeRuntimeException());
+				RegionData regionData = histogram.getRegionData();
+				if(regionData != null) {
+					String latitudeKey = regionData.getLatitudeKey();
+					String longitudeKey = regionData.getLongitudeKey();
 
-						CoordinateProfile coordinateProfile = new CoordinateProfile(latitudeKey, longitudeKey);
-						if(tempFrequencyList.contains(coordinateProfile)) {
-							continue;
-						}
-						int addedIndex = tempFrequencyList.size();
-						coordinateProfile.setIndex(addedIndex);
-						coordinateProfile.setCountryFrequencyMapping(regionData.toMap());
-
-						tempFrequencyList.add(coordinateProfile);
-						logger.info("Added key: " + latitudeKey + "," + longitudeKey);
+					CoordinateProfile coordinateProfile = new CoordinateProfile(latitudeKey, longitudeKey);
+					if(tempFrequencyList.contains(coordinateProfile)) {
+						continue;
 					}
+					int addedIndex = tempFrequencyList.size();
+					coordinateProfile.setIndex(addedIndex);
+					coordinateProfile.setCountryFrequencyMapping(regionData.toMap());
+
+					tempFrequencyList.add(coordinateProfile);
+					logger.info("Added key: " + latitudeKey + "," + longitudeKey);
 				}
 			} else {
 				logger.debug("Not initializing any reverse geocoding for "+key+".");
@@ -68,17 +66,17 @@ public class ReverseGeocodingLoader {
 		}
 		return tempFrequencyList;
 	}
-	
+
 	public static List<CoordinateProfile> addAllCoordinateProfiles(List<CoordinateProfile> existing, List<CoordinateProfile> additions) {
 		additions.forEach(x->updateCoordinateProfile(existing, x));
 		return existing;
 	}
-	
+
 	public static List<CoordinateProfile> getCoordinateProfiles(Map<String, Profile> profileMapping) {
 		return addAllCoordinateProfiles(new ArrayList<CoordinateProfile>(), 
 				profileToCoordinateProfiles(profileMapping));
 	}
-		
+
 	/*public static List<CoordinateProfile> calculateRegionDataCounts(Schema existingSchema, List<DataSample> samples) {
 		List<CoordinateProfile> coordinateProfile = new ArrayList<CoordinateProfile>();
 		if(existingSchema != null) {
@@ -117,7 +115,7 @@ public class ReverseGeocodingLoader {
 	/*public static Map<String, RegionData> generateRegionDataMap(Schema schema, List<DataSample> samples) {
 		Map<String, RegionData> regionDataMapping = new HashMap<String, RegionData>();
 		List<CoordinateProfile> coordinateProfiles = calculateRegionDataCounts(schema, samples);
-		
+
 		for(CoordinateProfile coordinateProfile : coordinateProfiles) {
 
 			RegionData r1 = regionDataFromIndex(coordinateProfile);
@@ -125,7 +123,7 @@ public class ReverseGeocodingLoader {
 
 			regionDataMapping.put(coordinateProfile.getLatitude(), r1);
 			regionDataMapping.put(coordinateProfile.getLongitude(), r2);
-			
+
 		}
 		return regionDataMapping;
 	}*/
@@ -139,5 +137,5 @@ public class ReverseGeocodingLoader {
 		regionData.setLongitudeKey(coordinateProfile.getLongitude());
 		return regionData;
 	}
-	
+
 }

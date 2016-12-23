@@ -1,5 +1,5 @@
 <div class="well"
-     style="width: 99%; max-width: 700px; height: 24px; margin:0; padding: 2px; padding-top: 0px;">
+     style="width: 99%; max-width: 700px; height: 40px; margin:0; padding: 2px; padding-top: 0px;">
     <div class="viz-select"
          style="margin-left: 6px; line-height: 10px;">
         <form name="panel1VizSelect">
@@ -37,13 +37,12 @@
                             currentSample.viz == 'gph'">
                 Frequency vs. Values
             </label>
+            <div style="background-color: transparent;  padding: 5px; margin-left: -4px">{{placeHolderForLongFieldName}}</div>
         </form>
-        <div style="background-color: floralwhite; min-width: 700px; padding: 5px; margin-left: -8px">{{placeHolderForLongFieldName}}</div>
     </div>
     <div class="col-xs-12 well"
          style="margin-bottom: 6px; padding: 3px; padding-left: 0px;
                 max-height: 480px; overflow-y: auto;"
-         ng-mouseover="logFieldNameFromRepeat(field)"
          ng-show="currentSample.viz == 'hbc'">
         <canvas canvas id="base" class="chart-horizontal-bar" height="400px"
                 chart-labels="profile['detail']['freq-histogram'].labels"
