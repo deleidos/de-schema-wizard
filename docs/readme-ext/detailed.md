@@ -22,7 +22,7 @@ When parsing has been completed, all values will be classified as a **number** o
 ### Detail Types
 Each main type has associated detail types:
 * Number - **integer**, **decimal**, **exponent**
-* String - **boolean**, **term** (no spaces), **phrase** (contains spaces)
+* String - **boolean**, **term** (no spaces), **phrase** (some spaces), **text** (many spaces)
 
 ## Interpretation Engine
 The Interpretation Engine brings more meaning to your data.  Using a pluggable framework, it inspects field and identifies significant information elements in data sets.  This adds value to the fields in your samples and schemas.  The following section will explain the details of the Interpretation Engine and what you need to know to use it.
