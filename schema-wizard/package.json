@@ -1,6 +1,6 @@
 {
-  "name": "SchemaWizard",
-  "version": "3.0.0-beta3",
+  "name": "schema-wizard",
+  "version": "3.0.1",
   "engines": {
     "node": ">= 0.10.0"
   },

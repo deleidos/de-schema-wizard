@@ -69,7 +69,6 @@
             Utilities.setModifySchemaMode(false);
             $scope.confidenceThreshold = matchConfidenceThreshold;
             $scope.interpretationMatch = defaultInterpretationMatch;
-            $scope.matchingFieldsUndoId = 99;
 
             $scope.initializeModels = function () {
                 $scope.model = {
@@ -82,18 +81,10 @@
                     dataList: {"data": []},
                     detailPanels: {"panel1": [], "panel2": []}
                 };
-                $scope.dropzoneModels = {
-                    selected1: null,
-                    selected2: null,
-                    selected3: null,
-                    dataList: {"data": []},
-                    dropzones: {"zone1": [], "zone2": [], "zone3": []}
-                };
             }; // initializeModels
             $scope.initializeModels();
 
-            guidedTourStepFactory.get()
-                .$promise.then(function (response) {
+            guidedTourStepFactory.get().$promise.then(function (response) {
                 $rootScope.tourInformation = response;
                 $scope.mainTour = $rootScope.tourInformation.mainTour;
                 $scope.inspectionTour = $rootScope.tourInformation.inspectSampleTour;
@@ -109,10 +100,8 @@
                     $cookies.put('schwiz.tours.interpretations', "visited");
                 }
             }
-            //TODO: test
             $scope.fileIndex = -1;
 
-            //TODO: determine scoping issue for long field names
             $rootScope.placeHolderForLongFieldName = "Hover over points to see full name";
             $rootScope.hoverLongFieldName = function (points, evt) {
                 try {
@@ -120,9 +109,7 @@
                     $rootScope.placeHolderForLongFieldName = points[0]['_view'].label;
                     $scope.$apply();
                 }
-                catch(e){
-
-                }
+                catch(e){ }
             };
 
             $scope.transformTable = function () {
@@ -192,7 +179,6 @@
                         }
                         switch ($scope.path) {
                             case "/interpretations":
-                                //TODO: remove try/catch when resizing interpretation dialog is finished
                                 try {
                                     document.getElementById("interpretationsContainer").style.height = newViewHeight - 45 + "px";
                                     document.getElementById("interpretationsMain").style.height = newViewHeight - 98 + "px";
@@ -310,12 +296,17 @@
                                     newViewHeight - 223 + "px";
                                 try { /*sizing for up to 20 columns which isn't expected to hapen*/
                                     for (var i = 0; i < 20; i++) {
-                                        document.getElementById("col" + i).style.height = newViewHeight - 252 + "px";
+                                        document.getElementById("col" + i).style.height = newViewHeight - 272 + "px";
                                     }
                                 } catch (e) { /* do nothing */
                                 } finally {
-                                    document.getElementById("colN").style.height = newViewHeight - 252 + "px";
+                                    document.getElementById("colN").style.height = newViewHeight - 272 + "px";
                                 }
+
+                                document.getElementById("wizardMatchFieldsProfilesPanelBody").style.width =
+                                    document.getElementById("resizePanelDiv").style.width;
+
+
                                 document.getElementById("wizardDetails1PanelBody").style.height =
                                     newViewHeight - 193 + "px";
                                 document.getElementById("wizardDetails2PanelBody").style.height =
@@ -334,7 +325,7 @@
                                 document.getElementById("wizardDetails2GphCanvas").style.height =
                                 document.getElementById("wizardDetails2MapCanvas").style.height =
                                 document.getElementById("wizardDetails2ExampleCanvas").style.height =
-                                    newViewHeight - 447 + "px";
+                                    newViewHeight - 437 + "px";
                                 break;
                             case "/wizardFinalizeSchema":
                                 document.getElementById("wizardFinalizeSchemaContainer").style.height =
@@ -463,6 +454,13 @@
                         $scope.navigateTo("/wizardUploadSamples");
                         break;
                     case "wizard-inspect-samples":
+                        // when iterating over several data samples, reset the mask since the html not reinitialized
+                        try {
+                            $scope.browseMaskOpacity = 0.8;
+                            document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
+                            document.getElementById("sampleMask").style.display = "block";
+                        } catch (e) { /* do nothing -- the page isn't currently rendered */ }
+
                         if ($cookies.get('schwiz.tours.inspectSample') !== "visited") {
                             $timeout(function () {
                                 TourService.getTourByName('catalog').startAt('300');
@@ -668,11 +666,6 @@
                 });
             };
 
-            $scope.clearDetails = function (dropzone) {
-                $scope.dropzoneModels['selected' + dropzone] = null;
-                delete $scope.dropzoneModels.dropzones['zone' + dropzone][0];
-            }; // clearDetails
-
             // tour 'previous' button
             $scope.onTourPrev = function (tour) {
                 console.log('Moving back...', tour);
@@ -745,7 +738,6 @@
                 $scope.currentSchema = args.schema;
                 Utilities.setSchema($scope.currentSchema);
 
-                //TODO dont use rootscope to try and resolve scoping issue before broadcast
                 $rootScope.test = $scope.currentSchema;
             }); // onsetCurrentSchema
 
@@ -765,458 +757,6 @@
                 console.log("showCurrentSchema");
                 console.log($scope.currentSchema);
             }; // showCurrentSchema
-
-            $scope.addSchemaToModel = function () {
-                console.log("addSchemaToModel");
-                console.log($scope.currentSchema);
-                angular.forEach(Object.keys($scope.currentSchema.sProfile), function (property) {
-                    console.log("adding property: " + property);
-                    $scope.model.properties[property] = $scope.currentSchema.sProfile[property];
-                    $scope.model.properties[property]["interpretations"] = [];
-                    for (var i = 0; i < $scope.currentSchema.sProfile[property].interpretations.length; i++) {
-                        if ($scope.model.properties[property].interpretations.indexOf($scope.currentSchema.sProfile[property].interpretations[i].iName) === -1) {
-                            $scope.model.properties[property].interpretations.push($scope.currentSchema.sProfile[property].interpretations[i]);
-                        }
-                    }
-                    $scope.model.properties[property]["linkedDs"] = [];
-                    $scope.model.properties[property]["existing-schema-property"] = true;
-                });
-                console.log("$scope.model.properties");
-                console.log($scope.model.properties);
-            }; // addSchemaToModel
-
-            $scope.addPropertyToModel = function (dataSample, property) {
-                console.log("addPropertyToModel property: " + property);
-                if ($scope.modifySchemaMode) console.log(dataSample);
-                //console.log(dataSample);
-                if (!$scope.model.properties.hasOwnProperty(property)) {
-                    // add the property and an array for linking data samples
-                    $scope.model.properties[property] =
-                        {"display-name": dataSample.dsProfile[property]["display-name"], "interpretations": [], "linkedDs": []};
-                    $scope.model.properties[property]["existing-schema-property"] = false;
-                    // since first ds in linked list, mark it as seed and not merged
-                    dataSample.dsProfile[property]['used-in-schema'] = true;
-                    dataSample.dsProfile[property]['merged-into-schema'] = false;
-                } else {
-                    dataSample.dsProfile[property]['used-in-schema'] = false;
-                    dataSample.dsProfile[property]['merged-into-schema'] = true;
-                }
-                for (var i = 0; i < dataSample.dsProfile[property].interpretations.length; i++) {
-                    if ($scope.model.properties[property].interpretations.indexOf(dataSample.dsProfile[property].interpretations[i].iName) === -1) {
-                        $scope.model.properties[property].interpretations.push(dataSample.dsProfile[property].interpretations[i].iName);
-                    }
-                }
-                // unless a seed property, mark for merging
-                if (!dataSample.dsProfile[property]['used-in-schema']) {
-                    dataSample.dsProfile[property]['merged-into-schema'] = true;
-                }
-                // add a link to the data sample
-                $scope.model.properties[property].linkedDs.push(dataSample);
-            }; // addPropertyToModel
-
-            $scope.repeatMatching = function (interpretationMatch) {
-                console.log("confidenceThreshold");
-                $scope.interpretationMatch = interpretationMatch;
-                $scope.model.properties = {};
-                if ($scope.modifySchemaMode) {
-                    $scope.addSchemaToModel();
-                }
-                $timeout(function () {
-                    console.log("$scope.confidenceValues.selectedConfidenceValue");
-                    console.log($scope.confidenceValues.selectedConfidenceValue);
-                    console.log("$scope.interpretationMatch: " + $scope.interpretationMatch);
-                    // start matching over using the original copy of the data samples
-                    $scope.model.dataSamples = angular.copy($scope.model.originalDataSamples);
-                    console.log("$scope.model.dataSamples");
-                    console.log($scope.model.dataSamples);
-                    $scope.addNewDataSamples($scope.model.dataSamples,
-                                             $scope.confidenceValues.selectedConfidenceValue,
-                                             $scope.interpretationMatch);
-                    var foundDetailsToDisplay = false;
-                    angular.forEach(Object.keys($scope.model.properties), function (property) {
-                        if ($scope.model.properties[property].linkedDs.length > 1 &&
-                            $scope.model.properties[property].linkedDs[0].dsProfile[property]['main-type'] == "number" && !foundDetailsToDisplay) {
-                            $scope.showInDetails1($scope.model.properties[property].linkedDs[0], property, false);
-                            $scope.showInDetails2($scope.model.properties[property].linkedDs[1], property, false);
-                            foundDetailsToDisplay = true;
-                        }
-                    });
-                }, 300)
-            }; // repeatMatching
-
-            // TODO: test interpretation match in the future
-            $scope.matchesFieldInOtherDataSample = function(interpretationsToMatch, fieldToMatch, newDataSamples) {
-                console.log("matchesFieldInOtherDataSample");
-                console.log("interpretationsToMatch: " + angular.toJson(interpretationsToMatch));
-                console.log("fieldToMatch: " + fieldToMatch);
-                foundMatch = false;
-                findMatch: for (var i = 0; i < interpretationsToMatch.length; i++) {
-                    for (var j = 0; j < newDataSamples.length; j++) {
-                        if (newDataSamples[j].dsProfile.hasOwnProperty(fieldToMatch)) {
-                            for (var k = 0; k < newDataSamples[j].dsProfile[fieldToMatch].interpretations.length; k++) {
-                                foundMatch = foundMatch
-                                    || (newDataSamples[j].dsProfile.hasOwnProperty(fieldToMatch)
-                                    && interpretationsToMatch[i].iName
-                                        === newDataSamples[j].dsProfile[fieldToMatch].interpretations[k].iName
-                                    && interpretationsToMatch[i].iName != "Unknown");
-                                if (foundMatch) break findMatch;
-                            }
-                        }
-                    }
-                }
-                return foundMatch;
-            }; // matchesFieldInOtherDataSample
-
-            $scope.addNewDataSamples = function (newDataSamples,  confidenceThreshold, interpretationMatch) {
-                console.log("addNewDataSamples");
-                console.log(newDataSamples);
-                angular.forEach(newDataSamples, function (newDs) {
-                    var propertiesToDelete = [];
-                    angular.forEach(Object.keys(newDs.dsProfile), function (property) {
-                        // build drop-down listbox for alternate names
-                        newDs.dsProfile[property]['match-names'] =
-                            {availableOptions: [], selectedOption: null, previousOption: null};
-                        for (var i = 0; i < newDs.dsProfile[property]['matching-fields'].length; i++) {
-                            // TODO: test interpretation match in the future
-                            if (!interpretationMatch
-                                || $scope.matchesFieldInOtherDataSample(
-                                    newDs.dsProfile[property].interpretations,
-                                    newDs.dsProfile[property]['matching-fields'][i]['matching-field'],
-                                    newDataSamples)) {
-                                newDs.dsProfile[property]['match-names']['availableOptions'].push(
-                                    {
-                                        id: i,
-                                        name: newDs.dsProfile[property]['matching-fields'][i]['matching-field'] +
-                                        ':' +
-                                        newDs.dsProfile[property]['matching-fields'][i]['confidence']
-                                    }
-                                )
-                            }
-                        }
-                        // examine alternate names and their confidence factor
-                        // if high and not a seed property then change the name of data
-                        // sample's property to the alternate name and delete the original
-                        for (var i = 0; i < newDs.dsProfile[property]['matching-fields'].length; i++) {
-                            var matchingField = newDs.dsProfile[property]['matching-fields'][i];
-
-                            // if the data sample property being examined is the same as
-                            // the alternate name and exists in the properties model
-                            // then stop examining the alternates
-                            if (matchingField['matching-field'] == property &&
-                                $scope.model.properties.hasOwnProperty(matchingField['matching-field'])) break;
-
-                            // if the data sample has a property which is the same as
-                            // this alternate name then move on to the next alternate name
-                            if (newDs.dsProfile.hasOwnProperty(matchingField['matching-field'])) continue;
-
-                            // if this alternate name has high confidence then rename
-                            // this property to that alternate name
-                            if (matchingField['confidence'] >= confidenceThreshold
-                                && ((interpretationMatch
-                                     && newDs.dsProfile[property].interpretations[0].interpretation
-                                        != "Unknown")
-                                    || !interpretationMatch
-                                   )) {
-                                if ($scope.model.properties.hasOwnProperty(matchingField['matching-field'])) {
-                                    newDs.dsProfile[property]['original-name'] = property;
-                                    newDs.dsProfile[property]['used-in-schema'] = false;
-                                    newDs.dsProfile[property]['merged-into-schema'] = true;
-                                    // select this matching-field in the drop-down listbox
-                                    newDs.dsProfile[property]['match-names'].selectedOption =
-                                    {
-                                        id: i,
-                                        name: newDs.dsProfile[property]['matching-fields'][i]['matching-field'] +
-                                        ':' +
-                                        newDs.dsProfile[property]['matching-fields'][i]['confidence']
-                                    };
-                                    // save current selection for an undo
-                                    newDs.dsProfile[property]['match-names'].previousOption =
-                                        newDs.dsProfile[property]['match-names'].selectedOption;
-                                    // show the original property name at the top of the drop-down listbox
-                                    newDs.dsProfile[property]['match-names']['availableOptions'].unshift(
-                                        {id: $scope.matchingFieldsUndoId, name: property});
-                                    newDs.dsProfile[matchingField['matching-field']] = angular.copy(newDs.dsProfile[property]);
-                                    // delete later otherwise the loop index will be incorrect
-                                    propertiesToDelete.push(property);
-                                    break;
-                                }
-                            }
-                        }
-                        for (var i = 0; i < propertiesToDelete.length; i++) {
-                            delete newDs.dsProfile[propertiesToDelete[i]];
-                        }
-                    });
-                    angular.forEach(Object.keys(newDs.dsProfile), function (property) {
-                        $scope.addPropertyToModel(newDs, property);
-                    });
-                });
-                $scope.model.properties = $scope.sortModelProperties($scope.model.properties);
-                console.log("$scope.model");
-                console.log($scope.model);
-            }, function (error) {
-                statusCodesFactory.get().$promise.then(function (response) {
-                    $confirm(
-                        {
-                            title: response.failedToAddNewDataSample.title,
-                            text: response.failedToAddNewDataSample.title +
-                            " (" + error.status + ")",
-                            ok: 'OK'
-                        },
-                        {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                })
-            }; // addNewDataSamples
-
-            $scope.changeMatchedProperty = function (dataSample, property) {
-                console.log("changeMatchField");
-                console.log(dataSample);
-                console.log(property);
-                console.log(dataSample.dsProfile[property]['match-names'].selectedOption);
-                var newName = dataSample.dsProfile[property]['match-names'].selectedOption.name
-                    .substring(0, dataSample.dsProfile[property]['match-names'].selectedOption.name.indexOf(":"));
-                console.log("newName: " + newName);
-
-                // check if the new name already exists in the same data sample file.
-                if (dataSample.dsProfile.hasOwnProperty(newName)) {
-                    $confirm(
-                        {
-                            title: 'Merge Operation',
-                            text: "The property '" + newName + "' already exists in data sample: '" +
-                            dataSample.dsName + "'",
-                            ok: 'OK'
-                        },
-                        {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'});
-                    // undo user selection to previous selection
-                    dataSample.dsProfile[property]['match-names'].selectedOption =
-                        dataSample.dsProfile[property]['match-names'].previousOption;
-                    return;
-                }
-
-                var linkedDs = $scope.model.properties[property].linkedDs;
-                $scope.removeFromDetailsPanels(dataSample.dsProfile[property]);
-                // remove data sample from current property linked list
-                var removedDs;
-                for (var i = 0; i < linkedDs.length; i++) {
-                    if (linkedDs[i] == dataSample) {
-                        removedDs = linkedDs.splice(i, 1)[0];
-                        break;
-                    }
-                }
-                // check whether this is an undo operation, if so prep for restore and do cleanup
-               // if not add a selection operation that will permit an undo to occur
-                if (dataSample.dsProfile[property]['match-names'].selectedOption.id == $scope.matchingFieldsUndoId) {
-                    newName = removedDs.dsProfile[property]['original-name'];
-                    delete removedDs.dsProfile[property]['original-name'];
-                } else if (!removedDs.dsProfile[property]['original-name']) {
-                    removedDs.dsProfile[property]['original-name'] = property;
-                    // show the original property name at the top of the drop-down listbox (only once)
-                    if (removedDs.dsProfile[property]['match-names']['availableOptions'][0].name != property) {
-                        removedDs.dsProfile[property]['match-names']['availableOptions'].unshift(
-                            {id: $scope.matchingFieldsUndoId, name: property});
-                    }
-                }
-                // save current selection for an undo
-                removedDs.dsProfile[property]['match-names'].previousOption =
-                    removedDs.dsProfile[property]['match-names'].selectedOption;
-                console.log("newName: " + newName);
-                // make a deep copy of property to restore
-                removedDs.dsProfile[newName] = angular.copy(removedDs.dsProfile[property]);
-                // delete old profile from the linked list
-                delete removedDs.dsProfile[property];
-                console.log("linkedDs");
-                console.log(linkedDs);
-                // if no profile remain in the linked list them remove the property
-                if (linkedDs.length == 0) {
-                    if ($scope.modifySchemaMode === false ||
-                        $scope.model.properties[property]['existing-schema-property'] !== true) {
-                        delete $scope.model.properties[property];
-                    }
-                } else {
-                    // rebuild the interpretations for this property based on the linked data samples
-                    $scope.model.properties[property].interpretations = [];
-                    for (var i = 0; i < linkedDs.length; i++) {
-                        for (var j = 0; j < linkedDs[i].dsProfile[property].interpretations.length; j++) {
-                            if ($scope.model.properties[property].interpretations.indexOf(linkedDs[i].dsProfile[property].interpretations[j].iName) === -1) {
-                                $scope.model.properties[property].interpretations.push(linkedDs[i].dsProfile[property].interpretations[j].iName);
-                            }
-                        }
-                    }
-                }
-                // add restored property to property model
-                $scope.addPropertyToModel(removedDs, newName);
-            }, function (error) {
-                statusCodesFactory.get().$promise.then(function (response) {
-                    $confirm(
-                        {
-                            title: response.failedToMatchProperty.title,
-                            text: response.failedToMatchProperty.title +
-                            " (" + error.status + ")",
-                            ok: 'OK'
-                        },
-                        {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                })
-            }; // changeMatchedProperty
-
-            $scope.highlightIfInDetails = function (property) {
-                if (property) {
-                    if (property['shown-in-details1']) return {"background-color": "gold", "cursor": "pointer"};
-                    if (property['shown-in-details2']) return {"background-color": "lightsalmon", "cursor": "pointer"};
-                }
-            }; // highlightIfInDetails
-
-            $scope.removeFromDetailsPanels = function (property) {
-                // remove data sample property from details displays
-                if (property['shown-in-details1']) {
-                    $scope.detailModels.detailPanels.panel1 = [];
-                    property['shown-in-details1'] = false;
-                }
-                if (property['shown-in-details2']) {
-                    $scope.detailModels.detailPanels.panel2 = [];
-                    property['shown-in-details2'] = false;
-                }
-            };
-
-            $scope.showInGenericDetails = function (dataSource, property) {
-                console.log("showInGenericDetails");
-                console.log(dataSource);
-                console.log(property);
-                // interate through dataSource properties to turn off shown-in-details
-                angular.forEach(Object.keys(dataSource.dsProfile), function (property) {
-                    dataSource.dsProfile[property]['shown-in-details'] = false;
-                });
-                dataSource.dsProfile[property]['shown-in-details'] = true;
-                $scope.detailModels.detailPanels.panel1 = [];
-                $scope.detailModels.detailPanels.panel1.push(dataSource.dsProfile[property]);
-                $scope.detailModels.detailPanels.panel1[0]["dsName"] = dataSource.dsName;
-                $scope.detailModels.detailPanels.panel1[0]["property-name"] = property;
-                // set the default viz for the histogram
-                if ($scope.detailModels.detailPanels.panel1[0].detail['freq-histogram'].type == "map") {
-                    $scope.detailModels.detailPanels.panel1[0].viz = "map";
-                }
-                else if($scope.detailModels.detailPanels.panel1[0].detail['detail-type'] == "text") {
-                    $scope.detailModels.detailPanels.panel1[0].viz = "example";
-                }
-                else {
-                    $scope.detailModels.detailPanels.panel1[0].viz = "hbc";
-                }
-                console.log("detailModels.detailPanels.panel1[0]");
-                console.log($scope.detailModels.detailPanels.panel1[0]);
-                console.log(dataSource);
-            }; // showInGenericDetails
-
-            $scope.editFieldName = function ($event, oldName, newName) {
-                $scope.editFieldNames = function () {
-                    document.getElementById("wizard-finalize-schema-back").disabled = true;
-                    console.log("editFieldName oldName: '" + oldName + "', newName: '" + newName + "'");
-                    $scope.currentSchema.sProfile[newName] =
-                        angular.copy($scope.currentSchema.sProfile[oldName]);
-                    $scope.currentSchema.sProfile[newName]['display-name'] = newName;
-                    $scope.currentSchema.sProfile[newName]['original-name'] = oldName;
-                    // add the existing name to the list of alias names
-                    if (!$scope.currentSchema.sProfile[newName]['alias-names']) {
-                        $scope.currentSchema.sProfile[newName]['alias-names'] = [];
-                        $scope.currentSchema.sProfile[newName]['alias-names'].push(
-                            {"alias-name": newName, "dsId": null});
-                    } else {
-                        // don't add a duplicate
-                        var aliasExists = false;
-                        for (var i = 0; i < $scope.currentSchema.sProfile[newName]['alias-names'].length; i++) {
-                            if ($scope.currentSchema.sProfile[newName]['alias-names'][i]['alias-name'] === newName) {
-                                aliasExists = true;
-                                break;
-                            }
-                        }
-                        if (!aliasExists) {
-                            $scope.currentSchema.sProfile[newName]['alias-names'].push(
-                                {"alias-name": newName, "dsId": null});
-                        }
-                    }
-                    delete $scope.currentSchema.sProfile[oldName];
-                    console.log($scope.currentSchema);
-                    return newName;
-                }, function (error) {
-                    statusCodesFactory.get().$promise.then(function (response) {
-                        $confirm(
-                            {
-                                title: response.failedToEditFieldName.title,
-                                text: response.failedToEditFieldName.title +
-                                " (" + error.status + ")",
-                                ok: 'OK'
-                            },
-                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                    })
-                };
-                console.log($event);
-                console.log("oldName: '" + oldName + "'   newName: '" + newName + "'");
-                if (oldName !== newName && newName !== '') {
-                    if (document.getElementById("wizard-finalize-schema-back").disabled) {
-                        $scope.editFieldNames();
-                    } else {
-                        $confirm({
-                                title: 'Confirm Edit Field Name',
-                                text: "The 'Back' button will be disabled if a field \n" +
-                                "name is changed. Press 'OK' to confirm.",
-                                ok: 'OK',
-                                cancel: 'Cancel'
-                            }
-                        ).then(function () {
-                            document.getElementById("wizard-finalize-schema-back").disabled = true;
-                            $scope.editFieldName($event, oldName, newName);
-                        }, function (error) {
-                            statusCodesFactory.get().$promise.then(function (response) {
-                                $confirm(
-                                    {
-                                        title: response.editFieldNameFailed.title,
-                                        text: response.editFieldNameFailed.title +
-                                        " (" + error.status + ")",
-                                        ok: 'OK'
-                                    },
-                                    {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                            })
-                        });
-                    }
-                    return oldName;
-                } else {
-                    return oldName;
-                }
-            };// editFieldName
-
-            $scope.setMenuTop = function (arr) {
-                var styleObj = "{top: " + (-arr.length * 22) + "px !important;}";
-                //console.log("setMenuTop");
-                //console.log(styleObj);
-                return styleObj;
-            }; // setMenuTop
-
-            $scope.useInSchema = function (property) {
-                console.log("useInSchema property: " + property);
-                var linkedDs = $scope.model.properties[property["property-name"]].linkedDs;
-                for (var i = 0; i < linkedDs.length; i++) {
-                    var dsProfile = linkedDs[i].dsProfile;
-                    for (var key in linkedDs[i].dsProfile) {
-                        if (key == property["property-name"]) {
-                            dsProfile[key]["used-in-schema"] = false;
-                            dsProfile[key]["merged-into-schema"] = false;
-                        }
-                    }
-                }
-                property['merged-into-schema'] = false;
-                property['used-in-schema'] = true;
-            }; // useInSchema
-
-            $scope.useAsInSchema = function (ds, property) {
-                console.log("useAsInSchema property: " + property);
-                console.log(ds);
-            }; // useAsInSchema
-
-            $scope.mergeIntoSchema = function (property) {
-                console.log("mergeIntoSchema");
-                property['merged-into-schema'] = true;
-            }; // mergeIntoSchema
-
-            $scope.mergeAsIntoSchema = function (ds, property) {
-                console.log("mergeAsIntoSchema property: " + property);
-                console.log(ds);
-            }; // mergeAsIntoSchema
 
             $scope.discardDataSource = function (currentSampleIndex) {
                 $confirm({
@@ -1266,37 +806,6 @@
                 });
             }; // discardDataSource
 
-            $scope.removeProperty = function (property) {
-                $confirm({
-                        title: 'Confirm Remove Property',
-                        text: "Press 'OK' to confirm.",
-                        ok: 'OK',
-                        cancel: 'Cancel'
-                    }
-                ).then(function () {
-                    var linkedDs = $scope.model.properties[property].linkedDs;
-                    for (var i = 0; i < linkedDs.length; i++) {
-                        $scope.removeFromDetailsPanels(linkedDs[i].dsProfile[property]);
-                        delete linkedDs[i].dsProfile[property]
-                    }
-                    delete $scope.model.properties[property];
-                    if ($scope.modifySchemaMode === true) {
-                        delete $scope.currentSchema.sProfile[property]
-                    }
-                }, function (error) {
-                    statusCodesFactory.get().$promise.then(function (response) {
-                        $confirm(
-                            {
-                                title: response.failedToRemoveProperty.title,
-                                text: response.failedToRemoveProperty.title +
-                                " (" + error.status + ")",
-                                ok: 'OK'
-                            },
-                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                    })
-                })
-            }; // removeProperty
-
             var canvasBase = document.getElementById('panel1base');
             var canvasBar = document.getElementById('panel1bar');
             var canvasLine = document.getElementById('panel1line');
@@ -1305,84 +814,6 @@
                 ctx.clearRect(0,0, ctx.canvas.width, ctx.canvas.height);
             }
 
-            $scope.removeDs = function (index) {
-                $confirm({
-                        title: 'Confirm Remove Data Sample',
-                        text: "Press 'OK' to confirm.",
-                        ok: 'OK',
-                        cancel: 'Cancel'
-                    }
-                ).then(function () {
-                    angular.forEach(Object.keys($scope.model.properties), function (property) {
-                        var linkedDs = $scope.model.properties[property].linkedDs;
-                        for (var i = 0; i < linkedDs.length; i++) {
-                            if (linkedDs[i] == $scope.model.dataSamples[index]) {
-                                $scope.removeFromDetailsPanels($scope.model.dataSamples[index].dsProfile[property]);
-                                linkedDs.splice(i, 1);
-                            }
-                        }
-                        if (linkedDs.length == 0) {
-                            delete $scope.model.properties[property];
-                        }
-                    });
-                    $scope.model.dataSamples.splice(index, 1);
-                }, function (error) {
-                    statusCodesFactory.get().$promise.then(function (response) {
-                        $confirm(
-                            {
-                                title: response.failedToRemoveDataSample.title,
-                                text: response.failedToRemoveDataSample.title +
-                                " (" + error.status + ")",
-                                ok: 'OK'
-                            },
-                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                    })
-                });
-            }; // removeDs
-
-            $scope.confidenceValues = {
-                selectedConfidenceValue: $scope.confidenceThreshold.toString(),
-                availableValues: []
-            };
-            for (var i = 100; i > 80; i--) {
-                $scope.confidenceValues.availableValues.push( { value: i });
-            }
-
-            $scope.dragEnd = function (property, obj) {
-                for (var i = 1; i < 4; i++) {
-                    if (angular.equals($scope.dropzoneModels.dropzones["zone" + i][0], obj)) {
-                        $scope.dropzoneModels.dropzones["zone" + i][0]["property-name"] = property;
-                        $scope.dropzoneModels["selected" + i] = obj;
-                        $scope.dropzoneModels.dropzones["zone" + i].splice(1, 1);
-                    }
-                }
-            }; // dragEnd
-
-            $scope.sortModelProperties = function (obj) {
-                var sorting_array = [];
-                for (var key in obj) {
-                    if (obj.hasOwnProperty(key)) {
-                       keyLowerCase = (obj[key]['display-name']['toLowerCase'] ? obj[key]['display-name'].toLowerCase() : obj[key]['display-name']);
-                        sorting_array.push({ "sortKey": keyLowerCase, "originalKey": key });
-                    }
-                }
-                function compare(a,b) {
-                    if (a.sortKey < b.sortKey)
-                        return -1;
-                    if (a.sortKey > b.sortKey)
-                        return 1;
-                    return 0;
-                }
-                sorting_array.sort(compare);
-                var sorted_obj = {};
-                for (var i = 0; i < sorting_array.length; i++) {
-                    console.log(sorting_array[i]["sortKey"]);
-                    console.log(sorting_array[i]["originalKey"]);
-                    console.log(obj[sorting_array[i]["originalKey"]]);
-                    sorted_obj[sorting_array[i]["originalKey"]] = obj[sorting_array[i]["originalKey"]];
-                }
-                return sorted_obj;
-            }; // sortModelProperties
         }]); // schemaWizardCtrl
 
     schemaWizardApp.directive('singleClick', ['$parse', '$timeout', function ($parse, $timeout) {
@@ -1406,5 +837,4 @@
             }
         };
     }]); // singleClick
-
 })();

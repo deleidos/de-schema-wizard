@@ -20,6 +20,7 @@ import com.deleidos.analytics.websocket.api.WebSocketApiPlugin;
 import com.deleidos.analytics.websocket.api.WebSocketEventListener;
 import com.deleidos.analytics.websocket.api.WebSocketMessage;
 import com.deleidos.analytics.websocket.api.WebSocketMessageFactory;
+import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.exception.AnalyticsRuntimeException;
 import com.deleidos.dmf.exception.JobQueueException;
 import com.deleidos.dmf.progressbar.ProgressBarManager;
@@ -406,13 +407,19 @@ public class SchemaWizardSessionUtility implements WebSocketApiPlugin, WebSocket
 	/**
 	 * Should be called at the completion (regardless of success) of any analysis.
 	 * @param sessionId
+	 * @throws AnalyticsCancelledWorkflowException if the session is determined to be cancelled. This should
+	 * prevent a response from being sent to the client.
 	 */
-	public synchronized void registerCompleteAnalysis(String sessionId) {
+	public synchronized void registerCompleteAnalysis(String sessionId) throws AnalyticsCancelledWorkflowException {
+		boolean isCancelled = isCancelled(sessionId); // need to check cancel status before removing from mappings
 		sessionDataMapping.remove(sessionId);
 		logger.info("Session " + sessionId + " registered as completed.");
 		System.gc();
 		if (sessionDataMapping.size() == 0) {
 			overheadEstimate = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		}
+		if (isCancelled) {
+			throw new AnalyticsCancelledWorkflowException("Session " + sessionId + " detected as cancelled");
 		}
 	}
 

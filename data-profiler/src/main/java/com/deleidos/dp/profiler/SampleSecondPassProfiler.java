@@ -170,10 +170,10 @@ public class SampleSecondPassProfiler extends AbstractReverseGeocodingProfiler<D
 	@Override
 	public void accumulateRecord(ProfilerRecord record) {
 		Map<String, List<Object>> normalizedRecord = record.normalizeRecord(groupingBehavior);
-		normalizedRecord.forEach((key, values) ->
+		normalizedRecord.keySet().stream()
 			// must do a null check because empty (all nulls in samples) fields will not have an accumulator
-			Optional.ofNullable(accumulatorMapping.get(key)).ifPresent(
-					accumulator->accumulateNormalizedValues(accumulator, key, values)));
+			.filter(accumulatorMapping::containsKey)
+			.forEach(key -> accumulateNormalizedValues(accumulatorMapping.get(key), key, normalizedRecord.get(key)));
 
 		Map<Integer, Double[]> matchedPairs = new HashMap<Integer, Double[]>();
 		coordinateProfiles.forEach((x) -> matchedPairs.put(x.getIndex(), new Double[]{null, null}));

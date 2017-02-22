@@ -70,7 +70,8 @@
         },
         "step2": {
             "title": "Data Sample Details",
-            "message": "This specifies the current data sample that you are inspecting and how many are left in the files that were uploaded.\n\n Inside of this panel, Schema Wizard has laid out each field that has been identified in your data sample and the correlating statistics, as well as any matching interpretations."        },
+            "message": "This specifies the current data sample that you are inspecting and how many are left in the files that were uploaded.\n\n Inside of this panel, Schema Wizard has laid out each field that has been identified in your data sample and the correlating statistics, as well as any matching interpretations."
+        },
         "step3": {
             "title": "Data Sample Analytics",
             "message": "In this panel, it lists all of the analytics, as well as different graph options to view the data."
@@ -160,6 +161,20 @@
         "step1": {
             "title": "Welcome to this data sample in the catalog",
             "message": "From here you are able to view a data sample that has been previously uploaded and view any statistics or graphs that correlate to the field in the sample"
+        }
+    },
+    "userTour": {
+        "step1": {
+            "title": "Welcome to the User Management Page",
+            "message": "Here you will find all of the information about the current user, and other users that you might manage.\n\n  The tools on this page allow you to change your password, user role, set security questions, etc."
+        },
+        "step2": {
+            "title": "Modifying an Existing User",
+            "message": "By clicking the 'Modify User' button, you have the ability to modify settings for the current user. As an administrator you also have the ability to change settings for other users."
+        },
+        "step3": {
+            "title": "Adding a New User",
+            "message": "As an administrator, you have the ability to add more administrators, or users to use Schema Wizard."
         }
     }
 }

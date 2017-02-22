@@ -614,3 +614,17 @@ fieldset {
     font-style: normal;
     font-family: sans-serif;
 }
+.drop-box {
+    background: #F8F8F8;
+    border: 3px solid paleturquoise;
+    width: 97%;
+    height: 100%;
+    text-align: center;
+    margin: 10px;
+}
+.dragover {
+    border: 5px dashed rgb(135, 39, 136) !important;
+}
+.matching-select-options, option {
+    width: 300px;
+}

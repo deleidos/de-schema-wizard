@@ -25,7 +25,6 @@ import com.deleidos.dp.beans.DataSampleMetaData;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.deserializors.SerializationUtility;
-import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.environ.TestUtils;
 import com.deleidos.dp.exceptions.DataAccessException;
@@ -37,6 +36,7 @@ import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.SampleProfiler;
 import com.deleidos.dp.profiler.SchemaProfiler;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
 
 public class AddAndRetreiveAllDataTypesIT extends DataProfilerIntegrationEnvironment {
 	private static final Logger logger = Logger.getLogger(AddAndRetreiveAllDataTypesIT.class);

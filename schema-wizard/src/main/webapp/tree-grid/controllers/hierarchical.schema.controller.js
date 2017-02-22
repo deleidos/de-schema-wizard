@@ -3,35 +3,13 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('hierarchicalSchemaDetailsCtrl',
-        function($rootScope, $scope, $resource, $location, $route, $routeParams, $window, $timeout, Utilities, Globals, schemaData, $confirm, statusCodesFactory) {
+        function($rootScope, $scope, $resource, $location, $route, $routeParams, $window, $timeout,
+                 Utilities, MaskUtilities, Globals, schemaData, $confirm, statusCodesFactory) {
 
             schemaData.$promise.then(function () {
                 console.group("hierarchicalSchemaDetailsCtrl");
                 $scope.treeTable = {};
                 $scope.firstLeafNodeId = null;
-
-                $scope.showBrowseMask = function () {
-                    $scope.browseMaskOpacity = 0.8;
-                    document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
-                    document.getElementById("sampleMask").style.display = "block";
-                }; // showBrowseMask
-
-                $scope.hideBrowseMask = function () {
-                    document.getElementById("sampleMask").style.display = "none";
-                }; // hideBrowseMask
-
-                $scope.fadeBrowseMask = function () {
-                    $scope.browseMaskOpacity -= 0.1;
-                    if ($scope.browseMaskOpacity < 0) {
-                        document.getElementById('sampleMask').style.display = "none";
-                    } else {
-                        document.getElementById('sampleMask').style.opacity =
-                            $scope.browseMaskOpacity;
-                        $timeout($scope.fadeBrowseMask, 50);
-                    }
-                }; // fadeBrowseMask
-
-//TODO: needs to be started earlier                $scope.showBrowseMask();
 
                 $scope.currentSchema = schemaData;
                 console.log($scope.currentSchema);
@@ -39,8 +17,26 @@
                 Utilities.setSchema($scope.currentSchema);
 
                 $scope.treeTable.data = $scope.currentSchema.sStructuredProfile;
+
+                $scope.addManualEntryFlag = function (data) {
+                    var traverse = function (node) {
+                        if (node.children.length == 0 &&
+                            $scope.currentSchema.sProfile.hasOwnProperty(node.path)) {
+                            node['manualEntry'] = $scope.currentSchema.sProfile[node.path].presence == -1;
+                        } else {
+                            for (var j = 0, jlen = node.children.length; j < jlen; j++) {
+                                traverse(node.children[j]);
+                            }
+                        }
+                    };
+                    for (var i = 0, ilen = data.length; i < ilen; i++) {
+                        traverse(data[i]);
+                    }
+                };
+                $scope.addManualEntryFlag($scope.treeTable.data);
+
                 console.log("$scope.treeTable.data");
-                console.log($scope.treeTable.data);
+                console.log(angular.copy($scope.treeTable.data));
                 $scope.dataSize = angular.toJson($scope.treeTable.data).length;
                 console.log($scope.dataSize);
 
@@ -168,19 +164,20 @@
                 }; // showInDetails
 
                 $timeout(function () {
-                    $scope.fadeBrowseMask();
-                    // show first field in details after data loads
+                    try {
+                        // show first field in details after data loads
+                        $scope.showInDetails({"node": $scope.firstLeafNode});
+                        document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
+                    } catch (e) {}
+                    MaskUtilities.fadeBrowseMask();
+                }, Math.round($scope.dataSize / 100) + 300);
+                // try a second time to highlight this cell, it's not consistently getting set on first try
+                $timeout(function () {
                     $scope.showInDetails({"node": $scope.firstLeafNode});
                     try {
                         document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
                     } catch (e) {}
-                }, 500);
-                // try a second time to highlight this cell, it's not consistently getting set on first try
-                $timeout(function () {
-                    try {
-                        document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
-                    } catch (e) {}
-                }, 1000);
+                }, Math.round($scope.dataSize / 100) + 800);
 
                 $scope.externalTreeMethod = function ($event, parms) {
                     console.log("externalTreeMethod " + angular.toJson(parms));

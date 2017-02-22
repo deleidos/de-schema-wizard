@@ -11,8 +11,9 @@
                 var node = parms.node;
                 var thisNode = scope.$eval(node);
                 if (callback == "showInDetails") {
-                    // only act upon leaf nodes
-                    if (thisNode && thisNode.children && thisNode.children.length == 0) {
+                    // only act upon leaf nodes which have not been manually entered
+                    if (thisNode && thisNode.manualEntry !== true &&
+                        thisNode.children && thisNode.children.length == 0) {
                         try {
                             if (previousDetailsNodeId) document.getElementById(previousDetailsNodeId).style.backgroundColor = "transparent";
                         } catch (e) {}
@@ -26,7 +27,7 @@
             };
 
             var node = scope.$eval(attrs.node);
-            if (node && node.children && node.children.length > 0) {
+            if (node && ((node.children && node.children.length > 0) || node.manualEntry == true)) {
                 scope.cursor = "not-allowed";
             } else {
                 scope.cursor = "pointer";

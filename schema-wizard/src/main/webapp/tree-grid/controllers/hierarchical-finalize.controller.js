@@ -3,34 +3,11 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('hierarchicalFinalizeCtrl', [ '$scope', '$window', '$timeout',
-                               '$confirm', 'Globals', 'Utilities', 'statusCodesFactory',
-        function($scope, $window, $timeout, $confirm, Globals, Utilities, statusCodesFactory) {
+                               '$confirm', 'Globals', 'Utilities', 'MaskUtilities',
+        function($scope, $window, $timeout, $confirm, Globals, Utilities, MaskUtilities) {
             console.group("hierarchicalFinalizeController");
             $scope.treeTable = {};
             $scope.firstLeafNodeId = null;
-
-            $scope.showBrowseMask = function () {
-                $scope.browseMaskOpacity = 0.8;
-                document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
-                document.getElementById("sampleMask").style.display = "block";
-            }; // showBrowseMask
-
-            $scope.hideBrowseMask = function () {
-                document.getElementById("sampleMask").style.display = "none";
-            }; // hideBrowseMask
-
-            $scope.fadeBrowseMask = function () {
-                $scope.browseMaskOpacity -= 0.1;
-                if ($scope.browseMaskOpacity < 0) {
-                    document.getElementById('sampleMask').style.display = "none";
-                } else {
-                    document.getElementById('sampleMask').style.opacity =
-                        $scope.browseMaskOpacity;
-                    $timeout($scope.fadeBrowseMask, 50);
-                }
-            }; // fadeBrowseMask
-
-            $scope.showBrowseMask();
 
             $scope.currentSchema = Utilities.getSchema();
             console.log($scope.currentSchema);
@@ -176,13 +153,13 @@
             }; // showInDetails
 
             $timeout(function () {
-                $scope.fadeBrowseMask();
                 // show first field in details after data loads
                 $scope.showInDetails({"node": $scope.firstLeafNode});
                 try {
                     document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
                 } catch (e) {}
-            }, 500);
+                MaskUtilities.fadeBrowseMask();
+            }, Math.round($scope.dataSize / 100) + 300);
             // try a second time to highlight this cell, it's not consistently getting set on first try
             $timeout(function () {
                 // show first field in details after data loads
@@ -190,18 +167,57 @@
                 try {
                     document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
                 } catch (e) {}
-            }, 1000);
+            }, Math.round($scope.dataSize / 100) + 800);
 
             $scope.renameProperty = function (parms) {
                 console.group("finishRenameProperty");
                 //console.log(angular.toJson(parms));
                 var parmsObj = eval(parms);
-                //console.log(parmsObj);
-                var newProperty = parmsObj.path.slice(0, parmsObj.path.lastIndexOf('.')) + '.' + parmsObj.newproperty;
-                $scope.currentSchema.sProfile[newProperty] = angular.copy($scope.currentSchema.sProfile[parmsObj.path]);
-                delete $scope.currentSchema.sProfile[parmsObj.path];
-                console.log($scope.currentSchema);
-                console.groupEnd();
+                
+                if (parmsObj.newproperty === parmsObj.field) {
+                    return; // don't do anything if the name doesn't change
+                }
+                
+                var dotIndex = parmsObj.path.lastIndexOf('.');
+                var newPath = parmsObj.newproperty;
+                if (dotIndex > -1) {
+                    newPath = parmsObj.path.slice(0, dotIndex) + '.' + parmsObj.newproperty;
+                }
+                
+                // recursively check tree nodes to find matching node
+                var findMatchingPath = function (dataList, pathToMatch) {
+                    for (var i = 0; i < dataList.length; i++) {
+                        var treeNode = dataList[i];
+                        if (treeNode.path === pathToMatch) {
+                            return treeNode;
+                        } 
+                        
+                        if (treeNode.children.length > 0) {
+                            var matchingNode = findMatchingPath(treeNode.children, pathToMatch);
+                            if (matchingNode != null) {
+                                return matchingNode;
+                            }
+                        } 
+                    }
+                    return null;
+                }
+                
+                var matchingNode = findMatchingPath($scope.treeTable.data, parmsObj.path);
+                if (matchingNode == null) {
+                    console.log("Could not find tree node with path " + parmsObj.path + ".");
+                    // show error modal?
+                    return;
+                } else {
+                    matchingNode.field = parmsObj.newproperty;
+                    matchingNode.path = newPath;
+
+                    // don't update sProfile until we know the associated treeNode
+                    $scope.currentSchema.sProfile[newPath] = angular.copy($scope.currentSchema.sProfile[parmsObj.path]);
+                    delete $scope.currentSchema.sProfile[parmsObj.path];
+                    console.log($scope.currentSchema);
+                    console.groupEnd();
+                }
+                
             }; // renameProperty
 
             $scope.addNewProperty = function () {

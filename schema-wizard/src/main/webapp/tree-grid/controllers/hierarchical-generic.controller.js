@@ -2,36 +2,15 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.controller('hierarchicalGenericCtrl', ['$scope', '$route', '$window', '$timeout', 'Globals', 'Utilities',
-		function($scope, $route, $window, $timeout, Globals, Utilities) {
+    schemaWizardApp.controller('hierarchicalGenericCtrl', ['$scope', '$route', '$window', '$timeout',
+        'Globals', 'Utilities', 'MaskUtilities',
+		function($scope, $route, $window, $timeout, Globals, Utilities, MaskUtilities) {
 
             $scope.treeTable = {};
             $scope.firstLeafNodeId = null;
 
-            $scope.showBrowseMask = function () {
-                $scope.browseMaskOpacity = 0.8;
-                document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
-                document.getElementById("sampleMask").style.display = "block";
-            }; // showBrowseMask
-
-            $scope.hideBrowseMask = function () {
-                document.getElementById("sampleMask").style.display = "none";
-            }; // hideBrowseMask
-
-            $scope.fadeBrowseMask = function () {
-                $scope.browseMaskOpacity -= 0.1;
-                if ($scope.browseMaskOpacity < 0) {
-                    document.getElementById('sampleMask').style.display = "none";
-                } else {
-                    document.getElementById('sampleMask').style.opacity =
-                        $scope.browseMaskOpacity;
-                    $timeout($scope.fadeBrowseMask, 50);
-                }
-            }; // fadeBrowseMask
-
             $scope.$on("setCurrentSample", function(event, args) {
                 console.log("hierarchical-generic-controller::onSetCurrentSample");
-//TODO: needs to be started earlier                $scope.showBrowseMask();
                 $scope.currentSample = args.sample;
                 console.log("$scope.currentSample");
                 console.log($scope.currentSample);
@@ -138,16 +117,16 @@
                 }; // showInDetails
 
                 $timeout(function () {
-                    $scope.fadeBrowseMask();
                     try {
                         // show first field in details after data loads
                         $scope.showInDetails({"node": $scope.firstLeafNode});
                         document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
                     } catch (e) { console.log(e.toString()); }
+                    MaskUtilities.fadeBrowseMask();
                     // try a second time to highlight this cell, it's not consistently getting set on first try
                     $timeout(function () {
                         document.getElementById($scope.firstLeafNodeId).style.backgroundColor = "gold";
-                    }, 1000);
+                    }, Math.round($scope.dataSize / 100) + 800);
 
                     // Chrome & IE
                     angular.element($window).bind('mousewheel', function (event) {

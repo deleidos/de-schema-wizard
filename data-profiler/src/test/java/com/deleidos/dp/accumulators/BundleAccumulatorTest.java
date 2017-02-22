@@ -14,12 +14,12 @@ import org.junit.Test;
 import com.deleidos.dp.accumulator.AbstractProfileAccumulator;
 import com.deleidos.dp.accumulator.BundleProfileAccumulator;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.interpretation.builtin.BuiltinDomain;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 
 public class BundleAccumulatorTest {

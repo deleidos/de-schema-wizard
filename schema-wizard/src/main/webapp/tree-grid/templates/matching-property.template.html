@@ -16,7 +16,7 @@
                 {{ds.dsProfile[property]['display-name']}}
             </label>
         </div>
-        <div style="font-weight: normal; white-space: nowrap;">
+        <div style="font-weight: normal; font-size: 10pt; white-space: nowrap;">
             <!--keep the following on the same line to prevent spaces between values-->
             {{ds.dsProfile[property]["main-type"]}}<span
                 ng-show="ds.dsProfile[property]['main-type']">:{{ds.dsProfile[property]["detail"]["detail-type"]}}</span>
@@ -36,13 +36,15 @@
     </div>
     <div ng-if="ds.dsProfile[property].interpretations.availableOptions.length > 1"
          style="height: 17px; margin-top: 2px;">
-        <select name="altInterpretationSelected" id="altInterpretationSelected" ng-style="{ 'width' : cellMinWidth - 8 }"
+        <select name="altInterpretationSelected" id="altInterpretationSelected"
+                class="matching-select-options" ng-style="{ 'width' : cellMinWidth - 8 }" disabled
                 ng-options="'&laquo;' + option.iName + '&raquo;' for option in ds.dsProfile[property].interpretations.availableOptions track by option.id"
                 ng-model="ds.dsProfile[property].interpretations.selectedOption"
                 ng-change="cbMethod($event, 'changeInterpretation', { 'dataSource': ds, 'property': property })">
         </select>
     </div>
-    <select name="altNameSelected" id="altNameSelected" style="margin-top: 4px;" ng-style="{ 'width' : cellMinWidth - 8 }"
+    <select name="altNameSelected" id="altNameSelected"
+            class="matching-select-options" style="margin-top: 4px;" ng-style="{ 'width' : cellMinWidth - 8 }"
         ng-options="option.name for option in ds.dsProfile[property]['matching-names'].availableOptions track by option.id"
         ng-model="ds.dsProfile[property]['matching-names'].selectedOption"
         ng-show="ds.dsProfile[property]['matching-names'].availableOptions.length > 0"

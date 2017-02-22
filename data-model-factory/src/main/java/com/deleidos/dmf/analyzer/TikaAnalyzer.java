@@ -357,11 +357,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 
 			SchemaWizardSessionUtility.getInstance().updateProgress(params.getProgressBar(), params.getSessionId());
 
-			//params.setProgress(new ProgressBar(sample.getDsFileName(), i, userModifiedSampleList.size(), ProgressState.schemaProgress));
-			//params.getProgress().setCurrentState(ProgressState.schemaProgress);
-
 			params.set(Profiler.class, schemaProfiler);
-
 			SchemaWizardSessionUtility.getInstance().requestAnalysis(params.getSessionId(), params.get(File.class));		
 
 			try {
@@ -406,12 +402,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 			} catch (ProcessingException e) {
 				throw new ProcessingException(e.getMessage());
 			} catch (Exception e) {
-				if(SchemaWizardSessionUtility.getInstance().isCancelled(sessionId)) {
-					logger.info("An "+e.getClass()+" exception was caught after workflow was cancelled.");
-					logger.debug("Exception caught from cancelled workflow", e);
-				} else {
-					logger.error("Unexpected exception while processing " + sampleFilePath +".", e);
-				}
+				logger.error("Unexpected exception while processing " + sampleFilePath +".", e);
 				return H2Database.UNDETERMINED_ERROR_GUID;
 			} finally {
 				params.getStream().close();
@@ -443,9 +434,7 @@ public class TikaAnalyzer implements FileAnalyzer {
 				} else {
 					schemaBean.setsVersion("1.00");
 				}
-				JSONObject result = new JSONObject(SerializationUtility.serialize(schemaBean));
-				SchemaWizardSessionUtility.getInstance().registerCompleteAnalysis(sessionId);
-				return result;
+				return new JSONObject(SerializationUtility.serialize(schemaBean));
 			} catch (AnalyticsCancelledWorkflowException e) {
 				logger.error("Schema workflow cancelled - session " + sessionId +".");
 				throw e;
@@ -464,6 +453,8 @@ public class TikaAnalyzer implements FileAnalyzer {
 				logger.error("Unexpected exception while processing schema.", e);
 			}
 			return new JSONObject();
+		} finally {
+			SchemaWizardSessionUtility.getInstance().registerCompleteAnalysis(sessionId);
 		}
 	}
 

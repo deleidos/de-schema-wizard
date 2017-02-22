@@ -20,8 +20,11 @@
         ng-hide="editField == true"
 -->
         <span id="{{'span' + nodeId}}"
-              single-click="cbMethod($event, 'externalTreeMethod', { 'nodeLabel1': nodeLabel1 })"
-              ng-style="existingSchemaProperty === true && { 'color': 'blue' }">
+              single-click="cbMethod($event, 'showInDetails1', { 'property': path, 'schemaProperty': true })"
+              style="cursor: pointer;"
+              ng-style="getStyle()"
+              uib-tooltip="{{path}}"
+              tooltip-placement="right">
             <b>{{(nodeLabel1 == "~" ? "&nbsp;" : nodeLabel1)}}</b>
         </span>
     </li>
@@ -42,17 +45,27 @@
     <span style="display: none;">
         {{nodeId}}
     </span>
-    <div ng-if="modifySchemaMode === true && !hasChildren">
+    <div ng-if="existingSchemaProperty === true && hasChildren !== true">
         <!--keep the following on the same line to prevent spaces between values-->
         {{properties[property]["main-type"]}}<span
             ng-show="properties[property]['main-type']">:{{properties[property]["detail"]["detail-type"]}}</span>
     </div>
-    <div ng-show="properties[property].interpretations.length == 1">
-        &laquo;{{properties[property].interpretations[0].iName}}&raquo;
+    <div ng-if="existingSchemaProperty === true && hasChildren !== true && properties[property].interpretations.availableOptions.length == 1">
+        &laquo;{{properties[property].interpretations.availableOptions[0].iName}}&raquo;
     </div>
-    <div ng-show="properties[property].interpretations.length > 1"
-         ng-repeat="interpretation in properties[property].interpretations">
+<!--
+    <div ng-if="existingSchemaProperty === true && hasChildren !== true && properties[property].interpretations.availableOptions.length > 1"
+         ng-repeat="interpretation in properties[property].interpretations.availableOptions">
         &laquo;{{interpretation.iName}}&raquo;
+    </div>
+-->
+    <div ng-if="existingSchemaProperty === true && hasChildren !== true && properties[property].interpretations.availableOptions.length > 1"
+         style="height: 17px; margin-top: 2px;">
+        <select name="altInterpretationSelected" id="altInterpretationSelected" style="width: 120px;" disabled
+                ng-options="'&laquo;' + option.iName + '&raquo;' for option in properties[property].interpretations.availableOptions track by option.id"
+                ng-model="properties[property].interpretations.selectedOption">
+<!-- TODO: implement when multiple associations problem is resolved                ng-change="cbMethod($event, '', { })">-->
+        </select>
     </div>
     <div style="line-height: 4px;">&nbsp;</div>
 </ul>

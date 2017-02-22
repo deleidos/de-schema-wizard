@@ -5,8 +5,7 @@
     schemaWizardApp.directive('matchingproperty', function (Utilities) {
         var linker = function (scope, element, attrs) {
             scope.cbMethod = function ($event, callback, parms) {
-//TODO: add return to callback
-                return scope.callbackMethod()($event, callback, parms);
+                scope.callbackMethod()($event, callback, parms);
             };
 
             if (attrs.data) {

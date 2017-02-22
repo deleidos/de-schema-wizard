@@ -1,22 +1,35 @@
 package com.deleidos.dp.accumulator;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
+
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreeNode;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.beans.Interpretation;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.TreeCodec;
 
 /**
  * Accumulator class that abstracts accumulation logic.  Provides most functionality for subclasses, but delegates
@@ -317,7 +330,8 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 		if(sampleProfiles.size() == 0) {
 			return null;
 		} else {
-			MainType mainType = (schemaProfile != null) ? schemaProfile.getMainTypeClass() : sampleProfiles.get(0).getMainTypeClass();
+			DetailType detailType = determineDetailType(schemaProfile, sampleProfiles);
+			MainType mainType = detailType.getMainType();
 			switch(mainType) {
 			case STRING: {
 				abstractProfileAccumulator = new StringProfileAccumulator(key); 
@@ -348,7 +362,6 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 			}
 			abstractProfileAccumulator = abstractProfileAccumulator.initializeForSchemaAccumulation(schemaProfile, recordsInSchema, sampleProfiles);
 			if(schemaProfile == null) {
-				DetailType detailType = abstractProfileAccumulator.determineDetailType(schemaProfile, sampleProfiles);
 				abstractProfileAccumulator.initializeDetailFields(detailType.toString(), Stage.SCHEMA_AWAITING_FIRST_VALUE);
 			}
 			return abstractProfileAccumulator;
@@ -367,14 +380,22 @@ public abstract class AbstractProfileAccumulator<T> implements Accumulator.TypeI
 		}
 	}
 
+
+
 	/**
-	 * Method that allows a subclass to determine an accumulators detail type based on existing profiles.
+	 * Method that determines an accumulator's detail type based on existing profiles.
 	 * @param existingSchemaProfile null or the existing schema profile
 	 * @param sampleProfiles a list (minimum size 1) of profiles that are actively being processed
 	 * @return the detail type that the accumulator should inherit from the existing profiles
 	 */
-	protected abstract DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles);
-	
+	private static DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles)
+		throws MainTypeException {
+		final Supplier<MainTypeException> mteThrower = ()->new MainTypeException("Not number, string, or binary.");
+		return (existingSchemaProfile != null) 
+				? Optional.ofNullable(existingSchemaProfile.getDetail()).orElseThrow(mteThrower).getDetailTypeClass()
+				: Optional.ofNullable(sampleProfiles.get(0).getDetail()).orElseThrow(mteThrower).getDetailTypeClass();
+	}
+
 	/**
 	 * Abstract method requiring that a subclass initial any detail fields that do not require a first value.
 	 * An example of this is setting a walking count to 0 because it can be initialized without an initial value.

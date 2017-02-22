@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 public class ObjectProfileAccumulator extends AbstractProfileAccumulator<Map<String, Object>> {
 	private Map<String, AbstractProfileAccumulator<?>> children;
@@ -14,12 +14,6 @@ public class ObjectProfileAccumulator extends AbstractProfileAccumulator<Map<Str
 	protected ObjectProfileAccumulator(String key, MainType mainType) {
 		super(key, mainType);
 		// TODO Auto-generated constructor stub
-	}
-
-	@Override
-	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override

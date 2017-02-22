@@ -730,7 +730,7 @@ public class HttpInterpretationEngine implements InterpretationEngine {
 		String body = response.readEntity(String.class);
 		Object bodyContent = body;
 		if (response.getMediaType().toString().equals(MediaType.APPLICATION_JSON)) {
-			logger.info("Content detected as JSON: " + body);
+			logger.debug("Content detected as JSON: " + body);
 			if (!array) {
 				bodyContent = new JSONObject(body);
 			} else {

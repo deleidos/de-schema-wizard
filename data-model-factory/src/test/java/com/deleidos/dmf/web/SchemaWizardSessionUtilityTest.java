@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.deleidos.dmf.exception.AnalyticsCancelledWorkflowException;
 import com.deleidos.dmf.framework.TestingWebSocketUtility;
 
 public class SchemaWizardSessionUtilityTest {
@@ -169,7 +170,11 @@ public class SchemaWizardSessionUtilityTest {
 				}
 			}
 			jobsInQueueAtFinish = testSessionUtil.jobQueue.size();
-			testSessionUtil.registerCompleteAnalysis(sessionId);
+			try {
+				testSessionUtil.registerCompleteAnalysis(sessionId);
+			} catch (AnalyticsCancelledWorkflowException e) {
+				logger.error("Session cancelled.", e);
+			}
 			isDone = true;
 		}
 

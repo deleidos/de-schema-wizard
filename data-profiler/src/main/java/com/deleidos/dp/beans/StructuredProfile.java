@@ -3,7 +3,7 @@ package com.deleidos.dp.beans;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.deleidos.dp.enums.MainType;
+import com.deleidos.hd.enums.MainType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 @Deprecated

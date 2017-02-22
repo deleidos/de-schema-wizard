@@ -2,6 +2,7 @@ package com.deleidos.dp.profiler;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,6 @@ import org.apache.log4j.Logger;
 import com.deleidos.dp.accumulator.BundleProfileAccumulator;
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.deserializors.ConversionUtility;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
@@ -93,14 +93,6 @@ public class SampleProfiler extends AbstractProfiler<DataSample> {
 		return recordsLoaded;
 	}
 
-	/*public int getNumGeoSpatialQueries() {
-		return numGeoSpatialQueries;
-	}
-
-	public void setNumGeoSpatialQueries(int numGeoSpatialQueries) {
-		this.numGeoSpatialQueries = numGeoSpatialQueries;
-	}*/
-
 	public ProfilingProgressUpdateHandler getProgressUpdateListener() {
 		return progressUpdateListener;
 	}
@@ -134,7 +126,7 @@ public class SampleProfiler extends AbstractProfiler<DataSample> {
 	public DataSample finish() {
 		DataSample dataSample = new DataSample();
 		dataSample.setRecordsParsedCount(recordsLoaded);
-		final Map<String, Profile> dsProfile = new LinkedHashMap<String, Profile>();
+		final Map<String, Profile> dsProfile = new HashMap<String, Profile>();
 
 		// put any recognizable profiles in the dsProfile map
 		fieldMapping.forEach((k,v)-> 

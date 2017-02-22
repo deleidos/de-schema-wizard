@@ -5,9 +5,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
+import com.deleidos.hd.enums.MainType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 

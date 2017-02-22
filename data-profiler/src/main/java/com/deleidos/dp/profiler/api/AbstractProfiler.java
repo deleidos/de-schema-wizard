@@ -43,7 +43,9 @@ public abstract class AbstractProfiler<T> implements Profiler<T> {
 	 * @param key
 	 * @param values
 	 */
-	protected final void accumulateNormalizedValues(Accumulator.TypeInsensitivePresenceAwareAccumulator<?> accumulator, String key, List<Object> values) {
+	protected final void accumulateNormalizedValues(
+			Accumulator.TypeInsensitivePresenceAwareAccumulator<?> accumulator,
+			String key, List<Object> values) {
 		if(values != null) {
 			int i = 0;
 			for(; i < values.size(); i++) {

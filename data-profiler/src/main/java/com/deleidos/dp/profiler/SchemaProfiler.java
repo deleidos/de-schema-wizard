@@ -60,10 +60,6 @@ public class SchemaProfiler extends AbstractProfiler<Schema> {
 		regionDataMapping = new HashMap<String, RegionData>();
 		init(existingSchema, samples);
 	}
-	
-	public void newInit(Schema existingSchema, List<DataSample> samples) {
-		
-	}
 
 	public void init(Schema existingSchema, List<DataSample> samples) { 
 		try {

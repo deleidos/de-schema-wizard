@@ -22,10 +22,10 @@ import com.deleidos.dmf.exception.AnalyticsParsingRuntimeException;
 import com.deleidos.dmf.exception.AnalyticsTikaProfilingException;
 import com.deleidos.dmf.framework.AbstractAnalyticsParser;
 import com.deleidos.dmf.framework.TikaAnalyzerParameters;
-import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.profiler.BinaryProfilerRecord;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
 
 /**
  * Profilable parser that handles all binary profiling.  Note, this class simply pushes the bytes of the binary to the profiler.
@@ -35,23 +35,22 @@ import com.deleidos.dp.profiler.api.ProfilerRecord;
 public class BinaryParser extends AbstractAnalyticsParser {
 	private static final Logger logger = Logger.getLogger(BinaryParser.class);
 	public static final int IMAGE_BUFFER_SIZE = 1000000;
+	private final static String ENABLE_BINARY_PARSING = "ENABLE_BINARY_PARSING";
 	private String mediaType;
 	private String name;
 	private boolean binaryParsingEnabled = false;
-	private final static String ENABLE_BINARY_PARSING = "ENABLE_BINARY_PARSING";
 
 	private final static Map<String, DetailType> types = new HashMap<String, DetailType>();
 	private final static Set<MediaType> mediaTypes = new HashSet<MediaType>();
-
 	static {
+		// need to store a mapping because there seems to be some issues with media type equivalence
 		types.put(MediaType.image("jpeg").toString(), DetailType.IMAGE);
 		types.put(MediaType.image("png").toString(), DetailType.IMAGE);
 		mediaTypes.addAll(
-				types.keySet()
-				.stream()
+				types.keySet().parallelStream()
 				.map(MediaType::parse)
 				.collect(Collectors.toList())
-				);
+		);
 	}
 
 	@Override

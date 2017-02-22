@@ -25,12 +25,12 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.RegionData;
 import com.deleidos.dp.beans.RowEntry;
 import com.deleidos.dp.beans.StringDetail;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractBucketList;
 import com.deleidos.dp.interpretation.builtin.AbstractBuiltinInterpretation;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Data Access Object meant to handle external communications with the H2

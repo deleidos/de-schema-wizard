@@ -1,22 +1,22 @@
 package com.deleidos.dp.accumulator;
 
+import static com.deleidos.dp.calculations.MetricsCalculationsFacade.createBinary;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.apache.log4j.Logger;
 
 import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractBucket;
 import com.deleidos.dp.histogram.ByteBucketList;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Accumulator for binary profiles.
@@ -162,16 +162,7 @@ public class BinaryProfileAccumulator extends AbstractProfileAccumulator<ByteBuf
 
 	@Override
 	protected ByteBuffer createAppropriateObject(Object object) throws MainTypeException {
-		return MainType.BINARY.createBinary(object);
-	}
-
-	@Override
-	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
-		if (existingSchemaProfile != null) {
-			return existingSchemaProfile.getDetail().getDetailTypeClass();
-		} else {
-			return sampleProfiles.get(0).getDetail().getDetailTypeClass();
-		}
+		return createBinary(object);
 	}
 
 }

@@ -2,8 +2,25 @@
 
     var schemaWizardApp = angular.module('schemaWizardApp');
 
-    schemaWizardApp.controller('userCtrl',
-        function ($rootScope, $scope, $resource, $location, $confirm, $http, $timeout, Globals, Idle) {
+    schemaWizardApp.controller('userCtrl', ['$rootScope', '$scope', '$resource',
+        '$location', '$confirm', '$http', '$timeout', 'Globals', 'Idle',
+        'guidedTourStepFactory', '$cookies', 'uiTourService',
+        function ($rootScope, $scope, $resource, $location, $confirm, $http, $timeout, Globals, Idle, guidedTourStepFactory, $cookies, TourService) {
+
+            guidedTourStepFactory.get()
+                .$promise.then(function (response) {
+                    console.log(response)
+                $rootScope.tourInformation = response;
+                $scope.userTour = $rootScope.tourInformation.userTour;
+            });
+            if ($scope.path == "/userPage") {
+                if ($cookies.get('schwiz.tours.userPage') !== "visited") {
+                    $timeout(function () {
+                        TourService.getTourByName('catalog').startAt('700');
+                    }, 2500);
+                    $cookies.put('schwiz.tours.userPage', "visited");
+                }
+            }
 
             $scope.name = Globals.getUserId();
             $scope.currentUserRole = Globals.getRole();
@@ -305,6 +322,6 @@
             }
 
 
-        }); // userCtrl
+        }]); // userCtrl
 })();
 

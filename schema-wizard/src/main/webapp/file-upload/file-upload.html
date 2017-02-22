@@ -73,9 +73,12 @@
                  style="width: 596px; max-height: 129px; margin: 0 auto; margin-bottom: -6px; overflow: auto;">
                 <div class="draggableList">
                     <span id="seed-title">{{seedTitle}}</span>
-                    <ul style="border: thin solid turquoise"
+                    <ul ngf-drop="clearDragArray();" ngf-select-disabled="true" ngf-select ng-model="dragFiles"
+                        class="drop-box"
+                        ngf-drag-over-class="'dragover'" ngf-multiple="true" ngf-allow-dir="true"
+                        ngf-keep="'distinct'"
                         dnd-list="seedFileObject.lists.seed"
-                        dnd-drop="dropCallback(event, index, item, external, type) ">
+                        dnd-drop="dropCallback(event, index, item, external, type) ">{{dndPlaceHolder}}
                         <!-- The dnd-draggable directive makes an element draggable and will
                              transfer the object that was assigned to it. If an element was
                              dragged away, you have to remove it from the original list
@@ -105,7 +108,8 @@
                      The 'file' input tag displays poorly in IE so it is hidden
                      and the file name is displayed in a separate span -->
                 <div style="display: none;">
-                    <input id="file-upload" type="file" multiple="multiple" file-model="sampleFile" ng-click="clearFiles()"/>
+                    <input id="file-upload" type="file" multiple="multiple" file-model="sampleFile"
+                           ng-click="clearFiles()"/>
                     <!--accept="image/jpeg,image/gif,image/png"-->
                 </div>
                 <div style="display: inline; margin: 8px; padding-top:14px;">

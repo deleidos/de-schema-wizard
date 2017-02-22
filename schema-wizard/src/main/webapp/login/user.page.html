@@ -5,6 +5,20 @@
                 <div class="panel panel-info">
                     <div class="panel-heading">
                         <h3 class="panel-title">My Account
+                            <img style="border: none; float: right; margin-top: -2px; margin-right: 0px;"
+                                 src="assets/img/blue-tour-bus-22x22.png"
+                                 uib-tooltip="Take a tour of the User Management Page"
+                                 tooltip-placement="bottom"
+                                 ng-click="tour.startAt('700')"
+                                 tour-step-template-url="'schema-wizard/schema-wizard.tour-first-step.template.html'"
+                                 tour-step="700"
+                                 tour-step-title={{userTour.step1.title}}
+                                 tour-step-content="Here you will find all of the information about the current user, and other users that you might manage.
+                                 The tools on this page allow you to change your password, user role, set security questions, etc."
+                                 tour-step-order="700"
+                                 tour-step-prevStep="700"
+                                 tour-step-orphan="true"
+                                 tour-step-backdrop="false">
                         </h3>
                     </div>
                     <div class="container tab-panel">
@@ -31,9 +45,9 @@
                                 <tr ng-repeat="x in userPackage">
                                     <td>{{x.userName}}
                                         <button ng-show="currentUserRole=='admin'"
-                                            class="btn-graphic-only btn-remove ng-pristine ng-untouched ng-valid"
-                                            type="button" ng-model="singleModel" uib-tooltip="Delete User"
-                                            tooltip-placement="right" ng-click="deleteUser(x.userName);">
+                                                class="btn-graphic-only btn-remove ng-pristine ng-untouched ng-valid"
+                                                type="button" ng-model="singleModel" uib-tooltip="Delete User"
+                                                tooltip-placement="right" ng-click="deleteUser(x.userName);">
                                         </button>
                                     </td>
                                     <td>{{x.firstName}}
@@ -41,9 +55,23 @@
                                     <td>{{x.userRole}}
                                     </td>
                                     <td>
-                                        <button ng-click="modifyUserList(x.firstName,x.userName,x.userRole)"
+                                        <button ng-if="$first"
+                                                ng-click="modifyUserList(x.firstName,x.userName,x.userRole)"
                                                 class="btn btn-primary btn-xs"
-                                                type="button">Modify User
+                                                type="button"
+                                                tour-step
+                                                tour-step-title={{userTour.step2.title}}
+                                                tour-step-content="By clicking the 'Modify User' button, you have the ability to modify settings for the current user.
+                                                As an administrator you also have the ability to change settings for other users."
+                                                tour-step-order="701"
+                                                tour-step-placement="right"
+                                                tour-step-orphan="false"
+                                                tour-step-backdrop="false">Modify User
+                                        </button>
+                                        <button ng-if="!$first" ng-click="modifyUserList(x.firstName,x.userName,x.userRole)"
+                                                class="btn btn-primary btn-xs"
+                                                type="button"
+                                        >Modify User
                                         </button>
                                     </td>
                                 </tr>
@@ -114,7 +142,14 @@
             </button>
             <button ng-show="userRole=='admin'" id="createNewUser" style="float: right; margin: 8px;"
                     class="btn btn-primary ng-scope"
-                    ng-click="createNewUser();">
+                    ng-click="createNewUser();"
+                    tour-step
+                    tour-step-title={{userTour.step3.title}}
+                    tour-step-content="As an administrator, you have the ability to add more administrators, or users to use Schema Wizard."
+                    tour-step-placement="left"
+                    tour-step-order="702"
+                    tour-step-orphan="false"
+                    tour-step-backdrop="false">
                 Create New User
             </button>
         </div>

@@ -16,9 +16,9 @@ import org.apache.commons.lang.StringUtils;
 
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StructuredNode;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.DisplayNameHelper;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Convert unstructured profiles to structured profiles.

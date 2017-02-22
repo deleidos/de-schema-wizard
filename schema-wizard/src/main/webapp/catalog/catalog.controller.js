@@ -12,8 +12,6 @@
                   domainResource, version, session, catalogData, tabHistoryFactory, statusCodesFactory,
                   myModals, TourService, schemaResource, sampleDataResource,Idle,$http) {
 
-
-
         // starts the idle service
             Idle.watch();
 
@@ -24,7 +22,6 @@
             } else {
                 tabHistoryFactory.setPrevTab(1);
             }
-
 
             $scope.logoPageOpacity = 1.0;
             $scope.fadeLogoPage = function () {
@@ -42,14 +39,14 @@
                         1 - $scope.logoPageOpacity;
                     $timeout($scope.fadeLogoPage, 75);
                 }
-            } // fadeLogoPage
+            }; // fadeLogoPage
 
             $scope.hideLogoPage = function () {
                 //console.log("hideLogoPage");
                 document.getElementById('catalogPage').style.opacity = 0.0;
                 document.getElementById('catalogPage').style.display = "block";
                 $timeout($scope.fadeLogoPage, 200);
-            } // hideLogoPage
+            }; // hideLogoPage
 
             if (LogoPage.isFirstTime()) {
                 $timeout($scope.hideLogoPage, 2000);
@@ -117,9 +114,9 @@
                             url: restURL,
                             data: ""
                         }).then(function successCallback(response) {
-                            console.log(response)
+                            console.log(response);
                             $scope.catalog.dataSamplesCatalog = response.data.dataSamplesCatalog;
-                        })
+                        });
                             console.log("removeSchema response");
                             console.log(response);
                             for (var i = 0; i < $scope.catalog.schemaCatalog.length; i++) {
@@ -146,7 +143,7 @@
             };// delete schema
 
             $scope.removeDataSample = function (sample) {
-                console.log(sample)
+                console.log(sample);
                 $confirm({
                         title: 'Confirm Delete Data Sample',
                         text: "Confirm the request to delete this data sample.",
@@ -210,7 +207,7 @@
                     "dLastUpdate": new Date(),
                     "dDescription": "",
                     "dInterpretations": []
-                }
+                };
                 $timeout($scope.focusDname, 300);
             }; // createNewDomain
 
@@ -362,7 +359,7 @@
                     })
 
             });
-        }]) // catalogCtrl
+        }]); // catalogCtrl
 
     schemaWizardApp.controller('tabCtrl',
         function ($rootScope, $scope, $location, tabHistoryFactory) {
