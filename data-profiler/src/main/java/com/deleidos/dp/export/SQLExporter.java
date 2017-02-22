@@ -9,11 +9,11 @@ import java.util.Set;
 
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
-import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.exceptions.H2DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.exceptions.SchemaNotFoundException;
 import com.deleidos.dp.h2.H2DataAccessObject;
+import com.deleidos.hd.enums.DetailType;
 
 /**
  * References that were used to create this class:<br>

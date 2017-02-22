@@ -100,4 +100,8 @@
 .popover-content.tour-step-content {
 /*    border-color: rgb(40,155,80);*/
 }
+.dragover {
+    border: 5px dashed rgb(44, 125, 180) !important;
+}
+
 

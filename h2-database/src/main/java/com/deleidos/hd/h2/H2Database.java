@@ -17,6 +17,9 @@ import org.h2.tools.DeleteDbFiles;
 import org.h2.tools.RunScript;
 import org.h2.tools.Server;
 
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
+
 /**
  * Data access object to persist and retrieve schemas, samples, and metrics from
  * the H2 server.
@@ -183,64 +186,7 @@ public class H2Database {
 		logger.info("Server started at " + server.getURL());
 		server.setOut(System.out);
 		server.start();
-		Thread.sleep(1000);
 		return server;
-	}
-
-	private enum DATA_TYPE {
-		STRING, NUMBER, BINARY, OBJECT, ARRAY, NULL;
-		public int getIndex() {
-			return ordinal();
-		}
-
-		@Override
-		public String toString() {
-			String s = super.toString();
-			return s.toLowerCase();
-		}
-	}
-
-	private enum DETAIL_TYPE {
-		INTEGER, DECIMAL, EXPONENT, DATE_TIME, BOOLEAN, TERM, PHRASE, IMAGE, VIDEO_FRAME, AUDIO_SEGMENT, TEXT;
-
-		public DATA_TYPE getMainType() {
-			switch (this) {
-			case INTEGER:
-				return DATA_TYPE.NUMBER;
-			case DECIMAL:
-				return DATA_TYPE.NUMBER;
-			case EXPONENT:
-				return DATA_TYPE.NUMBER;
-			case DATE_TIME:
-				return DATA_TYPE.STRING;
-			case BOOLEAN:
-				return DATA_TYPE.STRING;
-			case TERM:
-				return DATA_TYPE.STRING;
-			case PHRASE:
-				return DATA_TYPE.STRING;
-			case IMAGE:
-				return DATA_TYPE.BINARY;
-			case VIDEO_FRAME:
-				return DATA_TYPE.BINARY;
-			case AUDIO_SEGMENT:
-				return DATA_TYPE.BINARY;
-			case TEXT:
-				return DATA_TYPE.STRING;
-			default:
-				return null;
-			}
-		}
-
-		public int getIndex() {
-			return ordinal();
-		}
-
-		@Override
-		public String toString() {
-			String s = super.toString();
-			return s.toLowerCase();
-		}
 	}
 
 	/**
@@ -261,7 +207,7 @@ public class H2Database {
 			PreparedStatement ppstCheckMain = dbConnection.prepareStatement(countMainType);
 			ResultSet rsMainType = ppstCheckMain.executeQuery();
 			if (!rsMainType.next()) {
-				for (DATA_TYPE type : DATA_TYPE.values()) {
+				for (MainType type : MainType.values()) {
 					int id = type.getIndex();
 					String name = type.name();
 					String insertIntoMainType = "INSERT INTO main_type VALUES (? , ?)";
@@ -280,7 +226,7 @@ public class H2Database {
 			PreparedStatement ppstCheckDetail = dbConnection.prepareStatement(countDetailType);
 			ResultSet rsDetailType = ppstCheckDetail.executeQuery();
 			if (!rsDetailType.next()) {
-				for (DETAIL_TYPE type : DETAIL_TYPE.values()) {
+				for (DetailType type : DetailType.values()) {
 					int id = type.getIndex();
 					String name = type.name();
 					String insertIntoDetailType = "INSERT INTO detail_type VALUES (?, ?)";

@@ -21,11 +21,11 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.deserializors.SerializationUtility;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.h2.H2DataAccessObject;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 public abstract class AbstractHeadlessWorkflow {
 	public static final String testSessionId = "test-session";

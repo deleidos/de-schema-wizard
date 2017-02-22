@@ -29,9 +29,9 @@ module.exports = function (config) {
             'src/main/webapp/bower_components/ng-csv/build/ng-csv.min.js',
             'src/main/webapp/bower_components/angular-websocket/angular-websocket.min.js',
             'src/main/webapp/bower_components/angular-mocks/angular-mocks.js',
+            'src/main/webapp/bower_components/ng-file-upload/ng-file-upload.js',
             // endbower
 
-            'src/main/webapp/assets/lib/angular-google-chart-0.1.0-beta.1.js',
             'src/main/webapp/assets/lib/Chart.HorizontalBar.js',
 
             'src/main/webapp/app.js',

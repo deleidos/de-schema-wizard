@@ -192,7 +192,7 @@
                      ng-show="detailModelsPanel.length > 0 &&
                               detailModelsPanel[0].viz == 'example'">
                     <ul>
-                        <li ng-repeat="examples in detailModelsPanel[0].exampleValues">
+                        <li ng-repeat="examples in detailModelsPanel[0].exampleValues track by $index">
                             {{examples}}
                         </li>
                     </ul>

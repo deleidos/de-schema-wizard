@@ -10,8 +10,8 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Latitude interpretation
@@ -132,8 +132,7 @@ public class BuiltinLatitudeInterpretation extends AbstractBuiltinInterpretation
 		Profile baseProfile = new Profile();
 		baseProfile.setMainType(MainType.STRING.toString());
 		StringDetail baseComparisonMetrics = new StringDetail();
-		if(finalStringMetrics.getDetail().getDetailType().equals(DetailType.DATE_TIME.toString()) 
-				|| finalStringMetrics.getDetail().getDetailType().equals(DetailType.BOOLEAN.toString())) return 0.0f;
+		if(finalStringMetrics.getDetail().getDetailType().equals(DetailType.BOOLEAN.toString())) return 0.0f;
 		else baseComparisonMetrics.setDetailType(finalStringDetails.getDetailType().toString());
 		baseComparisonMetrics.setAverageLength(finalStringDetails.getAverageLength());
 		baseComparisonMetrics.setMinLength(finalStringDetails.getMinLength());

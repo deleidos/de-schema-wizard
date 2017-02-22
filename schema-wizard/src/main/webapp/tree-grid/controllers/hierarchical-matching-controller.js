@@ -1,7 +1,7 @@
 var schemaWizardApp = angular.module('schemaWizardApp');
 
 schemaWizardApp.controller('hierarchicalMatchingCtrl',
-    function($scope, $window, $parse, $timeout, Utilities, matchConfidenceThreshold, defaultInterpretationMatch) {
+    function($scope, $window, $parse, $timeout, Utilities, MaskUtilities, matchConfidenceThreshold, defaultInterpretationMatch) {
 
         $scope.model = {};
 
@@ -61,14 +61,43 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
             this.existingSchemaProperty = false;
         }; // TreeNode
 
+        $scope.interpretationMatchesAllDataSamples = function (interpretationName, key, altKey) {
+            console.groupCollapsed("interpretationMatchesAllDataSamples");
+            for (var i = 0, ilen = $scope.model.dataSamples.length; i < ilen; i++) {
+                if ($scope.model.dataSamples[i].dsProfile.hasOwnProperty(key) &&
+                    $scope.model.dataSamples[i].dsProfile[key].interpretations.selectedOption.iName.toLowerCase() != interpretationName) {
+                    //console.log("iName: " + $scope.model.dataSamples[i].dsProfile[key].interpretations.selectedOption.iName);
+                    //console.log("returning false");
+                    console.groupEnd();
+                    return false;
+                } else if ($scope.model.dataSamples[i].dsProfile.hasOwnProperty(altKey) &&
+                           $scope.model.dataSamples[i].dsProfile[altKey].interpretations.selectedOption.iName.toLowerCase() != interpretationName) {
+                    //console.log("iName: " + $scope.model.dataSamples[i].dsProfile[altKey].interpretations.selectedOption.iName);
+                    //console.log("returning false");
+                    console.groupEnd();
+                    return false;
+                }
+            }
+            //console.log("returning true");
+            console.groupEnd();
+            return true;
+        }; // interpretationMatchesAllDataSamples
+
         // build 'matching-names' subset of 'matching-fields'
         // 'matching-names' identifies the highest confidence match in selectedOption
         $scope.buildMatchingNames = function () {
             console.info("buildMatchingNames");
             //console.log("$scope.confidenceThreshold: " + $scope.confidenceThreshold);
+            if ($scope.modifySchemaMode === true) {
+                console.log("$scope.currentSchema.sProfile");
+                console.log($scope.currentSchema.sProfile);
+            }
+
             for (var i = 0, ilen = $scope.model.dataSamples.length; i < ilen; i++) {
                 for (var key in $scope.model.dataSamples[i].dsProfile) {
                     var dsProfileObj = $scope.model.dataSamples[i].dsProfile[key];
+                    //console.log("dsProfileObj key: " + key);
+                    //console.log(dsProfileObj);
                     if (dsProfileObj['matching-fields'].length > 0) {
                         dsProfileObj['matching-names'] = {
                             "availableOptions": [],
@@ -78,23 +107,68 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
                         dsProfileObj['matching-names'].availableOptions.push(
                             {"id": 0, "name": key});
                         for (j = 0, jlen = dsProfileObj['matching-fields'].length; j < jlen; j++) {
-                            //console.log(dsProfileObj['matching-fields'][j]['confidence']);
-                            //console.log(dsProfileObj['matching-fields'][j]['matching-field']);
-                            // the first confidence value is the highest so only consider element zero
-                            if (j == 0 &&
-                                dsProfileObj['matching-fields'][j]['confidence'] >= $scope.confidenceThreshold) {
-                                dsProfileObj['matching-names'].selectedOption =
-                                    dsProfileObj['matching-fields'][j]['matching-field'];
-                            }
-                            dsProfileObj['matching-names'].availableOptions.push(
+                            var option =
                                 {
                                     "id": j + 1,
                                     "name": dsProfileObj['matching-fields'][j]['matching-field'] +
                                     ':' +
                                     dsProfileObj['matching-fields'][j]['confidence'] +
                                     "__"
+                                };
+                            // when doing interpretation match add only the availableOptions that have matching interpretations
+                            if ($scope.interpretationMatch === true) {
+                                if ($scope.interpretationMatchesAllDataSamples(
+                                        dsProfileObj.interpretations.selectedOption.iName.toLowerCase(),
+                                        key,
+                                        dsProfileObj['matching-fields'][j]['matching-field'])) {
+                                    dsProfileObj['matching-names'].availableOptions.push(option);
                                 }
-                            );
+                            } else {
+                                dsProfileObj['matching-names'].availableOptions.push(option);
+                            }
+
+                            // the first confidence value is the highest so only consider element zero
+                             if (j == 0 &&
+                                 dsProfileObj['matching-fields'][j]['confidence'] >= $scope.confidenceThreshold) {
+
+                                 if ($scope.interpretationMatch === false) {
+                                     console.log("setting 1 (~I) selectedOption for key: " + key + "\toption: " + option);
+                                     dsProfileObj['matching-names'].selectedOption =  dsProfileObj['matching-fields'][j]['matching-field'];
+
+                                 } else if ($scope.modifySchemaMode === false) {
+
+                                     if ($scope.interpretationMatchesAllDataSamples(
+                                             dsProfileObj.interpretations.selectedOption.iName.toLowerCase(),
+                                             key,
+                                             dsProfileObj['matching-fields'][j]['matching-field'])) {
+
+                                         console.log("setting 2 (I ~M) selectedOption for key: " + key + "\toption: " + option);
+                                         dsProfileObj['matching-names'].selectedOption =  dsProfileObj['matching-fields'][j]['matching-field'];
+                                     }
+
+                                 } else if ($scope.currentSchema.sProfile.hasOwnProperty(key) &&
+                                     $scope.currentSchema.sProfile[key].interpretations &&
+                                     dsProfileObj.interpretations.selectedOption.iName ==
+                                     $scope.currentSchema.sProfile[key].interpretations.selectedOption.iName) {
+
+                                     console.log("setting 3a (I M) selectedOption for key: " + key + "\toption: " + option);
+                                     dsProfileObj['matching-names'].selectedOption =  dsProfileObj['matching-fields'][j]['matching-field'];
+
+                                 } else if ($scope.currentSchema.sProfile.hasOwnProperty(dsProfileObj['matching-fields'][j]['matching-field']) &&
+                                     $scope.currentSchema.sProfile[dsProfileObj['matching-fields'][j]['matching-field']].interpretations &&
+                                     dsProfileObj.interpretations.selectedOption.iName ==
+                                     $scope.currentSchema.sProfile[dsProfileObj['matching-fields'][j]['matching-field']].interpretations.selectedOption.iName) {
+
+                                     console.log("setting 3b (I M) selectedOption for key: " + key + "\toption: " + option);
+                                     dsProfileObj['matching-names'].selectedOption =  dsProfileObj['matching-fields'][j]['matching-field'];
+                                 }
+                             }
+
+                            // if no available options were added then remove the identity element
+                            if (dsProfileObj['matching-names'].availableOptions.length == 0) {
+                                dsProfileObj['matching-names'].availableOptions = [];
+                                dsProfileObj['matching-names'].selectedOption = null;
+                            }
                         }
                     }
                 }
@@ -137,7 +211,7 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
         }; // insertMatchingGridData
 
         $scope.modifySchemaBuildMatchingGridData = function () {
-            console.group("prebuildMatchingGridData");
+            console.group("modifySchemaBuildMatchingGridData");
             $scope.currentSchema = Utilities.getSchema();
             // sorting bubbles up structures to the top; structures must be processed first
             $scope.currentSchema.sProfile = $scope.sortData($scope.currentSchema.sProfile);
@@ -163,6 +237,40 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
             //console.groupEnd();
         }; // modifySchemaBuildMatchingGridData
 
+        var FieldData = function(fieldName, dsIndex) {
+            this.fieldName = fieldName;
+            this.dsIndex = dsIndex;
+        }; // FieldData
+
+        /*
+         return the items keys as an ordered list of FieldData objects
+         */
+        $scope.orderKeysByDepth = function (dataSamples) {
+            var itemMapping = {};
+            var maxDepth = 0;
+            for (var dsIndex = 0, len = dataSamples.length; dsIndex < len; dsIndex++) {
+                var dataSample = dataSamples[dsIndex]
+                angular.forEach(dataSample.dsProfile, function(value, key) {
+                    var depth = key.split(".").length - 1;
+                    maxDepth = Math.max(maxDepth, depth);
+                    var fieldData = new FieldData(key, dsIndex);
+                    if (itemMapping[depth] != null) {
+                        itemMapping[depth].push(fieldData);
+                    } else {
+                        itemMapping[depth] = [fieldData];
+                    }
+                });
+            }
+
+            var orderedItemList = [];
+            for (var depth = 0; depth <= maxDepth; depth++) {
+                angular.forEach(itemMapping[depth], function (value, key) {
+                    orderedItemList.push(value);
+                });
+            }
+            return orderedItemList;
+        }; // orderKeysByDepth
+
         $scope.buildMatchingGridData = function () {
             console.group("buildMatchingGridData");
             $scope.model.dataSamples = Utilities.getDataSamples();
@@ -170,85 +278,85 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
                 $scope.model.treeTable.data = [];
             }
             $scope.existingProperties = {};
-            for (var i = 0, len = $scope.model.dataSamples.length; i < len; i++) {
-                //console.log("");
-                //console.info("$scope.model.dataSamples[" + i + "].dsProfile");
-                //console.log($scope.model.dataSamples[i].dsProfile);
-                for (property in $scope.model.dataSamples[i].dsProfile) {
-                    //console.log(property);
-                    var tn;
 
-                    // determine whether there is a matching property
-                    var matchedProperty = undefined;
-                    if ($scope.model.dataSamples[i].dsProfile[property]['matching-names'] &&
-                        $scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption) {
+            var orderedKeys = $scope.orderKeysByDepth($scope.model.dataSamples);
+            for (var keyIndex in orderedKeys) {
+                var fieldData = orderedKeys[keyIndex]; // field defined by its sample index and name
+                var i = fieldData["dsIndex"]; // the index of the data sample
+                var property = fieldData["fieldName"]; // the field name
+                //console.log(property);
+                var tn;
 
-                        // if modifying an existing schema, look at schema properties first
-                        if ($scope.modifySchemaMode === true &&
-                            $scope.existingSchemaProperties.hasOwnProperty($scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption)) {
-                                matchedProperty = $scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption;
-                        } else if ($scope.existingProperties.hasOwnProperty($scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption)) {
+                // determine whether there is a matching property
+                var matchedProperty = undefined;
+                if ($scope.model.dataSamples[i].dsProfile[property]['matching-names'] &&
+                    $scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption) {
+
+                    // if modifying an existing schema, look at schema properties first
+                    if ($scope.modifySchemaMode === true &&
+                        $scope.existingSchemaProperties.hasOwnProperty($scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption)) {
                             matchedProperty = $scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption;
-                        }
+                    } else if ($scope.existingProperties.hasOwnProperty($scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption)) {
+                        matchedProperty = $scope.model.dataSamples[i].dsProfile[property]['matching-names'].selectedOption;
                     }
+                }
 
-                    if (matchedProperty == property || matchedProperty == undefined) {
-                        // set used-in-schema and merged-into-schema flags
-                        if (matchedProperty &&
-                            $scope.model.dataSamples[i].dsProfile[property]['matching-names'] &&
-                            $scope.model.dataSamples[i].dsProfile[property]['matching-names'][0] &&
-                            $scope.model.dataSamples[i].dsProfile[property]['matching-names'][0][id] == 0) {
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['used-in-schema'] = true;
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['merged-into-schema'] = false;
-                        } else if (matchedProperty) {
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['used-in-schema'] = false;
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['merged-into-schema'] = true;
-                        } else if ($scope.existingSchemaProperties &&
-                                   $scope.existingSchemaProperties.hasOwnProperty(property)) {
-                            $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = false;
-                            $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = true;
-                        } else if ($scope.existingProperties.hasOwnProperty(property)) {
-                            $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = false;
-                            $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = true;
-                        } else {
-                            $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = true;
-                            $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = false;
-                        }
-
-                        // add to the existingProperties array if not in existingSchemaProperties or existingProperties
-                        if (($scope.modifySchemaMode === true &&
-                                !$scope.existingSchemaProperties.hasOwnProperty(property) &&
-                                !$scope.existingProperties.hasOwnProperty(property)) ||
-                            ($scope.modifySchemaMode !== true &&
-                                !$scope.existingProperties.hasOwnProperty(property)) &&
-                            !$scope.model.dataSamples[i].dsProfile[property]['original-name']) {
-                            $scope.existingProperties[property] = $scope.model.dataSamples[i].dsProfile[property];
-                        }
-                        // create a node for this property
-                        tn = new $scope.TreeNode(
-                            property,
-                            $scope.model.dataSamples[i].dsProfile[property]['display-name'],
-                            $scope.model.dataSamples[i].dsProfile[property]['struc-type']);
-                        $scope.insertMatchingGridData($scope.model.treeTable.data, tn, property);
-
-                    // if there is a non-identity matching property then align fields in the matching grid
+                if (matchedProperty == property || matchedProperty == undefined) {
+                    // set used-in-schema and merged-into-schema flags
+                    if (matchedProperty &&
+                        $scope.model.dataSamples[i].dsProfile[property]['matching-names'] &&
+                        $scope.model.dataSamples[i].dsProfile[property]['matching-names'][0] &&
+                        $scope.model.dataSamples[i].dsProfile[property]['matching-names'][0][id] == 0) {
+                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['used-in-schema'] = true;
+                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['merged-into-schema'] = false;
                     } else if (matchedProperty) {
-                        console.info("got a match\t" + matchedProperty + " with " + property);
-                        $scope.model.dataSamples[i].dsProfile[matchedProperty] =
-                            angular.copy($scope.model.dataSamples[i].dsProfile[property]);
-                        delete $scope.model.dataSamples[i].dsProfile[property];
-                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['matching-names'].selectedOption =
-                            {"id": 1, "name": matchedProperty};
-                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['original-name'] = property;
                         $scope.model.dataSamples[i].dsProfile[matchedProperty]['used-in-schema'] = false;
                         $scope.model.dataSamples[i].dsProfile[matchedProperty]['merged-into-schema'] = true;
-                        Utilities.setDataSamples($scope.model.dataSamples);
-                        tn = new $scope.TreeNode(
-                            matchedProperty,
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['display-name'],
-                            $scope.model.dataSamples[i].dsProfile[matchedProperty]['struc-type']);
-                        $scope.insertMatchingGridData($scope.model.treeTable.data, tn, matchedProperty);
+                    } else if ($scope.existingSchemaProperties &&
+                               $scope.existingSchemaProperties.hasOwnProperty(property)) {
+                        $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = false;
+                        $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = true;
+                    } else if ($scope.existingProperties.hasOwnProperty(property)) {
+                        $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = false;
+                        $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = true;
+                    } else {
+                        $scope.model.dataSamples[i].dsProfile[property]['used-in-schema'] = true;
+                        $scope.model.dataSamples[i].dsProfile[property]['merged-into-schema'] = false;
                     }
+
+                    // add to the existingProperties array if not in existingSchemaProperties or existingProperties
+                    if (($scope.modifySchemaMode === true &&
+                            !$scope.existingSchemaProperties.hasOwnProperty(property) &&
+                            !$scope.existingProperties.hasOwnProperty(property)) ||
+                        ($scope.modifySchemaMode !== true &&
+                            !$scope.existingProperties.hasOwnProperty(property)) &&
+                        !$scope.model.dataSamples[i].dsProfile[property]['original-name']) {
+                        $scope.existingProperties[property] = $scope.model.dataSamples[i].dsProfile[property];
+                    }
+                    // create a node for this property
+                    tn = new $scope.TreeNode(
+                        property,
+                        $scope.model.dataSamples[i].dsProfile[property]['display-name'],
+                        $scope.model.dataSamples[i].dsProfile[property]['struc-type']);
+                    $scope.insertMatchingGridData($scope.model.treeTable.data, tn, property);
+
+                // if there is a non-identity matching property then align fields in the matching grid
+                } else if (matchedProperty) {
+                    console.info("got a match\t" + matchedProperty + " with " + property);
+                    $scope.model.dataSamples[i].dsProfile[matchedProperty] =
+                        angular.copy($scope.model.dataSamples[i].dsProfile[property]);
+                    delete $scope.model.dataSamples[i].dsProfile[property];
+                    $scope.model.dataSamples[i].dsProfile[matchedProperty]['matching-names'].selectedOption =
+                        {"id": 1, "name": matchedProperty};
+                    $scope.model.dataSamples[i].dsProfile[matchedProperty]['original-name'] = property;
+                    $scope.model.dataSamples[i].dsProfile[matchedProperty]['used-in-schema'] = false;
+                    $scope.model.dataSamples[i].dsProfile[matchedProperty]['merged-into-schema'] = true;
+                    Utilities.setDataSamples($scope.model.dataSamples);
+                    tn = new $scope.TreeNode(
+                        matchedProperty,
+                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['display-name'],
+                        $scope.model.dataSamples[i].dsProfile[matchedProperty]['struc-type']);
+                    $scope.insertMatchingGridData($scope.model.treeTable.data, tn, matchedProperty);
                 }
             }
             console.log("$scope.model.dataSamples");
@@ -273,8 +381,8 @@ schemaWizardApp.controller('hierarchicalMatchingCtrl',
 
         $scope.selectInitialDetailsPanelProperties = function () {
             console.group("selectInitialDetailsPanelProperties");
-console.log("$scope.existingProperties");
-console.log($scope.existingProperties);
+            //console.log("$scope.existingProperties");
+            //console.log($scope.existingProperties);
             var details1PropertyFound = false;
             var details2PropertyFound = false;
             for (key in $scope.existingProperties) {
@@ -314,7 +422,8 @@ console.log($scope.existingProperties);
                     'name': 'Schema Property',
                     'callback': 'doCallBack',
                     'tree': {
-                        'data': $scope.model.properties
+                        'data': ($scope.currentSchema && $scope.currentSchema.sProfile
+                                 ? $scope.currentSchema.sProfile : null)
                     }
                 }
             ];
@@ -480,7 +589,6 @@ console.log($scope.existingProperties);
                 for (var i = 0, len = draggedNodeCopy.children.length; i < len; i++) {
                     droppedOnNode.children[childNum].children.push(angular.copy(draggedNodeCopy.children[i]));
                 }
-                ;
             };
 
             var draggedNodeCopy = angular.copy($scope.model.treeTable.lookupTable[$scope.draggedNodeIndex]);
@@ -527,7 +635,6 @@ console.log($scope.existingProperties);
             console.info("changeNodeLabel " + angular.toJson(parms));
             var changeNode = eval($scope.model.treeTable.lookupTable[parms.index]);
             changeNode.field = parms.newName;
-            /*TODO: correct?*/
             changeNode['displayName'] = parms.newName;
             $scope.rebuildModel();
         }; // changeNodeLabel
@@ -558,24 +665,46 @@ console.log($scope.existingProperties);
         $scope.previouslyShownInDetails1;
         $scope.showInDetails1 = function ($event, parms) {
             console.info("showInDetails1");
-            console.log(parms['dataSource'].dsProfile[parms['property']]);
-            if ($scope.previouslyShownInDetails1) $scope.previouslyShownInDetails1['shown-in-details1'] = false;
-            $scope.previouslyShownInDetails1 = parms['dataSource'].dsProfile[parms['property']];
+            //console.log("dataSource: " + parms['dataSource']);
+            //console.log("property: " + parms['property']);
+            var schemaProperty = parms['schemaProperty'];
+            //console.log("schemaProperty: " + schemaProperty);
+            //console.log("$scope.modifySchemaMode: " + $scope.modifySchemaMode);
 
+            // turn off highlighting of either a schema property or a data sample property
+            if ($scope.previouslyShownInDetails1) $scope.previouslyShownInDetails1['shown-in-details1'] = false;
+            if (parms['dataSource'] != undefined) {
+                $scope.previouslyShownInDetails1 = parms['dataSource'].dsProfile[parms['property']];
+            };
+            var previousSchemaPropertyShownInDetails1Id = Utilities.getMatchingShownInDetails1Id();
+            //console.log("previousShownInDetails1Id: " + previousSchemaPropertyShownInDetails1Id);
+            if (previousSchemaPropertyShownInDetails1Id) {
+                document.getElementById(previousSchemaPropertyShownInDetails1Id).style.backgroundColor = 'transparent';
+            }
+            // the following line works in conjunction with the schemaproperty directive
+            Utilities.setMatchingShownInDetails1Id(undefined);
+
+            // push a profile into details panel 1
             $scope.detailModels.detailPanels.panel1 = [];
-/*TODO: handle showing existing properties in details
-            if (!schemaProperty) {
+            if (schemaProperty && schemaProperty === true) {
+                $scope.detailModels.detailPanels.panel1.push($scope.currentSchema.sProfile[parms['property']]);
+                $scope.detailModels.detailPanels.panel1[0]["property-name"] = parms['property'];
+            } else {
                 $scope.detailModels.detailPanels.panel1.push(parms['dataSource'].dsProfile[parms['property']]);
                 parms['dataSource'].dsProfile[parms['property']]['shown-in-details1'] = true;
-            } else {
-*/
-            $scope.detailModels.detailPanels.panel1.push(parms['dataSource'].dsProfile[parms['property']]);
-            parms['dataSource'].dsProfile[parms['property']]['shown-in-details1'] = true;
-//            }
-            if (parms['dataSource'].dsName.length > 30) {
-                $scope.detailModels.detailPanels.panel1[0]["dsName"] = "..." + parms['dataSource'].dsName.slice(-20);
-            } else {
-                $scope.detailModels.detailPanels.panel1[0]["dsName"] = parms['dataSource'].dsName;
+                if (parms['dataSource'].dsName.length > 30) {
+                    $scope.detailModels.detailPanels.panel1[0]["dsName"] = "..." + parms['dataSource'].dsName.slice(-20);
+                } else {
+                    $scope.detailModels.detailPanels.panel1[0]["dsName"] = parms['dataSource'].dsName;
+                }
+                if (parms['dataSource'].dsProfile[parms['property']]['original-name']) {
+                    $scope.detailModels.detailPanels.panel1[0]["property-name"] =
+                        parms['dataSource'].dsProfile[parms['property']]['original-name'];
+                    $scope.detailModels.detailPanels.panel1[0]["confidence"] =
+                        parms['dataSource'].dsProfile[parms['property']]['matching-fields'][0]['confidence'];
+                } else {
+                    $scope.detailModels.detailPanels.panel1[0]["property-name"] = parms['property'];
+                }
             }
             // set the default viz for the histogram
             if ($scope.detailModels.detailPanels.panel1[0].detail['freq-histogram'].type == "map") {
@@ -587,14 +716,6 @@ console.log($scope.existingProperties);
             else {
                 $scope.detailModels.detailPanels.panel1[0].viz = "hbc";
             }
-            if (parms['dataSource'].dsProfile[parms['property']]['original-name']) {
-                $scope.detailModels.detailPanels.panel1[0]["property-name"] =
-                    parms['dataSource'].dsProfile[parms['property']]['original-name'];
-                $scope.detailModels.detailPanels.panel1[0]["confidence"] =
-                    parms['dataSource'].dsProfile[parms['property']]['matching-fields'][0]['confidence'];
-            } else {
-                $scope.detailModels.detailPanels.panel1[0]["property-name"] = parms['property'];
-            }
             //console.log("detailModels.detailPanels.panel1[0]");
             //console.log($scope.detailModels.detailPanels.panel1[0]);
         }; // showInDetails1
@@ -604,19 +725,11 @@ console.log($scope.existingProperties);
             console.info("showInDetails2");
             console.log(parms['dataSource'].dsProfile[parms['property']]);
             if ($scope.previouslyShownInDetails2) $scope.previouslyShownInDetails2['shown-in-details2'] = false;
-//            parms['dataSource'].dsProfile[parms['property']]['shown-in-details2'] = true;
             $scope.previouslyShownInDetails2 = parms['dataSource'].dsProfile[parms['property']];
 
             $scope.detailModels.detailPanels.panel2 = [];
-/*TODO: handle showing existing properties in details
-             if (!schemaProperty) {
-                 $scope.detailModels.detailPanels.panel2.push(parms['dataSource'].dsProfile[parms['property']]);
-                 parms['dataSource'].dsProfile[parms['property']]['shown-in-details2'] = true;
-             } else {
-*/
             $scope.detailModels.detailPanels.panel2.push(parms['dataSource'].dsProfile[parms['property']]);
             parms['dataSource'].dsProfile[parms['property']]['shown-in-details2'] = true;
-//            }
             if (parms['dataSource'].dsName.length > 30) {
                 $scope.detailModels.detailPanels.panel2[0]["dsName"] = "..." + parms['dataSource'].dsName.slice(-20);
             } else {
@@ -664,6 +777,14 @@ console.log($scope.existingProperties);
             }
             console.log("dsIndex: " + dsIndex);
             console.log("parms['property']: " + parms['property']);
+            console.info($scope.model.dataSamples[dsIndex].dsProfile[parms['property']]);
+            console.log("parms");
+            console.log(parms);
+            console.log(parms['dataSource'].dsProfile[parms['property']]['matching-names'].selectedOption.id);
+
+            if ($scope.model.dataSamples[dsIndex].dsProfile[parms['property']]['used-in-schema'] === true &&
+                parms['dataSource'].dsProfile[parms['property']]['matching-names'].selectedOption.id == 0) return;
+
             var splits = parms['dataSource'].dsProfile[parms['property']]['matching-names'].selectedOption['name'].split(':');
             var matchedProperty = splits[0];
             var matchedConfidence = splits[1];
@@ -724,11 +845,6 @@ console.log($scope.existingProperties);
                     break;
             }
         }; // doCallBack
-        if ($scope.modifySchemaMode === true) {
-            $scope.modifySchemaBuildMatchingGridData()
-        }
-        $scope.buildMatchingGridData();
-        $scope.rebuildModel($scope.model.treeTable.data);
 
         $scope.init = function () {
             $scope.modifySchemaMode = Utilities.getModifySchemaMode();
@@ -741,7 +857,11 @@ console.log($scope.existingProperties);
             $scope.selectInitialDetailsPanelProperties();
             $scope.buildColumns();
             $scope.encodeCellData();
-            $timeout($scope.rebuildModel, $scope.model.treeTable.data, 600);
+            $timeout(function () {
+                $scope.rebuildModel($scope.model.treeTable.data);
+                document.getElementById("tree-view").style.width = (250 + 150 * $scope.model.dataSamples.length) + "px";
+                MaskUtilities.fadeBrowseMask();
+            }, 600);
         }; //init
         $scope.init();
 
@@ -751,7 +871,7 @@ console.log($scope.existingProperties);
             Utilities.setDataSamples($scope.model.dataSamples);
             $scope.interpretationMatch = defaultInterpretationMatch;
             $scope.confidenceThreshold = matchConfidenceThreshold;
-            $scope.confidenceValues.selectedConfidenceValue = $scope.confidenceThreshold.toString(),
+            $scope.confidenceValues.selectedConfidenceValue = $scope.confidenceThreshold.toString();
             $scope.init();
         }; // resetMatches
 
@@ -767,11 +887,10 @@ console.log($scope.existingProperties);
         $scope.removeDs = function (index) {
             console.info("removeDs index: " + index);
             //console.log($scope.model.dataSamples.length);
-            $scope.model.dataSamples = Utilities.getDataSamplesBackup();
             $scope.model.dataSamples.splice(index - 1, 1);
             //console.log($scope.model.dataSamples.length);
             Utilities.setDataSamples($scope.model.dataSamples);
-            Utilities.setDataSamplesBackup(Utilities.getDataSamplesBackup().splice(index - 1, 1));
+            Utilities.setDataSamplesBackup($scope.model.dataSamples);
             //console.log(Utilities.getDataSamplesBackup());
             $scope.init();
         }; // removeDs

@@ -6,9 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.enums.GroupingBehavior;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
 
 /**
  * Profiler record for binary types.  Handled slightly differently than string/number.

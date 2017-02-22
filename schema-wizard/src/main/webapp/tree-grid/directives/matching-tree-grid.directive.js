@@ -23,7 +23,8 @@
                     var tableCellDirective = attrs.tableCellDirective || 'matchingproperty';
                     var otherTableData = attrs.otherTableData || '';
                     var template =
-                        '<div class="tree-table-row" ' +
+                        '<div id="div{{node.' + nodeId + '}}"' +
+                             'class="tree-table-row" ' +
                              'style="display: block; width: 100%;" ' +
                              'ng-style="!node.' + nodeChildren + ' && { \'min-height\': \'' + cellMinHeight + 'px\' } || { \'min-height\': \'27px\' }" ' +
                              'ng-class="{ \'stripe-even\': node.' + nodeId + ' % 2 == 0, \'stripe-odd\': node.' + nodeId + ' % 2 == 1 }" ' +

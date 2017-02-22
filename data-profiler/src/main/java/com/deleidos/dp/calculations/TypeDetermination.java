@@ -10,11 +10,11 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Methods that determine the type of an arbitrary value or field.
@@ -62,12 +62,13 @@ public class TypeDetermination {
 
 	public static DetailType determineStringDetailType(Object object) {
 		String stringValue = object.toString();
+		/*
 		String dateRegex = "(19|20)\\d\\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])";
 		Pattern datePattern = Pattern.compile(dateRegex);
 		Matcher dateMatcher = datePattern.matcher(stringValue);
 		if(dateMatcher.matches()) {
 			return DetailType.DATE_TIME;
-		} 
+		} */
 		if(stringValue.equals(DefaultProfilerRecord.EMPTY_FIELD_VALUE_INDICATOR)) {
 			return DetailType.TERM;
 		} else if(stringValue.contains(" ")) {

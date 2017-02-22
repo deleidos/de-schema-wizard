@@ -7,7 +7,7 @@ import java.util.Map;
 
 import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.Profile;
-import com.deleidos.dp.enums.MainType;
+import com.deleidos.hd.enums.MainType;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;

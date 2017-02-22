@@ -16,44 +16,49 @@
                         document.getElementById('file-upload-btn').disabled = true;
                         // status always needs reset if choosing another file
                         scope.$apply(function () {
-                            modelSetter(scope, element[0].files);
-                            if (document.getElementById('file-upload').files) {
-                                // This iterates over to see if the total files size is greater than 100MB
-                                const maxFilesSize = 104857600;
-                                var totalFilesSize = 0;
-                                var numberOfDataSamples = element[0].files.length;
-                                for (var i = 0; i < element[0].files.length; i++) {
-                                    totalFilesSize = element[0].files[i].size + totalFilesSize;
-                                    numberOfDataSamples = element[0].files[i];
-                                    if (totalFilesSize > maxFilesSize) {
-                                        $confirm(
-                                            {
-                                                title: 'File(s) size is too large',
-                                                text: "The total file(s) size(s) are over the recommended limit of 100 MB.",
-                                                ok: 'OK'
-                                            },
-                                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                                            .then(function () {
-                                                totalFilesSize = 0;
-                                                document.getElementById('file-upload-btn').disabled = true;
-                                            });
+                            try {
+                                modelSetter(scope, element[0].files);
+                                if (document.getElementById('file-upload').files) {
+                                    // This iterates over to see if the total files size is greater than 100MB
+                                    const maxFilesSize = 104857600;
+                                    var totalFilesSize = 0;
+                                    var numberOfDataSamples = element[0].files.length;
+                                    for (var i = 0; i < element[0].files.length; i++) {
+                                        totalFilesSize = element[0].files[i].size + totalFilesSize;
+                                        numberOfDataSamples = element[0].files[i];
+                                        if (totalFilesSize > maxFilesSize) {
+                                            $confirm(
+                                                {
+                                                    title: 'File(s) size is too large',
+                                                    text: "The total file(s) size(s) are over the recommended limit of 100 MB.",
+                                                    ok: 'OK'
+                                                },
+                                                {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
+                                                .then(function () {
+                                                    totalFilesSize = 0;
+                                                    document.getElementById('file-upload-btn').disabled = true;
+                                                });
+                                        }
+                                    }
+                                    for (var i = 0; i < element[0].files.length; i++) {
+                                        if (element[0].files[i].name.indexOf(".xlsx") !== -1) {
+                                            $confirm(
+                                                {
+                                                    title: 'Schema Wizard does not support this file type',
+                                                    text: "Schema Wizard does not support the file type for: \n" + element[0].files[i].name,
+                                                    ok: 'OK'
+                                                },
+                                                {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
+                                                .then(function () {
+                                                });
+                                        }// try and prevent users from uploading unsupported files.
+                                         //this is a work-around for IE
+
                                     }
                                 }
-                                for (var i = 0; i < element[0].files.length; i++) {
-                                    if (element[0].files[i].name.indexOf(".xlsx") !== -1) {
-                                        $confirm(
-                                            {
-                                                title: 'Schema Wizard does not support this file type',
-                                                text: "Schema Wizard does not support the file type for: \n" + element[0].files[i].name,
-                                                ok: 'OK'
-                                            },
-                                            {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                                            .then(function () {
-                                            });
-                                    }// try and prevent users from uploading unsupported files.
-                                     //this is a work-around for IE
+                            }
+                            catch (e) {
 
-                                }
                             }
                         });
                     });
@@ -105,10 +110,33 @@
         }]); // fileUpload
 
     schemaWizardApp.controller('fileUploadCtrl',
-        function ($scope, $rootScope, $http, UploadParameters, fileUpload, $confirm) {
-            window.onbeforeunload = function() {
+        function ($scope, $rootScope, $http, UploadParameters, fileUpload, $confirm, $interval) {
+            $scope.dndPlaceHolder = "Drag and Drop Files here, or click 'Choose Files' to add samples";
+            window.onbeforeunload = function () {
                 return "Reloading will clear your session";
             };
+            $scope.dragFiles = [];
+            $scope.$watch(function () {
+                    return $scope.dragFiles
+                },
+                function () {
+                    if ($scope.dragFiles > 0) {
+                        document.getElementById('file-upload').disabled = true;
+                    }
+                    else {
+                        document.getElementById('file-upload').disabled = false;
+                    }
+                    for (i = 0; i < $scope.dragFiles.length; i++) {
+                        if ($scope.dragFiles[i].name.indexOf(".xlsx") == -1) {
+                            $rootScope.originalSeedFileArray.push($scope.dragFiles[i]);
+                            $scope.seedFileObject.lists.seed.push({
+                                label: $scope.dragFiles[i].name,
+                                file: $scope.dragFiles[i],
+                                originalIndex: i
+                            });
+                        }
+                    }
+                });
             document.getElementById('titleRef').style.pointerEvents = 'none';
             //TODO think of a better way to handle scoping issues to a Service
             $rootScope.originalSeedFileArray = [];
@@ -117,12 +145,18 @@
                 selected: null,
                 lists: {"seed": []}
             };
+            $scope.clearDragArray = function () {
+                $scope.dndPlaceHolder = "";
+                $scope.dragFiles = [];
+            }
             $scope.clearFiles = function () {
+                $scope.dragFiles = [];
                 $scope.seedFileObject = {
                     selected: null,
                     lists: {"seed": []}
                 };
                 document.getElementById('file-upload').value = "";
+                $scope.dndPlaceHolder = "Drag and Drop Files here, or click 'Choose Files' to add samples";
             };
             $scope.dropCallback = function (event, index, item, external, type) {
                 if (external) {
@@ -132,26 +166,50 @@
                 return item;
             };
 
-            $scope.removeFile = function (item) {
-                for (i = 0; i < document.getElementById('file-upload').files.length; i++) {
-                    if (item.label == $scope.seedFileObject.lists.seed[i].label) {
-                        $scope.seedFileObject.lists.seed.splice(i, 1);
-                    }
-                }
-            };
 
             $scope.$watch('seedFileObject', function (model) {
-                if (document.getElementById('file-upload').files.length > 0) {
-                    console.log($scope.seedFileObject.lists.seed[0].label);
+                if (document.getElementById('file-upload').files.length > 0 || $scope.dragFiles.length > 0) {
+                    $scope.dndPlaceHolder = "";
+                    //if we decide not to allow duplicates in upload
+
+                    // for(var i = 0; i < $scope.seedFileObject.lists.seed.length; i++) {
+                    //     for(var j = 0; j < $scope.seedFileObject.lists.seed.length; j++) {
+                    //         if(i != j && $scope.seedFileObject.lists.seed[i].label == $scope.seedFileObject.lists.seed[j].label) {
+                    //
+                    //             $scope.seedFileObject.lists.seed.splice(i, 1);
+                    //         }
+                    //     }
+                    // }
                     $scope.seedFileName = $scope.seedFileObject.lists.seed[0].label;
                     //TODO think of a better way to handle scoping issues to a Service
                     $rootScope.seedFileName = $scope.seedFileName;
+
+                    if (document.getElementById('file-upload').files.length > 0 &&
+                        $scope.schemaDomain != null && $scope.schemaTolerance != null || $scope.seedFileObject.lists.seed.length > 0 &&
+                        $scope.schemaDomain != null && $scope.schemaTolerance != null) {
+                        document.getElementById('file-upload-btn').disabled = false;
+                    } else {
+                        document.getElementById('file-upload-btn').disabled = true;
+                    }
                 }
+
 
             }, true);
             $scope.selected = null;
             $scope.hideMask = function () {
                 document.getElementById("mask").style.display = "none";
+            };
+            $scope.removeFile = function (item) {
+                for (i = 0; i < $scope.seedFileObject.lists.seed.length; i++) {
+                    if (item.label == $scope.seedFileObject.lists.seed[i].label) {
+                        $scope.seedFileObject.lists.seed.splice(i, 1);
+                    }
+                }
+                if ($scope.seedFileObject.lists.seed.length == 0 || document.getElementById('file-upload').files.length == 0) {
+                    $scope.dndPlaceHolder = "Drag and Drop Files here, or click 'Choose Files' to add samples";
+                    document.getElementById('file-upload-btn').disabled = true;
+                }
+
             };
 
             $scope.setSchemaDomain = function ($event, schemaDomain) {
@@ -189,21 +247,20 @@
             }
             ;
             $scope.setSchemaDomain(null, $scope.schemaDomain);
-            //console.log("$scope.schemaDomain");
-            //console.log("'" + $scope.schemaDomain + "'");
 
-            // enable/disable the upload button when all parameters are set
 
             $scope.$watch(function (scope) {
                     return scope.schemaDomain && scope.schemaTolerance &&
-                        document.getElementById('file-upload').files.length > 0;
+                        document.getElementById('file-upload').files.length > 0 && $scope.seedFileObject.lists.seed;
                 },
                 function () {
                     if (document.getElementById('file-upload').files.length > 0 &&
+                        $scope.schemaDomain != null && $scope.schemaTolerance != null || $scope.seedFileObject.lists.seed.length > 0 &&
                         $scope.schemaDomain != null && $scope.schemaTolerance != null) {
                         document.getElementById('file-upload-btn').disabled = false;
                     } else {
                         document.getElementById('file-upload-btn').disabled = true;
+                        $scope.dndPlaceHolder = "Drag and Drop Files here, or click 'Choose Files' to add samples";
                     }
                 });
 
@@ -211,7 +268,7 @@
                     return document.getElementById('file-upload').files.length > 0;
                 },
                 function () {
-                    if(document.getElementById('file-upload').files.length > 0){
+                    if (document.getElementById('file-upload').files.length > 0) {
                         for (i = 0; i < document.getElementById('file-upload').files.length; i++) {
                             if (document.getElementById('file-upload').files[i].name.indexOf(".xlsx") == -1) {
                                 $scope.fileDialogHasBeenOpened = +1;
@@ -229,6 +286,7 @@
                         document.getElementById('file-upload-btn').disabled = false;
                     } else {
                         document.getElementById('file-upload-btn').disabled = true;
+                        $scope.dndPlaceHolder = "Drag and Drop Files here, or click 'Choose Files' to add samples";
                     }
                 }
             ); // watchFileUpload
@@ -238,7 +296,13 @@
                 var file = $scope.seedFileObject.lists.seed;
                 $scope.filesTotalSize = 0;
                 for (var i = 0; i < $scope.numberOfFiles; i++) {
-                    $scope.filesTotalSize = document.getElementById('file-upload').files[i].size + $scope.filesTotalSize;
+                    try {
+                        $scope.filesTotalSize = document.getElementById('file-upload').files[i].size + $scope.filesTotalSize;
+                        $scope.filesTotalSize = $scope.dragFiles[0].size + $scope.filesTotalSize;
+                    }
+                    catch (e) {
+
+                    }
                 }
                 //console.log("fileUploadCtrl file(s) to upload:");
                 //console.dir(file);
@@ -286,20 +350,25 @@
                                 });
                         }
                         else {
-                            $confirm(
-                                {
-                                    title: 'File Upload Failed',
-                                    text: "Uploading of the file(s) has failed. Click 'Ok' to try again.",
-                                    ok: 'OK'
-                                },
-                                {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
-                                .then(function () {
-                                    $rootScope.$broadcast("closeWebSocket", {});
-                                    console.log(data);
-                                    $scope.hideMask();
-                                    $scope.navigateTo("/catalog");
-                                });
-
+                            if($rootScope.canceledProgress == false) {
+                                $confirm(
+                                    {
+                                        title: 'File Upload Failed',
+                                        text: "Uploading of the file(s) has failed. Click 'Ok' to try again.",
+                                        ok: 'OK'
+                                    },
+                                    {templateUrl: 'schema-wizard/schema-wizard.confirm.template.html'})
+                                    .then(function () {
+                                        $rootScope.$broadcast("closeWebSocket", {});
+                                        console.log(data);
+                                        $scope.hideMask();
+                                        $scope.navigateTo("/catalog");
+                                    });
+                            }
+                            else{
+                                // no need to show fileUpload failed, if they cancel.
+                                $rootScope.canceledProgress = false;
+                            }
                         }
                     })
 

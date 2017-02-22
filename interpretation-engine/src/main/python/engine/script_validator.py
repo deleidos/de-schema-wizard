@@ -7,6 +7,7 @@ Created on May 26, 2016
 import json
 import base64
 import logging
+import os
 
 class ScriptValidator(object):
     def validate(self, script):
@@ -18,6 +19,7 @@ class ScriptValidator(object):
         """
         
         try :
+
             file = '_interpretation_.py'
             with open(file,"w") as f:
                 f.write(self._decode_base_64_(script))
@@ -75,14 +77,17 @@ class ScriptValidator(object):
         except Exception as e:
             import re
             error_msg = str(e)
-            error_line = error_msg.split('line ')
-            line_num_pattern = re.compile(r'[^\d.]+')
-            line_number = line_num_pattern.sub('', error_line[1])
-            
-            discrepancies_list.append(self._create_discrepancy_(discrepancy_type, int(line_number), annotation))
-            clean_list = discrepancies_list
-            return_list = {"discrepancies":json.dumps(clean_list), "isValid":False}
-            return return_list
+            if 'line ' in error_msg:
+                error_line = error_msg.split('line ')
+                line_num_pattern = re.compile(r'[^\d.]+')
+                line_number = line_num_pattern.sub('', error_line[1])
+
+                discrepancies_list.append(self._create_discrepancy_(discrepancy_type, int(line_number), annotation))
+                clean_list = discrepancies_list
+                return_list = {"discrepancies":json.dumps(clean_list), "isValid":False}
+                return return_list
+            else:
+                raise e
         
     
     def _create_discrepancy_(self, discrepancy_type, line_number, annotation):

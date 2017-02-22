@@ -6,7 +6,9 @@ Created on Apr 5, 2016
 
 from re import match
 from engine.objects import Result
+from time import strptime
 import logging
+import sre_constants
 
 main_type = "main_type"
 detail_type = "detail_type"
@@ -48,13 +50,14 @@ _constraint_keys_to_metrics_dictionary_key_mapping = \
     "min-length":string_min_len, 
     "max-length":string_max_len, 
     "average-length":string_average_len, 
-    "std-dev-length":string_std_dev_len, 
+    "std-dev-length":string_std_dev_len,
     
     "length":binary_len, 
     "mime-type":binary_mime_type, 
     "hash":binary_hash, 
     "entropy":binary_entropy,
     
+    "datetime":_special_constraint_key,
     "regex":_special_constraint_key,
     
     "quantized":quantized,
@@ -153,6 +156,8 @@ class ConstraintValidator(object):
             constraint = VizWizConstraint(constraint_key, constraint_value)
         elif constraint_key == 'regex':
             constraint = RegexConstraint(constraint_key, constraint_value)
+        elif constraint_key == 'datetime':
+            constraint = DateTimeConstraint(constraint_key, constraint_value)
         return constraint
 
 '''
@@ -193,6 +198,24 @@ class EqualityConstraint(Constraint):
 class RegexConstraint(Constraint):
     def validate(self, test_value):
         return match(self.constraint_value, str(test_value))
+    
+class DateTimeConstraint(Constraint):
+    def validate(self, test_value):
+        try:
+            strptime(test_value, self.constraint_value)
+            return True
+        except ValueError as val_err:
+            logging.info("Failed date time validation: " + 
+                str(test_value) + " with format " + 
+                str(self.constraint_value) + ".")
+            return False
+        except sre_constants.error as sre_err:
+            logging.info("Configuration error with constraint defined as "+
+                         str(self.constraint_value)+".")
+            return False 
+        except Exception as err:
+            logging.error(err)
+            return False
     
 class VizWizConstraint(Constraint):
     def validate(self, test_value):

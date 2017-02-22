@@ -23,9 +23,9 @@ import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.StringDetail;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeRuntimeException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Matching algorithm logic and methods.

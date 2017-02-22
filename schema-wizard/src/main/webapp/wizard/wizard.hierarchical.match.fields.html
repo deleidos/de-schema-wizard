@@ -1,4 +1,15 @@
 <div style="margin: 6px; width: 100%;">
+    <div id="sampleMask" class="full-size"
+         style="color: white; background-color: black; opacity: 0.8;
+                font-family: 'MS Reference Sans Serif', sans-serif; font-size: 24px;
+				z-index: 999; text-align: center; display: block;">
+        <p style="position: absolute; left: 200px; top:200px; right: 200px;">
+            If the data sample contains structured fields then it may take up to 30 seconds to load.
+        </p>
+        <p style="position: absolute; left: 200px; top:300px; right: 200px;">
+            If the browser warns about a 'busy' script then respond to allow more time.
+        </p>
+    </div>
     <h4 style="margin: 2px 0px;">Schema Wizard: Match Fields Step</h4>
     <div class="panel-primary"
          style="width: 604px; margin: 0 auto; margin-top: -25px; margin-bottom: 2px; padding: 1px;">
@@ -66,10 +77,21 @@
                             </option>
                         </select>
                         </span>
-                        <!--TODO: rename when interpretation match is work-->
-                        <span style="cursor: not-allowed; margin-left: 20px; font-style: normal; font-size: 10pt;">
+<!--TODO: don't disable when interpretation match is working completely-->
+<!--
+                        <span style="margin-left: 20px; font-style: normal; font-size: 10pt;"
+                              ng-style="modifySchemaMode !== true && { 'cursor' : 'not-allowed' }"
+                              ng-disabled="modifySchemaMode !== true">
                             Require Interpretation Match
-                            <input disabled style="cursor: not-allowed;" id="interpretationMatch" type="checkbox" ng-model="interpretationMatch"
+                            <input id="interpretationMatch" type="checkbox" ng-model="interpretationMatch"
+                                   ng-style="modifySchemaMode !== true && { 'cursor' : 'not-allowed' }"
+                                   ng-disabled="modifySchemaMode !== true"
+                                   ng-change="repeatMatching(interpretationMatch)"/>
+                        </span>
+-->
+                        <span style="margin-left: 20px; font-style: normal; font-size: 10pt;">
+                            Require Interpretation Match
+                            <input id="interpretationMatch" type="checkbox" ng-model="interpretationMatch"
                                    ng-change="repeatMatching(interpretationMatch)"/>
                         </span>
                         <button class="btn btn-primary btn-xs"
@@ -79,9 +101,9 @@
                         </button>
                     </div>
                     <div id="wizardMatchFieldsProfilesPanelBody"
-                         class="panel-body" style="height: 222px; overflow: hidden;"> <!--height dynamicaly set in resizeWizard-->
+                         class="panel-body" style="height: 222px; overflow: hidden; overflow-x: scroll;"> <!--height dynamicaly set in resizeWizard-->
                         <div id="tree-view"
-                             style="height: 100%; min-width: 600px; overflow-y: hidden; border: thin solid gray; border-bottom: none;">
+                             style="height: 100%; min-width: 460px; overflow-y: hidden; border: thin solid gray; border-bottom: none;">
                             <div ng-repeat="col in model.columns track by $index"
                                  ng-style="model.columns.length > 3 && { 'min-height': '100%', 'padding-bottom': '1px' }"
                                  class="tree-table-grid" style="float: left; border-bottom: thin solid gray;">
@@ -92,7 +114,6 @@
                                     <div class="tree-table-cell" ng-if="$middle || $last">
                                         <p uib-tooltip="{{col.name}}" tooltip-placement="bottom">
                                             {{col.name.substr(0, 12)}}
-<!-- TODO: the grids don't rebuild properly after deleting a ds
                                             <button class="btn-graphic-only btn-remove" type="button"
                                                     ng-model="singleModel"
                                                     uib-tooltip="Discard data sample"
@@ -108,7 +129,6 @@
                                                   tour-step-orphan="false"
                                                   tour-step-backdrop="false">&thinsp;
                                             </span>
--->
                                         </p>
                                     </div>
                                 </div>

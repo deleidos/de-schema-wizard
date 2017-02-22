@@ -1,6 +1,7 @@
 package com.deleidos.dp.calculations;
 
 import java.math.MathContext;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,12 +18,12 @@ import com.deleidos.dp.beans.Schema;
 import com.deleidos.dp.beans.StructuredNode;
 import com.deleidos.dp.beans.StructuredProfile;
 import com.deleidos.dp.deserializors.ConversionUtility;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.profiler.DefaultProfilerRecord;
 import com.deleidos.dp.profiler.api.ProfilingProgressUpdateHandler;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 import com.deleidos.hd.h2.H2Database;
 
 /**
@@ -245,4 +246,28 @@ public class MetricsCalculationsFacade {
 		return stringifyNumDistinctValues(numDistinctValues,  numDistinctValues >= maxNumDistinctValues);
 	}
 	
+	public static Number createNumber(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
+		return MetricsCalculationsFacade.createNumberWithDoublePrecisionOrLower(object);
+	}
+	
+	public static String createString(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
+		return object.toString();
+	}
+	
+	public static ByteBuffer createBinary(Object object) throws MainTypeException {
+		if (object == null) {
+			return null;
+		}
+		if(!(object instanceof ByteBuffer)) {
+			throw new MainTypeException("Value "+object.getClass().getName()+" is not a byte buffer.");
+		} else {
+			return (ByteBuffer)object;
+		}
+	}
 }

@@ -57,7 +57,7 @@
         };
     }); // Globals
 
-    schemaWizardApp.service("Utilities", function () {
+    schemaWizardApp.service("Utilities", function ($timeout) {
         this.showInGenericDetails = function (Globals, profile, property) {
             console.log("showInGenericDetails property: " + property);
             //console.log(profile);
@@ -123,5 +123,44 @@
         this.getModifySchemaMode = function () {
             return modifySchemaMode;
         };
+
+        var matchingShownInDetails1Id;
+        this.setMatchingShownInDetails1Id = function (id) {
+            matchingShownInDetails1Id = id;
+        };
+        this.getMatchingShownInDetails1Id = function () {
+            return matchingShownInDetails1Id;
+        }
     }); // Utilities
+
+    schemaWizardApp.service("MaskUtilities", function ($timeout) {
+        var mask = {};
+        mask.showBrowseMask = function () {
+            document.getElementById('sampleMask').style.opacity = $scope.browseMaskOpacity;
+            document.getElementById("sampleMask").style.display = "block";
+        }; // showBrowseMask
+
+        mask.hideBrowseMask = function () {
+            document.getElementById("sampleMask").style.display = "none";
+        }; // hideBrowseMask
+
+        mask.fadeBrowseMask = function (browseMaskOpacity) {
+            // set default opacity if not passed in
+            browseMaskOpacity = (browseMaskOpacity ? browseMaskOpacity : 0.8);
+            //console.log("browseMaskOpacity: " + browseMaskOpacity);
+            var opacity = browseMaskOpacity - 0.1;
+            if (opacity < 0) {
+                document.getElementById('sampleMask').style.display = "none";
+            } else {
+                document.getElementById('sampleMask').style.opacity = opacity;
+                $timeout(function () {
+                    //console.log("opacity: " + opacity);
+                    mask.fadeBrowseMask(opacity);
+                }, 50);
+            }
+        }; // fadeBrowseMask
+
+        return mask;
+    });
+
 })();

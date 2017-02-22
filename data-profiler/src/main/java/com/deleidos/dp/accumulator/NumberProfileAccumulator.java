@@ -1,9 +1,10 @@
 package com.deleidos.dp.accumulator;
 
+import static com.deleidos.dp.calculations.MetricsCalculationsFacade.createNumber;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.log4j.Logger;
 
@@ -11,10 +12,9 @@ import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.calculations.TypeDetermination;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.AbstractNumberBucketList;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Accumulator for number profiles.
@@ -167,15 +167,6 @@ public class NumberProfileAccumulator extends AbstractProfileAccumulator<Number>
 
 	@Override
 	protected Number createAppropriateObject(Object object) throws MainTypeException {
-		return MainType.NUMBER.createNumber(object);
-	}
-
-	@Override
-	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
-		if (existingSchemaProfile != null) {
-			return existingSchemaProfile.getDetail().getDetailTypeClass();
-		} else {
-			return sampleProfiles.get(0).getDetail().getDetailTypeClass();
-		}
+		return createNumber(object);
 	}
 }

@@ -54,7 +54,7 @@ public interface Accumulator<T, V> {
 	}
 	
 	/**
-	 * Interface that specifically accumulates objects.  This is another layer of abstraction
+	 * A shortcut marker interface that specifically accumulates objects.  This is another layer of abstraction
 	 * that allows an implementation to handle any and all type checking internally.
 	 * @author leegc
 	 *
@@ -65,7 +65,7 @@ public interface Accumulator<T, V> {
 	}
 	
 	/**
-	 * Interface that specifically accumulates objects and is presence aware.  Identifying 
+	 * A shortcut marker interface that specifically accumulates objects and is presence aware.  Identifying 
 	 * an implementation of this type is useful because we can call the presence aware
 	 * accumulate method and know that the implementation will handle the type.
 	 * @author leegc

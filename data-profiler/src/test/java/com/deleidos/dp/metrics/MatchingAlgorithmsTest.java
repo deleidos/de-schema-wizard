@@ -20,12 +20,12 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.calculations.MatchingAlgorithm;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.environ.DPMockUpEnvironmentTest;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 public class MatchingAlgorithmsTest extends DPMockUpEnvironmentTest {
 	private Logger logger = Logger.getLogger(MatchingAlgorithmsTest.class);

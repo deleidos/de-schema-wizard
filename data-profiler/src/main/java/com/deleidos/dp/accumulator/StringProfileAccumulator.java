@@ -1,13 +1,9 @@
 package com.deleidos.dp.accumulator;
 
+import static com.deleidos.dp.calculations.MetricsCalculationsFacade.createString;
+
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -15,11 +11,11 @@ import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.beans.StringDetail;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.calculations.TypeDetermination;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.histogram.CharacterBucketList;
 import com.deleidos.dp.histogram.ShortStringBucketList;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Accumulator for string profiles.
@@ -172,34 +168,6 @@ public class StringProfileAccumulator extends AbstractProfileAccumulator<String>
 
 	@Override
 	protected String createAppropriateObject(Object object) throws MainTypeException {
-		return MainType.STRING.createString(object);
+		return createString(object);
 	}
-
-	private final static Map<DetailType, Integer> restrictivenessMap;
-	static {
-		restrictivenessMap = new HashMap<DetailType, Integer>();
-		for(DetailType type : DetailType.values()) {
-			// initialize all detail types with zero
-			restrictivenessMap.put(type, 0);
-		}
-		restrictivenessMap.put(DetailType.BOOLEAN, 4);
-		restrictivenessMap.put(DetailType.DATE_TIME, 4);
-		restrictivenessMap.put(DetailType.TERM, 3);
-		restrictivenessMap.put(DetailType.PHRASE, 2);
-		restrictivenessMap.put(DetailType.TEXT, 1);
-	}
-	
-	@Override
-	protected DetailType determineDetailType(Profile existingSchemaProfile, List<Profile> sampleProfiles) {
-		Set<DetailType> uniqueDetailTypes = new HashSet<DetailType>();
-		if (existingSchemaProfile != null) {
-			uniqueDetailTypes.add(existingSchemaProfile.getDetail().getDetailTypeClass());
-		}
-		sampleProfiles.forEach(x->uniqueDetailTypes.add(x.getDetail().getDetailTypeClass()));
-		List<DetailType> detailTypes = new ArrayList<DetailType>(uniqueDetailTypes); 
-		detailTypes.sort((detailType1, detailType2)->
-			restrictivenessMap.get(detailType2) - restrictivenessMap.get(detailType1));
-		return detailTypes.get(detailTypes.size() - 1);
-	}
-
 }

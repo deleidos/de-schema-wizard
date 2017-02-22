@@ -14,13 +14,13 @@ import com.deleidos.dp.accumulator.BundleProfileAccumulator;
 import com.deleidos.dp.beans.BinaryDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
-import com.deleidos.dp.enums.DetailType;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.interpretation.IEConfig;
 import com.deleidos.dp.interpretation.InterpretationEngine;
 import com.deleidos.dp.interpretation.InterpretationEngineFacade;
 import com.deleidos.dp.profiler.SampleProfiler;
+import com.deleidos.hd.enums.DetailType;
 
 public class BinaryProfileAccumulatorTest {
 

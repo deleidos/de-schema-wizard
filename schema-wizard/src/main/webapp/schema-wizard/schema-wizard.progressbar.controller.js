@@ -3,7 +3,7 @@
     var schemaWizardApp = angular.module('schemaWizardApp');
 
     schemaWizardApp.controller('ProgressCtrl',
-        function ($scope, $location, $websocket) {
+        function ($scope, $location, $websocket, $rootScope) {
             var websocketURL ="ws://" + $location.host() + ":" +
                                $location.port() + "/schwiz/analytics";
             console.log("websocketURL: " + websocketURL);
@@ -12,6 +12,13 @@
             if($scope.type =1.0 ){
                 $scope.dynamic = 1;
                 $scope.type = "1%";
+            }
+
+            $scope.cancelProgress = function(){
+                $rootScope.$broadcast("closeWebSocket", {});
+                $scope.hideMask();
+                $scope.navigateTo('/catalog');
+                $rootScope.canceledProgress = true;
             }
             $scope.dynamic = 1;
             $scope.type = "1%";

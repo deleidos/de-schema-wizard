@@ -31,10 +31,11 @@
             'anguFixedHeaderTable',
             'bm.uiTour',
             'shagstrom.angular-split-pane',
-            'ngIdle'
+            'ngIdle',
+            'ngFileUpload'
         ])
             .constant("baseUrl", "/schwiz/")
-            .constant("version", "3.0.0")
+            .constant("version", "3.0.1")
 
             .service('authInterceptor', function ($location, $window, $q) {
                 var service = this;

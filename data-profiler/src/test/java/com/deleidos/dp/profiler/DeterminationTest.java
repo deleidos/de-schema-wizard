@@ -13,9 +13,9 @@ import org.junit.Test;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
 import com.deleidos.dp.calculations.TypeDetermination;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.exceptions.MainTypeException;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * This test is ignored because the display names logic has been altered for structured data.
@@ -92,56 +92,56 @@ public class DeterminationTest {
 	@Test
 	public void testDetermineDate() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.STRING, "2000-10-10");
-		assertTrue(t == DetailType.DATE_TIME);
+		assertTrue(t.equals(DetailType.TERM));
 		logger.info("Date successfully detected");
 	}
 
 	@Test
 	public void testDetermineBoolean() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.STRING, "true");
-		assertTrue(t == DetailType.BOOLEAN);
+		assertTrue(t.equals(DetailType.BOOLEAN));
 		logger.info("Boolean successfully detected.");
 	}
 
 	@Test
 	public void testDeterminePhrase() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.STRING, "hello there");
-		assertTrue(t == DetailType.PHRASE);
+		assertTrue(t.equals(DetailType.PHRASE));
 		logger.info("Phrase successfully detected.");
 	}
 
 	@Test
 	public void testDetermineTerm() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.STRING, "hello");
-		assertTrue(t == DetailType.TERM);
+		assertTrue(t.equals(DetailType.TERM));
 		logger.info("Term successfully detected.");
 	}
 
 	@Test
 	public void testDetermineInteger() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.NUMBER, "43");
-		assertTrue(t == DetailType.INTEGER);
+		assertTrue(t.equals(DetailType.INTEGER));
 		logger.info("Integer successfully detected.");
 	}
 
 	@Test
 	public void testDetermineDecimal() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.NUMBER, "43.5");
-		assertTrue(t == DetailType.DECIMAL);
+		assertTrue(t.equals(DetailType.DECIMAL));
 		logger.info("Decimal successfully detected.");
 	}
 
 	@Test
 	public void testDetermineExponent() throws MainTypeException {
 		DetailType t = MetricsCalculationsFacade.determineDetailType(MainType.NUMBER, "43.2E5");
-		assertTrue(t == DetailType.EXPONENT);
+		assertTrue(t.equals(DetailType.EXPONENT));
 		logger.info("Exponent successfully detected.");
 	}
 
 	@Test
 	public void testDetermineString() {
 		MainType t = MetricsCalculationsFacade.determineProbableDataTypes("hello").get(0);
-		assertTrue(t == MainType.STRING);
+		assertTrue(t.equals(MainType.STRING));
 		logger.info("String successfully detected.");
 	}
 
@@ -170,7 +170,7 @@ public class DeterminationTest {
 	public void testDetermineNumberWithDecimalInString() {
 		List<MainType> t = MetricsCalculationsFacade.determineProbableDataTypes("12544362.3");
 		DetailType dt = TypeDetermination.determineDetailType(MainType.NUMBER, "12544362.3");
-		assertTrue(t.contains(MainType.NUMBER) && dt == DetailType.DECIMAL);
+		assertTrue(t.contains(MainType.NUMBER) && dt.equals(DetailType.DECIMAL));
 		logger.info("Decimal in string format successfully detected.");
 	}
 

@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.deleidos.sw</groupId>
 	<artifactId>schema-wizard-reactor-pom</artifactId>
-	<version>3.0.0</version>
+	<version>3.0.1</version>
 	<packaging>pom</packaging>
 	<name>Schema Wizard Reactor Pom</name>
 	<description>Contains build order for Schema Wizard</description>
@@ -40,6 +40,41 @@
 		<analytics.common.version>sw-3.0.0</analytics.common.version>
 		<analytics.websocket.version>sw-3.0.0</analytics.websocket.version>
 	</properties>
+
+	<repositories>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>advanced-analytics-releases</id>
+			<name>libs-release</name>
+			<url>http://captamerica.deleidos.com/artifactory/libs-release</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+			<id>advanced-analytics-snapshots</id>
+			<name>libs-snapshot</name>
+			<url>http://captamerica.deleidos.com/artifactory/libs-snapshot</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>advanced-analytics-releases-local</id>
+			<name>libs-release-local</name>
+			<url>http://captamerica.deleidos.com/artifactory/libs-release-local</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+			<id>advanced-analytics-snapshots-local</id>
+			<name>libs-snapshot-local</name>
+			<url>http://captamerica.deleidos.com/artifactory/libs-snapshot-local</url>
+		</repository>
+	</repositories>
 
 	<build>
 		<pluginManagement>

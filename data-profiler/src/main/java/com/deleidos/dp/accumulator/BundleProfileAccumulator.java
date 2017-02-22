@@ -11,14 +11,14 @@ import com.deleidos.dp.beans.DataSample;
 import com.deleidos.dp.beans.NumberDetail;
 import com.deleidos.dp.beans.Profile;
 import com.deleidos.dp.calculations.MetricsCalculationsFacade;
-import com.deleidos.dp.enums.DetailType;
-import com.deleidos.dp.enums.MainType;
 import com.deleidos.dp.enums.Tolerance;
 import com.deleidos.dp.exceptions.DataAccessException;
 import com.deleidos.dp.exceptions.MainTypeException;
 import com.deleidos.dp.profiler.BinaryProfilerRecord;
 import com.deleidos.dp.profiler.SampleProfiler;
 import com.deleidos.dp.profiler.api.ProfilerRecord;
+import com.deleidos.hd.enums.DetailType;
+import com.deleidos.hd.enums.MainType;
 
 /**
  * Accumulator that groups all possible accumulators into one.  This accumulator is used to gather values without any

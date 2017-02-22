@@ -155,7 +155,7 @@ def start_jetty():
     
     commands = commands + ['cd ' + JETTY_SERVER_LOCATION + ' \n']
     commands = commands + ['start cmd /k \"title Jetty'
-                               + ' & java -Xmx2048m -Xms2048m -Xdebug -agentlib:jdwp=transport=dt_socket,address=9999,server=y,suspend=n -jar "%JETTY_HOME%\\start.jar" STOP.PORT=8888 STOP.KEY=stop\" \n']
+                               + ' & java -Xdebug -agentlib:jdwp=transport=dt_socket,address=9999,server=y,suspend=n -jar "%JETTY_HOME%\\start.jar" STOP.PORT=8888 STOP.KEY=stop\" \n']
     
     minified_command = minify_command(commands)
     run_commands(minified_command, False)
