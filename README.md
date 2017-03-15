@@ -42,7 +42,7 @@ Basic Formats:
 * CSV (text/csv) - Comma Separated Values
 * JSON (application/json) - JavaScript Object Notation
 * CEF (application/cef) - Common Events Format
-* XML (application/xml) - **well formed** Extensible Markup Lanuage
+* XML (application/xml) - **well-formed** Extensible Markup Language
  
 Application Formats:
 * PDF (application/pdf) - content must be one of the "Basic Formats"
